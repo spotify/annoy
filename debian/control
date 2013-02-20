@@ -1,0 +1,12 @@
+Source: spotify-annoy
+Section: non-free/net
+Priority: extra
+Maintainer: Erik Bernhardsson <erikbern@spotify.com>
+Build-Depends: debhelper (>= 7), python-all-dev, python-setuptools, spotify-common, spotify-python-metadata-client
+Standards-Version: 3.7.2
+XS-Python-Version: >= 2.6
+
+Package: spotify-annoy
+Architecture: any
+Depends: ${python:Depends}, spotify-common
+Description: Python module (written in C++) for high-dimensional approximate nearest neigbor (ANN) queries
