@@ -4,7 +4,7 @@ a = AnnoyIndex(3)
 a.add_item(0, [1, 0, 0])
 a.add_item(1, [0, 1, 0])
 a.add_item(2, [0, 0, 1])
-a.build(7)
+a.build(-1)
 a.save('test.tree')
 
 b = AnnoyIndex(3)

@@ -19,18 +19,20 @@ using namespace boost;
 
 template<typename T>
 struct __attribute__((__packed__)) node {
-  // We store a binary tree where each node has two things
-  // - A vector associated with it
-  // - Two children
-  // All nodes occupy the same amount of memory
-  // All nodes with n_descendants == 1 are leaf nodes.
-  // A memory optimization is that for nodes with 2 <= n_descendants <= K,
-  // we skip the vector. Instead we store a list of all descendants. K is
-  // determined by the number of items that fits in the same space.
-  // For nodes with n_descendants == 1 or > K, there is always a
-  // corresponding vector. 
-  // Note that we can't really do sizeof(node<T>) because we cheat and allocate
-  // more memory to be able to fit the vector outside
+  /*
+   * We store a binary tree where each node has two things
+   * - A vector associated with it
+   * - Two children
+   * All nodes occupy the same amount of memory
+   * All nodes with n_descendants == 1 are leaf nodes.
+   * A memory optimization is that for nodes with 2 <= n_descendants <= K,
+   * we skip the vector. Instead we store a list of all descendants. K is
+   * determined by the number of items that fits in the same space.
+   * For nodes with n_descendants == 1 or > K, there is always a
+   * corresponding vector. 
+   * Note that we can't really do sizeof(node<T>) because we cheat and allocate
+   * more memory to be able to fit the vector outside
+   */
   int n_descendants;
   int children[2]; // Will possibly store more than 2
   T v[0]; // Hack. We just allocate as much memory as we need and let this array overflow
@@ -38,6 +40,13 @@ struct __attribute__((__packed__)) node {
 
 template<typename T>
 class AnnoyIndex {
+  /*
+   * We use random projection to build a forest of binary trees of all items.
+   * Basically just split the hyperspace into two sides by a hyperplane,
+   * then recursively split each of those subtrees etc.
+   * We create a tree like this q times. The default q is determined automatically
+   * in such a way that we at most use 2x as much memory as the vectors take.
+   */
   int _f;
   size_t _s;
   int _n_items;
@@ -50,6 +59,7 @@ class AnnoyIndex {
   int _nodes_size;
   vector<int> _roots;
   int _K;
+  bool _loaded;
 public:
   AnnoyIndex(int f) : _rng(), _nd(), _var_nor(_rng, _nd) {
     _f = f;
@@ -58,13 +68,15 @@ public:
     _n_nodes = 0;
     _nodes_size = 0;
     _nodes = NULL;
+    _loaded = false;
 
     _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(int);
     printf("K = %d\n", _K);
   }
   ~AnnoyIndex() {
-    if (_nodes)
+    if (!_loaded && _nodes) {
       free(_nodes);
+    }
   }
 
   void add_item(int item, const python::list& v) {
@@ -82,10 +94,14 @@ public:
       _n_items = item + 1;
   }
 
-  void build(int p) {
+  void build(int q) {
     _n_nodes = _n_items;
-    for (int q = 0; q < p; q++) {
-      printf("pass %d...\n", q);
+    while (1) {
+      if (q == -1 && _n_nodes >= _n_items * 2)
+	break;
+      if (q != -1 && _roots.size() >= q)
+	break;
+      printf("pass %d...\n", _roots.size());
 
       vector<int> indices;
       for (int i = 0; i < _n_items; i++)
@@ -108,6 +124,7 @@ public:
     _n_nodes = 0;
     _nodes_size = 0;
     _nodes = NULL;
+    _roots.clear();
     load(filename);
   }
 
@@ -134,6 +151,7 @@ public:
 	_roots.push_back(i);
       }
     }
+    _loaded = true;
     printf("found %lu roots with degree %d\n", _roots.size(), m);
   }
 
@@ -199,7 +217,13 @@ private:
 
     vector<int> children_indices[2];
     for (int attempt = 0; attempt < 20; attempt ++) {
-      // Create a random hyperplane
+      /*
+       * Create a random hyperplane.
+       * If all points end up on the same time, we try again.
+       * We could in principle *construct* a plane so that we split
+       * all items evenly, but I think that could violate the guarantees
+       * given by just picking a hyperplane at random
+       */
       for (int z = 0; z < _f; z++)
 	m->v[z] = _var_nor();
       
@@ -217,6 +241,8 @@ private:
 	for (int z = 0; z < _f; z++) {
 	  dot += m->v[z] * n->v[z];
 	}
+	while (dot == 0)
+	  dot = _var_nor();
 	children_indices[dot > 0].push_back(j);	
       }
 
@@ -228,12 +254,16 @@ private:
     }
 
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
-      // TODO: write vector
+      // If we didn't find a hyperplane, just randomize sides as a last option
       if (indices.size() > 100000)
 	printf("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
+
+      // Set the vector to 0.0
+      for (int z = 0; z < _f; z++)
+	m->v[z] = 0.0;
 
       for (int i = 0; i < indices.size(); i++) {
 	int j = indices[i];
@@ -267,9 +297,12 @@ private:
     } else {
       T dot = 0;
 
-      for (int z = 0; z < _f; z++) {
+      for (int z = 0; z < _f; z++)
 	dot += v[z] * n->v[z];
-      }
+
+      while (dot == 0) // Randomize side if the dot product is zero
+	dot = _var_nor();
+
       _get_nns(v, n->children[dot > 0], result, limit);
       if (result->size() < limit)
 	_get_nns(v, n->children[dot < 0], result, limit);
