@@ -316,7 +316,7 @@ private:
       vector<int> nns;
       _get_nns(v, _roots[i], &nns, n);
       for (int j = 0; j < nns.size(); j++) {
-	nns_cos.push_back(make_pair(_cos(v, _get(j)->v), nns[j]));
+	nns_cos.push_back(make_pair(_cos(v, _get(nns[j])->v), nns[j]));
       }
     }
     sort(nns_cos.begin(), nns_cos.end());
