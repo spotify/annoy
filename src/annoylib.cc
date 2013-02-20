@@ -70,7 +70,6 @@ public:
     n->children[1] = 0;
     n->n_descendants = 1;
 
-    vector<T> w(_f);
     for (int z = 0; z < _f; z++)
       n->v[z] = python::extract<T>(v[z]);
 
@@ -127,9 +126,7 @@ public:
     printf("found %lu roots with degree %d\n", _roots.size(), m);
   }
 
-  inline T cos(int i, int j) {
-    const T* x = _get(i)->v;
-    const T* y = _get(j)->v;
+  inline T _cos(const T* x, const T* y) {
     T pp = 0, qq = 0, pq = 0;
     for (int z = 0; z < _f; z++) {
       pp += x[z] * x[z];
@@ -141,29 +138,22 @@ public:
     else return 0.0;
   }
 
-  python::list get_nns(int item, int n) {
-    vector<pair<T, int> > nns_cos;
-
-    for (int i = 0; i < _roots.size(); i++) {
-      vector<int> nns;
-      _get_nns(item, _roots[i], &nns, n);
-      for (int j = 0; j < nns.size(); j++) {
-	nns_cos.push_back(make_pair(cos(item, nns[j]), nns[j]));
-      }
-    }
-    sort(nns_cos.begin(), nns_cos.end());
-    int last = -1, length=0;
-    python::list l;
-    for (int i = nns_cos.size() - 1; i >= 0 && length < n; i--) {
-      if (nns_cos[i].second != last) {
-	l.append(nns_cos[i].second);
-	last = nns_cos[i].second;
-	length++;
-      }
-    }
-    return l;
+  inline T cos(int i, int j) {
+    const T* x = _get(i)->v;
+    const T* y = _get(j)->v;
+    return _cos(x, y);
   }
 
+  python::list get_nns_by_item(int item, int n) {
+    const node<T>* m = _get(item);
+    return _get_all_nns(m->v, n);
+  }
+  python::list get_nns_by_vector(python::list v, int n) {
+    vector<T> w(_f);
+    for (int z = 0; z < _f; z++)
+      w[z] = python::extract<T>(v[z]);
+    return _get_all_nns(&w[0], n);
+  }
 private:
   void _allocate_size(int n) {
     if (n > _nodes_size) {
@@ -252,8 +242,7 @@ private:
     return item;
   }
 
-  void _get_nns(int item, int i, vector<int>* result, int limit) {
-    const node<T>* m = _get(item);
+  void _get_nns(const T* v, int i, vector<int>* result, int limit) {
     const node<T>* n = _get(i);
 
     if (n->n_descendants == 0) {
@@ -268,22 +257,46 @@ private:
       T dot = 0;
 
       for (int z = 0; z < _f; z++) {
-	dot += m->v[z] * n->v[z];
+	dot += v[z] * n->v[z];
       }
-      _get_nns(item, n->children[dot > 0], result, limit);
+      _get_nns(v, n->children[dot > 0], result, limit);
       if (result->size() < limit)
-	_get_nns(item, n->children[dot < 0], result, limit);
+	_get_nns(v, n->children[dot < 0], result, limit);
     }
+  }
+
+  python::list _get_all_nns(const T* v, int n) {
+    vector<pair<T, int> > nns_cos;
+
+    for (int i = 0; i < _roots.size(); i++) {
+      vector<int> nns;
+      _get_nns(v, _roots[i], &nns, n);
+      for (int j = 0; j < nns.size(); j++) {
+	nns_cos.push_back(make_pair(_cos(v, _get(j)->v), nns[j]));
+      }
+    }
+    sort(nns_cos.begin(), nns_cos.end());
+    int last = -1, length=0;
+    python::list l;
+    for (int i = nns_cos.size() - 1; i >= 0 && length < n; i--) {
+      if (nns_cos[i].second != last) {
+	l.append(nns_cos[i].second);
+	last = nns_cos[i].second;
+	length++;
+      }
+    }
+    return l;
   }
 };
 
 BOOST_PYTHON_MODULE(annoylib)
 {
   python::class_<AnnoyIndex<float> >("AnnoyIndex", python::init<int>())
-    .def("add_item",     &AnnoyIndex<float>::add_item)
-    .def("build",        &AnnoyIndex<float>::build)
-    .def("save",         &AnnoyIndex<float>::save)
-    .def("load",         &AnnoyIndex<float>::load)
-    .def("cos",          &AnnoyIndex<float>::cos)
-    .def("get_nns",      &AnnoyIndex<float>::get_nns); // todo: by vector
+    .def("add_item",          &AnnoyIndex<float>::add_item)
+    .def("build",             &AnnoyIndex<float>::build)
+    .def("save",              &AnnoyIndex<float>::save)
+    .def("load",              &AnnoyIndex<float>::load)
+    .def("cos",               &AnnoyIndex<float>::cos)
+    .def("get_nns_by_item",   &AnnoyIndex<float>::get_nns_by_item)
+    .def("get_nns_by_vector", &AnnoyIndex<float>::get_nns_by_vector);
 }
