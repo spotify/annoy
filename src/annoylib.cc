@@ -57,9 +57,14 @@ public:
     _n_items = 0;
     _n_nodes = 0;
     _nodes_size = 0;
+    _nodes = NULL;
 
     _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(int);
     printf("K = %d\n", _K);
+  }
+  ~AnnoyIndex() {
+    if (_nodes)
+      free(_nodes);
   }
 
   void add_item(int item, const python::list& v) {
@@ -97,7 +102,13 @@ public:
     fwrite(_nodes, _s, _n_nodes, f);
 
     fclose(f);
+
+    free(_nodes);
     _n_items = 0;
+    _n_nodes = 0;
+    _nodes_size = 0;
+    _nodes = NULL;
+    load(filename);
   }
 
   void load(const string& filename) {
