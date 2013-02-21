@@ -71,7 +71,6 @@ public:
     _loaded = false;
 
     _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(int);
-    printf("K = %d\n", _K);
   }
   ~AnnoyIndex() {
     if (!_loaded && _nodes) {
@@ -99,9 +98,9 @@ public:
     while (1) {
       if (q == -1 && _n_nodes >= _n_items * 2)
 	break;
-      if (q != -1 && _roots.size() >= q)
+      if (q != -1 && _roots.size() >= (size_t)q)
 	break;
-      printf("pass %d...\n", _roots.size());
+      printf("pass %zd...\n", _roots.size());
 
       vector<int> indices;
       for (int i = 0; i < _n_items; i++)
@@ -131,8 +130,8 @@ public:
   void load(const string& filename) {
     struct stat buf;
     stat(filename.c_str(), &buf);
-    int size = buf.st_size;
-    printf("size = %d\n", size);
+    off_t size = buf.st_size;
+    printf("size = %jd\n", (intmax_t)size); // http://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
     int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
     printf("fd = %d\n", fd);
     _nodes = (node<T>*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
@@ -191,13 +190,13 @@ private:
 	new_nodes_size = n;
       printf("reallocating to %d nodes\n", new_nodes_size);
       _nodes = realloc(_nodes, _s * new_nodes_size);
-      memset(_nodes + _nodes_size * _s, 0, (new_nodes_size - _nodes_size) * _s);
+      memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
       _nodes_size = new_nodes_size;
     }
   }
 
   inline node<T>* _get(int i) {
-    return (node<T>*)(_nodes + _s * i);
+    return (node<T>*)((char *)_nodes + (_s * i)/sizeof(char));
   }
 
   int _make_tree(const vector<int >& indices) {
@@ -209,8 +208,8 @@ private:
     node<T>* m = _get(item);
     m->n_descendants = indices.size();
 
-    if (indices.size() <= _K) {
-      for (int i = 0; i < indices.size(); i++)
+    if (indices.size() <= (size_t)_K) {
+      for (size_t i = 0; i < indices.size(); i++)
 	m->children[i] = indices[i];
       return item;
     }
@@ -230,7 +229,7 @@ private:
       children_indices[0].clear();
       children_indices[1].clear();
 
-      for (int i = 0; i < indices.size(); i++) {
+      for (size_t i = 0; i < indices.size(); i++) {
 	int j = indices[i];
 	node<T>* n = _get(j);
 	if (!n) {
@@ -265,7 +264,7 @@ private:
       for (int z = 0; z < _f; z++)
 	m->v[z] = 0.0;
 
-      for (int i = 0; i < indices.size(); i++) {
+      for (size_t i = 0; i < indices.size(); i++) {
 	int j = indices[i];
 	// Just randomize...
 	children_indices[_var_nor() > 0].push_back(j);
@@ -304,7 +303,7 @@ private:
 	dot = _var_nor();
 
       _get_nns(v, n->children[dot > 0], result, limit);
-      if (result->size() < limit)
+      if (result->size() < (size_t)limit)
 	_get_nns(v, n->children[dot < 0], result, limit);
     }
   }
@@ -312,17 +311,17 @@ private:
   python::list _get_all_nns(const T* v, int n) {
     vector<pair<T, int> > nns_cos;
 
-    for (int i = 0; i < _roots.size(); i++) {
+    for (size_t i = 0; i < _roots.size(); i++) {
       vector<int> nns;
       _get_nns(v, _roots[i], &nns, n);
-      for (int j = 0; j < nns.size(); j++) {
+      for (size_t j = 0; j < nns.size(); j++) {
 	nns_cos.push_back(make_pair(_cos(v, _get(nns[j])->v), nns[j]));
       }
     }
     sort(nns_cos.begin(), nns_cos.end());
     int last = -1, length=0;
     python::list l;
-    for (int i = nns_cos.size() - 1; i >= 0 && length < n; i--) {
+    for (size_t i = nns_cos.size() - 1; i >= 0 && length < n; i--) {
       if (nns_cos[i].second != last) {
 	l.append(nns_cos[i].second);
 	last = nns_cos[i].second;
