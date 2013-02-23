@@ -131,13 +131,10 @@ public:
     struct stat buf;
     stat(filename.c_str(), &buf);
     off_t size = buf.st_size;
-    printf("size = %jd\n", (intmax_t)size); // http://stackoverflow.com/questions/586928/how-should-i-print-types-like-off-t-and-size-t
     int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
-    printf("fd = %d\n", fd);
     _nodes = (node<T>*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 
     int n = size / _s;
-    printf("%d nodes\n", n);
 
     // Find the nodes with the largest number of descendants. These are the roots
     int m = 0;
@@ -188,7 +185,6 @@ private:
       int new_nodes_size = (_nodes_size + 1) * 2;
       if (n > new_nodes_size)
 	new_nodes_size = n;
-      printf("reallocating to %d nodes\n", new_nodes_size);
       _nodes = realloc(_nodes, _s * new_nodes_size);
       memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
       _nodes_size = new_nodes_size;
@@ -246,8 +242,6 @@ private:
       }
 
       if (children_indices[0].size() > 0 && children_indices[1].size() > 0) {
-	if (indices.size() > 100000)
-	  printf("Split %lu items -> %lu, %lu (attempt %d)\n", indices.size(), children_indices[0].size(), children_indices[1].size(), attempt);
 	break;
       }
     }
@@ -321,7 +315,7 @@ private:
     sort(nns_cos.begin(), nns_cos.end());
     int last = -1, length=0;
     python::list l;
-    for (size_t i = nns_cos.size() - 1; i >= 0 && length < n; i--) {
+    for (int i = (int)nns_cos.size() - 1; i >= 0 && length < n; i--) {
       if (nns_cos[i].second != last) {
 	l.append(nns_cos[i].second);
 	last = nns_cos[i].second;
