@@ -108,6 +108,13 @@ public:
 
       _roots.push_back(_make_tree(indices));
     }
+    // Also, copy the roots into the last segment of the array
+    // This way we can load them faster without reading the whole file
+    _allocate_size(_n_nodes + _roots.size());
+    for (size_t i = 0; i < _roots.size(); i++)
+      memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
+    _n_nodes += _roots.size();
+      
     printf("has %d nodes\n", _n_nodes);
   }
 
@@ -134,17 +141,17 @@ public:
     int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
     _nodes = (node<T>*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 
-    int n = size / _s;
+    _n_nodes = size / _s;
 
-    // Find the nodes with the largest number of descendants. These are the roots
-    int m = 0;
-    for (int i = 0; i < n; i++) {
-      if (_get(i)->n_descendants > m) {
-	_roots.clear();
-	m = _get(i)->n_descendants;
-      }
-      if (_get(i)->n_descendants == m) {
+    // Find the roots by scanning the end of the file and taking the nodes with most descendants
+    int m = -1;
+    for (int i = _n_nodes - 1; i >= 0; i--) {
+      int k = _get(i)->n_descendants;
+      if (m == -1 || k == m) {
 	_roots.push_back(i);
+	m = k;
+      } else {
+	break;
       }
     }
     _loaded = true;
