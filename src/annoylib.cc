@@ -155,6 +155,7 @@ public:
       }
     }
     _loaded = true;
+    _n_items = m;
     printf("found %lu roots with degree %d\n", _roots.size(), m);
   }
 
@@ -185,6 +186,10 @@ public:
     for (int z = 0; z < _f; z++)
       w[z] = python::extract<T>(v[z]);
     return _get_all_nns(&w[0], n);
+  }
+
+  int get_n_items() {
+    return _n_items;
   }
 private:
   void _allocate_size(int n) {
@@ -342,5 +347,6 @@ BOOST_PYTHON_MODULE(annoylib)
     .def("load",              &AnnoyIndex<float>::load)
     .def("cos",               &AnnoyIndex<float>::cos)
     .def("get_nns_by_item",   &AnnoyIndex<float>::get_nns_by_item)
-    .def("get_nns_by_vector", &AnnoyIndex<float>::get_nns_by_vector);
+    .def("get_nns_by_vector", &AnnoyIndex<float>::get_nns_by_vector)
+    .def("get_n_items",       &AnnoyIndex<float>::get_n_items);
 }
