@@ -185,7 +185,7 @@ public:
     else return 0.0;
   }
 
-  inline T cos(int i, int j) {
+  inline T get_cos(int i, int j) {
     const T* x = _get(i)->v;
     const T* y = _get(j)->v;
     return _cos(x, y);
@@ -359,7 +359,7 @@ BOOST_PYTHON_MODULE(annoylib)
     .def("build",             &AnnoyIndex<float>::build)
     .def("save",              &AnnoyIndex<float>::save)
     .def("load",              &AnnoyIndex<float>::load)
-    .def("cos",               &AnnoyIndex<float>::cos)
+    .def("get_cos",           &AnnoyIndex<float>::get_cos)
     .def("get_nns_by_item",   &AnnoyIndex<float>::get_nns_by_item)
     .def("get_nns_by_vector", &AnnoyIndex<float>::get_nns_by_vector)
     .def("get_n_items",       &AnnoyIndex<float>::get_n_items);
