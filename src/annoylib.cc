@@ -27,6 +27,7 @@
 #include <vector>
 #include <boost/random.hpp>
 #include <boost/random/normal_distribution.hpp>
+#include <boost/random/uniform_01.hpp>
 
 using namespace std;
 using namespace boost;
@@ -75,8 +76,13 @@ struct Angular {
       dot = (*var_nor)();
     return (dot > 0);
   }
-  // static inline bool create_random_split(vector<int>* indices, AnnoyIndex<T, Cosine>* index, int f, variate_generator<mt19937&, normal_distribution<T> >* var_nor, node* n) {
-  // }
+  static inline void create_split(const vector<node*>& nodes, int f,
+				  variate_generator<mt19937&, normal_distribution<T> >* var_nor,
+				  variate_generator<mt19937&, uniform_01<T> >* var_uni,
+				  node* n) {
+    for (int z = 0; z < f; z++)
+      n->v[z] = (*var_nor)();
+  }
 };
 
 template<typename T>
@@ -102,6 +108,25 @@ struct Euclidean {
       dot = (*var_nor)();
     return (dot > 0);
   }
+  static inline void create_split(const vector<node*>& nodes, int f,
+				  variate_generator<mt19937&, normal_distribution<T> >* var_nor,
+				  variate_generator<mt19937&, uniform_01<T> >* var_uni,
+				  node* n) {
+    for (int z = 0; z < f; z++)
+      n->v[z] = (*var_nor)();
+    // Project the nodes onto the vector and calculate max and min
+    T min = INFINITY, max = -INFINITY;
+    for (size_t i = 0; i < nodes.size(); i++) {
+      T dot = 0;
+      for (int z = 0; z < f; z++)
+	dot += nodes[i]->v[z] * n->v[z];
+      if (dot > max)
+	max = dot;
+      if (dot < min)
+	min = dot;
+    }
+    n->a = -((*var_uni)() * (max - min) + min);
+  }
 };
 
 template<typename T, typename Distance>
@@ -120,6 +145,9 @@ class AnnoyIndex {
   normal_distribution<T> _nd;
   variate_generator<mt19937&, 
 		    normal_distribution<T> > _var_nor;
+  uniform_01<T> _ud;
+  variate_generator<mt19937&, 
+		    uniform_01<T> > _var_uni;
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   int _n_nodes;
   int _nodes_size;
@@ -127,7 +155,7 @@ class AnnoyIndex {
   int _K;
   bool _loaded;
 public:
-  AnnoyIndex(int f) : _rng(), _nd(), _var_nor(_rng, _nd) {
+  AnnoyIndex(int f) : _rng(), _nd(), _var_nor(_rng, _nd), _ud(), _var_uni(_rng, _ud) {
     _f = f;
     _s = sizeof(typename Distance::node) + sizeof(T) * f; // Size of each node
     _n_items = 0;
@@ -285,9 +313,19 @@ private:
        * all items evenly, but I think that could violate the guarantees
        * given by just picking a hyperplane at random
        */
-      // Distance::create_random_split(this, &indices, f, &_var_nor, m);
-      for (int z = 0; z < _f; z++)
-	m->v[z] = _var_nor();
+      vector<typename Distance::node*> children;
+
+      for (size_t i = 0; i < indices.size(); i++) {
+	// TODO: this loop isn't needed for the angular distance, because
+	// we can just split by a random vector and it's fine. For Euclidean
+	// distance we need it to calculate the offset
+	int j = indices[i];
+	typename Distance::node* n = _get(j);
+	if (n)
+	  children.push_back(n);
+      }
+
+      Distance::create_split(children, _f, &_var_nor, &_var_uni, m);
       
       children_indices[0].clear();
       children_indices[1].clear();
@@ -295,12 +333,10 @@ private:
       for (size_t i = 0; i < indices.size(); i++) {
 	int j = indices[i];
 	typename Distance::node* n = _get(j);
-	if (!n) {
-	  printf("node %d undef...\n", j);
-	  continue;
+	if (n) {
+	  bool side = Distance::side(m, n->v, _f, &_var_nor);
+	  children_indices[side].push_back(j);
 	}
-	bool side = Distance::side(m, n->v, _f, &_var_nor);
-	children_indices[side].push_back(j);	
       }
 
       if (children_indices[0].size() > 0 && children_indices[1].size() > 0) {
