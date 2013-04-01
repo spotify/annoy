@@ -28,9 +28,36 @@
 #include <boost/random.hpp>
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/uniform_01.hpp>
+#include <boost/random/bernoulli_distribution.hpp>
 
 using namespace std;
 using namespace boost;
+
+template<typename T>
+struct Randomness {
+  // Just a dummy class to avoid code repetition.
+  // Owned by the AnnoyIndex, passed around to the distance metrics
+  mt19937 _rng;
+  normal_distribution<T> _nd;
+  variate_generator<mt19937&, 
+		    normal_distribution<T> > _var_nor;
+  uniform_01<T> _ud;
+  variate_generator<mt19937&, 
+		    uniform_01<T> > _var_uni;
+  bernoulli_distribution<T> _bd;
+  variate_generator<mt19937&, 
+		    bernoulli_distribution<T> > _var_ber;
+  Randomness() : _rng(), _nd(), _var_nor(_rng, _nd), _ud(), _var_uni(_rng, _ud), _bd(), _var_ber(_rng, _bd) {}
+  inline T gaussian() {
+    return _var_nor();
+  }
+  inline int flip() {
+    return _var_ber();
+  }
+  inline T uniform(T min, T max) {
+    return _var_uni() * (max - min) + min;
+  }
+};
 
 template<typename T>
 struct Angular {
@@ -67,21 +94,19 @@ struct Angular {
     if (ppqq > 0) return 1.0 - pq / sqrt(ppqq);
     else return 1.0;
   }
-  static inline bool side(const node* n, const T* y, int f, variate_generator<mt19937&, normal_distribution<T> >* var_nor) {
+  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
     T dot = 0;
     for (int z = 0; z < f; z++) {
       dot += n->v[z] * y[z];
     }
-    while (dot == 0)
-      dot = (*var_nor)();
-    return (dot > 0);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return random->flip();
   }
-  static inline void create_split(const vector<node*>& nodes, int f,
-				  variate_generator<mt19937&, normal_distribution<T> >* var_nor,
-				  variate_generator<mt19937&, uniform_01<T> >* var_uni,
-				  node* n) {
+  static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
     for (int z = 0; z < f; z++)
-      n->v[z] = (*var_nor)();
+      n->v[z] = random->gaussian();
   }
 };
 
@@ -99,21 +124,19 @@ struct Euclidean {
       d += (x[i] - y[i]) * (x[i] - y[i]);
     return d;
   }
-  static inline bool side(const node* n, const T* y, int f, variate_generator<mt19937&, normal_distribution<T> >* var_nor) {
+  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
     T dot = n->a;
     for (int z = 0; z < f; z++) {
       dot += n->v[z] * y[z];
     }
-    while (dot == 0)
-      dot = (*var_nor)();
-    return (dot > 0);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return random->flip();
   }
-  static inline void create_split(const vector<node*>& nodes, int f,
-				  variate_generator<mt19937&, normal_distribution<T> >* var_nor,
-				  variate_generator<mt19937&, uniform_01<T> >* var_uni,
-				  node* n) {
+  static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
     for (int z = 0; z < f; z++)
-      n->v[z] = (*var_nor)();
+      n->v[z] = random->gaussian();
     // Project the nodes onto the vector and calculate max and min
     T min = INFINITY, max = -INFINITY;
     for (size_t i = 0; i < nodes.size(); i++) {
@@ -125,7 +148,7 @@ struct Euclidean {
       if (dot < min)
 	min = dot;
     }
-    n->a = -((*var_uni)() * (max - min) + min);
+    n->a = -random->uniform(min, max);
   }
 };
 
@@ -141,13 +164,7 @@ class AnnoyIndex {
   int _f;
   size_t _s;
   int _n_items;
-  mt19937 _rng;
-  normal_distribution<T> _nd;
-  variate_generator<mt19937&, 
-		    normal_distribution<T> > _var_nor;
-  uniform_01<T> _ud;
-  variate_generator<mt19937&, 
-		    uniform_01<T> > _var_uni;
+  Randomness<T> _random;
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   int _n_nodes;
   int _nodes_size;
@@ -155,7 +172,7 @@ class AnnoyIndex {
   int _K;
   bool _loaded;
 public:
-  AnnoyIndex(int f) : _rng(), _nd(), _var_nor(_rng, _nd), _ud(), _var_uni(_rng, _ud) {
+  AnnoyIndex(int f) : _random() {
     _f = f;
     _s = sizeof(typename Distance::node) + sizeof(T) * f; // Size of each node
     _n_items = 0;
@@ -325,7 +342,7 @@ private:
 	  children.push_back(n);
       }
 
-      Distance::create_split(children, _f, &_var_nor, &_var_uni, m);
+      Distance::create_split(children, _f, &_random, m);
       
       children_indices[0].clear();
       children_indices[1].clear();
@@ -334,7 +351,7 @@ private:
 	int j = indices[i];
 	typename Distance::node* n = _get(j);
 	if (n) {
-	  bool side = Distance::side(m, n->v, _f, &_var_nor);
+	  bool side = Distance::side(m, n->v, _f, &_random);
 	  children_indices[side].push_back(j);
 	}
       }
@@ -359,7 +376,7 @@ private:
       for (size_t i = 0; i < indices.size(); i++) {
 	int j = indices[i];
 	// Just randomize...
-	children_indices[_var_nor() > 0].push_back(j);
+	children_indices[_random.flip()].push_back(j);
       }
     }
 
@@ -386,7 +403,7 @@ private:
 	result->push_back(n->children[j]);
       }
     } else {
-      bool side = Distance::side(n, v, _f, &_var_nor);
+      bool side = Distance::side(n, v, _f, &_random);
 
       _get_nns(v, n->children[side], result, limit);
       if (result->size() < (size_t)limit)
