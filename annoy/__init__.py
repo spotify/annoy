@@ -12,5 +12,11 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from annoylib import AnnoyIndex
+from annoylib import *
+
+def AnnoyIndex(f, metric='angular'):
+    if metric == 'angular':
+        return AnnoyIndexAngular(f)
+    elif metric == 'euclidean':
+        return AnnoyIndexEuclidean(f)
 
