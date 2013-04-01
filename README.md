@@ -2,25 +2,30 @@
 
 Annoy (Approximate Nearest Neighbors Something Something) is a C++ library with Python bindings to do approximate nearest neighbor search by cosine. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
 
-You want to use this if:
+There's a couple of other libraries to do approximate nearest neighbor search, including [FLANN](https://github.com/mariusmuja/flann) etc. Other libraries may be both faster and more accurate, but there are one major difference that sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index** across processes. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
 
-* You are doing nearest neighbor search using cosine
-* You don't have too many dimensions (like <100)
-* You have a few million items that easily fit in RAM
-* Memory usage is a concern
-* You want to share memory between multiple processes
+Why is this useful? If you want to find nearest neighbors and you have many CPU's, you only need the RAM to fit the index once. You can also pass around and distribute static files to use in production environment, in Hadoop jobs, etc. Any process will be able to load (mmap) the index into memory and will be able to do lookups immediately.
+
+We use it at [Spotify](http://www.spotify.com/) for recommendations. After running matrix factorization algorithms, every user/item can be represented as a vector in f-dimensional space. This library helps us search for similar users/items. We have many millions of tracks so memory usage is a prime concern.
+
+It was all built by [Erik Bernhardsson](http://www.erikbern.com) in a couple of afternoons during [Hack Week](http://labs.spotify.com/2013/02/15/organizing-a-hack-week/).
+
+## Summary of features
+
+More features:
+
+* Euclidean distance (squared) or cosine similarity (using the squared distance of the normalized vectors)
+* Works better if you don't have too many dimensions (like <100)
+* Small memory usage
+* Lets you share memory between multiple processes
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
-* You're using Python (although you could also use it from C of course)
-
-We use it at [Spotify](http://www.spotify.com/) for recommendations. After running matrix factorization algorithms, every user/item can be represented as a vector in f-dimensional space. This library helps us search for similar users/items.
-
-It was all built by Erik Bernhardsson in a couple of afternoons during [Hack Week](http://labs.spotify.com/2013/02/15/organizing-a-hack-week/).
+* Native Python support
 
 ## Code example
 
 ```python
 
-	f = 40
+    f = 40
     t = AnnoyIndex(f)
     for i in xrange(n):
         v = []
@@ -49,10 +54,9 @@ We do this k times so that we get a forest of trees. k has to be tuned to your n
 
 ## Source
 
-It's all written in horrible C++ with a handful optimizations for memory usage. You have been warned :)
+It's all written in C++ with a handful of ugly optimizations for performance and memory usage. You have been warned :)
 
 ## Future stuff
 
-* Other distance functions (Euclidean, dot product, etc)
 * Better support for other languages
 * More performance tweaks
