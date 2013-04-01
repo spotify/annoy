@@ -25,24 +25,23 @@ More features:
 
 ```python
 
-    f = 40
-    t = AnnoyIndex(f)
-    for i in xrange(n):
-        v = []
-        for z in xrange(f):
-            v.append(random.gauss(0, 1))
-        t.add_item(i, v)
+f = 40
+t = AnnoyIndex(f)
+for i in xrange(n):
+    v = []
+    for z in xrange(f):
+        v.append(random.gauss(0, 1))
+    t.add_item(i, v)
 
-    t.build(50) # 50 trees
-    t.save('test.tree')
+t.build(50) # 50 trees
+t.save('test.tree')
     
-    # …
-    
-    u = AnnoyIndex(f)
-    u.load('test.tree') # super fast, will just mmap the file
-    print u.get_nns_by_item(0, 1000) # will find the 1000 nearest neighbors
+# …
 
-'''
+u = AnnoyIndex(f)
+u.load('test.tree') # super fast, will just mmap the file
+print u.get_nns_by_item(0, 1000) # will find the 1000 nearest neighbors
+```
 
 Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it generally assumes you will have items 0 … n.
 
