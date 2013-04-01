@@ -47,7 +47,33 @@ class AngularIndexTest(unittest.TestCase):
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 1.0 - 2 ** -0.5)
+        self.assertAlmostEqual(i.get_distance(0, 1), 2 * (1.0 - 2 ** -0.5))
+
+    def test_dist_2(self):
+        f = 2
+        i = AnnoyIndex(f)
+        i.add_item(0, [1000, 0])
+        i.add_item(1, [10, 0])
+
+        self.assertAlmostEqual(i.get_distance(0, 1), 0)
+
+    def test_dist_3(self):
+        f = 2
+        i = AnnoyIndex(f)
+        i.add_item(0, [97, 0])
+        i.add_item(1, [42, 42])
+    
+        dist = (1 - 2 ** -0.5) ** 2 + (2 ** -0.5) ** 2
+
+        self.assertAlmostEqual(i.get_distance(0, 1), dist)
+
+    def test_dist_degen(self):
+        f = 2
+        i = AnnoyIndex(f)
+        i.add_item(0, [1, 0])
+        i.add_item(1, [0, 0])
+
+        self.assertAlmostEqual(i.get_distance(0, 1), 2.0)
 
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
@@ -89,11 +115,12 @@ class EuclideanIndexTest(unittest.TestCase):
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
         f = 10
+        q = [random.gauss(0, 10) for z in xrange(f)]
         i = AnnoyIndex(f, 'euclidean')
         for j in xrange(0, 10000, 2):
             p = [random.gauss(0, 1) for z in xrange(f)]
-            x = [pi + random.gauss(0, 1e-2) for pi in p]
-            y = [pi + random.gauss(0, 1e-2) for pi in p]
+            x = [1 + pi + random.gauss(0, 1e-2) for pi in p]
+            y = [1 + pi + random.gauss(0, 1e-2) for pi in p]
             i.add_item(j, x)
             i.add_item(j+1, y)
         

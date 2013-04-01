@@ -91,8 +91,8 @@ struct Angular {
       pq += x[z] * y[z];
     }
     T ppqq = pp * qq;
-    if (ppqq > 0) return 1.0 - pq / sqrt(ppqq);
-    else return 1.0;
+    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    else return 2.0; // cos is 0
   }
   static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
     T dot = 0;
