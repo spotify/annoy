@@ -1,12 +1,12 @@
 ## What is this?
 
-Annoy ([http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor](Approximate Nearest Neighbors) Something Something) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
+Annoy ([Approximate Nearest Neighbors](http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor) Something Something) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
 
 There's a couple of other libraries to do approximate nearest neighbor search, including [FLANN](https://github.com/mariusmuja/flann), etc. Other libraries may be both faster and more accurate, but there are one major difference that sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
 
 Why is this useful? If you want to find nearest neighbors and you have many CPU's, you only need the RAM to fit the index once. You can also pass around and distribute static files to use in production environment, in Hadoop jobs, etc. Any process will be able to load (mmap) the index into memory and will be able to do lookups immediately.
 
-We use it at [Spotify](http://www.spotify.com/) for recommendations. After running matrix factorization algorithms, every user/item can be represented as a vector in f-dimensional space. This library helps us search for similar users/items. We have many millions of tracks so memory usage is a prime concern.
+We use it at [Spotify](http://www.spotify.com/) for music recommendations. After running matrix factorization algorithms, every user/item can be represented as a vector in f-dimensional space. This library helps us search for similar users/items. We have many millions of tracks in a high-dimensional space, so memory usage is a prime concern.
 
 Annoy was built by [Erik Bernhardsson](http://www.erikbern.com) in a couple of afternoons during [Hack Week](http://labs.spotify.com/2013/02/15/organizing-a-hack-week/).
 
@@ -57,3 +57,4 @@ It's all written in C++ with a handful of ugly optimizations for performance and
 
 * Better support for other languages
 * More performance tweaks
+* Figure what O and Y stand for in the backronym :)
