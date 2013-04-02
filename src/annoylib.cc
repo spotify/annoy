@@ -135,20 +135,34 @@ struct Euclidean {
       return random->flip();
   }
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
-    for (int z = 0; z < f; z++)
-      n->v[z] = random->gaussian();
-    // Project the nodes onto the vector and calculate max and min
-    T min = INFINITY, max = -INFINITY;
-    for (size_t i = 0; i < nodes.size(); i++) {
-      T dot = 0;
+    // See http://en.wikipedia.org/wiki/Bertrand_paradox_(probability)
+    // We want to sample a random hyperplane out of all hyperplanes that cut the convex hull.
+    // The probability of each angle is in proportion to the extent of the projection.
+    // This is good because it means we try to split in the longest direction.
+    // Doing this using Metropolis-Hastings sampling using 10 steps
+    T* v = (T*)malloc(sizeof(T) * f); // TODO: would be really nice to get rid of this allocation
+    double max_proj = 0.0;
+    for (int step = 0; step < 10; step++) {
       for (int z = 0; z < f; z++)
-	dot += nodes[i]->v[z] * n->v[z];
-      if (dot > max)
-	max = dot;
-      if (dot < min)
-	min = dot;
+	v[z] = random->gaussian();
+      // Project the nodes onto the vector and calculate max and min
+      T min = INFINITY, max = -INFINITY;
+      for (size_t i = 0; i < nodes.size(); i++) {
+	T dot = 0;
+	for (int z = 0; z < f; z++)
+	  dot += nodes[i]->v[z] * v[z];
+	if (dot > max)
+	  max = dot;
+	if (dot < min)
+	  min = dot;
+      }
+      if (max - min > random->uniform(0, max_proj)) {
+	max_proj = max - min;
+	memcpy(n->v, v, sizeof(T) * f);
+	n->a = -random->uniform(min, max); // Take a random split along this axis
+      }
     }
-    n->a = -random->uniform(min, max);
+    free(v);
   }
 };
 
