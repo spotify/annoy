@@ -60,6 +60,17 @@ struct Randomness {
 };
 
 template<typename T>
+inline void normalize(T* v, int f) {
+  T sq_norm = 0;
+  for (int z = 0; z < f; z++)
+    sq_norm += v[z] * v[z];
+  T norm = sqrt(sq_norm);
+  for (int z = 0; z < f; z++)
+    v[z] /= norm;
+}
+
+
+template<typename T>
 struct Angular {
   struct __attribute__((__packed__)) node {
     /*
@@ -110,6 +121,7 @@ struct Angular {
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
     for (int z = 0; z < f; z++)
       n->v[z] = random->gaussian();
+    normalize(n->v, f);
   }
 };
 
@@ -151,6 +163,7 @@ struct Euclidean {
     for (int step = 0; step < 10; step++) {
       for (int z = 0; z < f; z++)
 	v[z] = random->gaussian();
+      normalize(v, f);
       // Project the nodes onto the vector and calculate max and min
       T min = INFINITY, max = -INFINITY;
       for (size_t i = 0; i < nodes.size(); i++) {
