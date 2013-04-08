@@ -94,11 +94,14 @@ struct Angular {
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
-  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
+  static inline T margin(const node* n, const T* y, int f) {
     T dot = 0;
-    for (int z = 0; z < f; z++) {
+    for (int z = 0; z < f; z++)
       dot += n->v[z] * y[z];
-    }
+    return dot;
+  }
+  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
+    T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
     else
@@ -124,11 +127,14 @@ struct Euclidean {
       d += (x[i] - y[i]) * (x[i] - y[i]);
     return d;
   }
-  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
+  static inline T margin(const node* n, const T* y, int f) {
     T dot = n->a;
-    for (int z = 0; z < f; z++) {
+    for (int z = 0; z < f; z++)
       dot += n->v[z] * y[z];
-    }
+    return dot;
+  }
+  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
+    T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
     else
