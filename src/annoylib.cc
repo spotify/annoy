@@ -25,6 +25,8 @@
 #include <string.h>
 #include <math.h>
 #include <vector>
+#include <queue>
+#include <limits>
 #include <boost/random.hpp>
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/uniform_01.hpp>
@@ -222,7 +224,7 @@ public:
     }
   }
 
-  void add_item(int item, const python::list& v) {
+  void add_item(int item, const python::list& v) { // TODO: factor out the C++ interface
     _allocate_size(item+1);
     typename Distance::node* n = _get(item);
 
@@ -309,11 +311,11 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  python::list get_nns_by_item(int item, int n) {
+  python::list get_nns_by_item(int item, int n) { // TODO: factor out the C++ interface
     const typename Distance::node* m = _get(item);
     return _get_all_nns(m->v, n);
   }
-  python::list get_nns_by_vector(python::list v, int n) {
+  python::list get_nns_by_vector(python::list v, int n) { // TODO: factor out the C++ interface
     vector<T> w(_f);
     for (int z = 0; z < _f; z++)
       w[z] = python::extract<T>(v[z]);
@@ -444,25 +446,50 @@ private:
     }
   }
 
-  python::list _get_all_nns(const T* v, int n) {
-    vector<pair<T, int> > nns_dist;
+  python::list _get_all_nns(const T* v, int n) { // TODO: factor out the C++ interface
+    std::priority_queue<pair<T, int> > q;
 
     for (size_t i = 0; i < _roots.size(); i++) {
-      vector<int> nns;
-      _get_nns(v, _roots[i], &nns, n);
-      for (size_t j = 0; j < nns.size(); j++) {
-	nns_dist.push_back(make_pair(Distance::distance(v, _get(nns[j])->v, _f), nns[j]));
+      q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
+    }
+
+    vector<int> nns;
+    while (nns.size() < n * _roots.size() && !q.empty()) {
+      const pair<T, int>& top = q.top();
+      int i = top.second;
+      const typename Distance::node* n = _get(top.second);
+      q.pop();
+      if (n->n_descendants == 1) {
+	nns.push_back(i);
+      } else if (n->n_descendants <= _K) {
+	for (int x = 0; x < n->n_descendants; x++) {
+	  int j = n->children[x];
+	  nns.push_back(j);
+	}	
+      } else{
+	T margin = Distance::margin(n, v, _f);
+	q.push(make_pair(+margin, n->children[1]));
+	q.push(make_pair(-margin, n->children[0]));
       }
     }
+
+    sort(nns.begin(), nns.end());
+    vector<pair<T, int> > nns_dist;
+    int last = -1;
+    for (size_t i = 0; i < nns.size(); i++) {
+      int j = nns[i];
+      if (j == last)
+	continue;
+      last = j;
+      nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
+    }
+
     sort(nns_dist.begin(), nns_dist.end());
-    int last = -1, length=0;
+    int length = 0;
     python::list l;
     for (size_t i = 0; i < nns_dist.size() && length < n; i++) {
-      if (nns_dist[i].second != last) {
-	l.append(nns_dist[i].second);
-	last = nns_dist[i].second;
-	length++;
-      }
+      l.append(nns_dist[i].second);
+      length++;
     }
     return l;
   }
