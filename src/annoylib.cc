@@ -224,7 +224,15 @@ public:
     }
   }
 
-  void add_item(int item, const python::list& v) { // TODO: factor out the C++ interface
+  void add_item_py(int item, const python::list& v) {
+    vector<T> w;
+    for (int z = 0; z < _f; z++)
+      w.push_back(python::extract<T>(v[z]));
+
+    add_item(item, &w[0]);
+  }
+
+  void add_item(int item, const T* w) {
     _allocate_size(item+1);
     typename Distance::node* n = _get(item);
 
@@ -233,7 +241,7 @@ public:
     n->n_descendants = 1;
 
     for (int z = 0; z < _f; z++)
-      n->v[z] = python::extract<T>(v[z]);
+      n->v[z] = w[z];
 
     if (item >= _n_items)
       _n_items = item + 1;
@@ -311,17 +319,32 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  python::list get_nns_by_item(int item, int n) { // TODO: factor out the C++ interface
-    const typename Distance::node* m = _get(item);
-    return _get_all_nns(m->v, n);
+  python::list get_nns_by_item_py(int item, size_t n) {
+    vector<int> result;
+    get_nns_by_item(item, n, &result);
+    python::list l;
+    for (size_t i = 0; i < result.size(); i++)
+      l.append(result[i]);
+    return l;
   }
-  python::list get_nns_by_vector(python::list v, int n) { // TODO: factor out the C++ interface
+  void get_nns_by_item(int item, size_t n, vector<int>* result) {
+    const typename Distance::node* m = _get(item);
+    _get_all_nns(m->v, n, result);
+  }
+  python::list get_nns_by_vector_py(python::list v, size_t n) {
     vector<T> w(_f);
     for (int z = 0; z < _f; z++)
       w[z] = python::extract<T>(v[z]);
-    return _get_all_nns(&w[0], n);
+    vector<int> result;
+    get_nns_by_vector(&w[0], n, &result);
+    python::list l;
+    for (size_t i = 0; i < result.size(); i++)
+      l.append(result[i]);
+    return l;
   }
-
+  void get_nns_by_vector(const T* w, size_t n, vector<int>* result) {
+    _get_all_nns(w, n, result);
+  }
   int get_n_items() {
     return _n_items;
   }
@@ -446,7 +469,7 @@ private:
     }
   }
 
-  python::list _get_all_nns(const T* v, int n) { // TODO: factor out the C++ interface
+  void _get_all_nns(const T* v, size_t n, vector<int>* result) {
     std::priority_queue<pair<T, int> > q;
 
     for (size_t i = 0; i < _roots.size(); i++) {
@@ -485,25 +508,21 @@ private:
     }
 
     sort(nns_dist.begin(), nns_dist.end());
-    int length = 0;
-    python::list l;
-    for (size_t i = 0; i < nns_dist.size() && length < n; i++) {
-      l.append(nns_dist[i].second);
-      length++;
+    for (size_t i = 0; i < nns_dist.size() && result->size() < n; i++) {
+      result->push_back(nns_dist[i].second);
     }
-    return l;
   }
 };
 
 template<typename C>
 void expose_methods(python::class_<C> c) {
-  c.def("add_item",          &C::add_item)
+  c.def("add_item",          &C::add_item_py)
     .def("build",             &C::build)
     .def("save",              &C::save)
     .def("load",              &C::load)
     .def("get_distance",      &C::get_distance)
-    .def("get_nns_by_item",   &C::get_nns_by_item)
-    .def("get_nns_by_vector", &C::get_nns_by_vector)
+    .def("get_nns_by_item",   &C::get_nns_by_item_py)
+    .def("get_nns_by_vector", &C::get_nns_by_vector_py)
     .def("get_n_items",       &C::get_n_items);
 }
 
