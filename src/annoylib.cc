@@ -293,7 +293,13 @@ public:
     stat(filename.c_str(), &buf);
     off_t size = buf.st_size;
     int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
-    _nodes = (typename Distance::node*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+#ifdef MAP_POPULATE
+    _nodes = (typename Distance::node*)mmap(
+        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
+#else
+    _nodes = (typename Distance::node*)mmap(
+        0, size, PROT_READ, MAP_SHARED, fd, 0);
+#endif
 
     _n_nodes = size / _s;
 
