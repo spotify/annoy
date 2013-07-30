@@ -1,3 +1,7 @@
+## Annoy
+
+![Recursive split](https://raw.github.com/erikbern/annoy/master/ann.png)
+
 ## What is this?
 
 Annoy ([Approximate Nearest Neighbors](http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor) Something Something) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
