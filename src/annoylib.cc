@@ -354,6 +354,15 @@ public:
   int get_n_items() {
     return _n_items;
   }
+  python::list get_item_vector_py(int item) {
+    const typename Distance::node* m = _get(item);
+    const T* v = m->v;
+    python::list l;
+    for (int z = 0; z < _f; z++) {
+      l.append(v[z]);
+    }
+    return l;
+  }
 private:
   void _allocate_size(int n) {
     if (n > _nodes_size) {
@@ -529,6 +538,7 @@ void expose_methods(python::class_<C> c) {
     .def("get_distance",      &C::get_distance)
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
     .def("get_nns_by_vector", &C::get_nns_by_vector_py)
+    .def("get_item_vector",   &C::get_item_vector_py)
     .def("get_n_items",       &C::get_n_items);
 }
 
