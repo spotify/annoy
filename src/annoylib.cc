@@ -196,6 +196,7 @@ class AnnoyIndex {
    * We create a tree like this q times. The default q is determined automatically
    * in such a way that we at most use 2x as much memory as the vectors take.
    */
+protected:
   int _f;
   size_t _s;
   int _n_items;
@@ -222,14 +223,6 @@ public:
     if (!_loaded && _nodes) {
       free(_nodes);
     }
-  }
-
-  void add_item_py(int item, const python::list& v) {
-    vector<T> w;
-    for (int z = 0; z < _f; z++)
-      w.push_back(python::extract<T>(v[z]));
-
-    add_item(item, &w[0]);
   }
 
   void add_item(int item, const T* w) {
@@ -325,45 +318,18 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  python::list get_nns_by_item_py(int item, size_t n) {
-    vector<int> result;
-    get_nns_by_item(item, n, &result);
-    python::list l;
-    for (size_t i = 0; i < result.size(); i++)
-      l.append(result[i]);
-    return l;
-  }
   void get_nns_by_item(int item, size_t n, vector<int>* result) {
     const typename Distance::node* m = _get(item);
     _get_all_nns(m->v, n, result);
   }
-  python::list get_nns_by_vector_py(python::list v, size_t n) {
-    vector<T> w(_f);
-    for (int z = 0; z < _f; z++)
-      w[z] = python::extract<T>(v[z]);
-    vector<int> result;
-    get_nns_by_vector(&w[0], n, &result);
-    python::list l;
-    for (size_t i = 0; i < result.size(); i++)
-      l.append(result[i]);
-    return l;
-  }
+
   void get_nns_by_vector(const T* w, size_t n, vector<int>* result) {
     _get_all_nns(w, n, result);
   }
   int get_n_items() {
     return _n_items;
   }
-  python::list get_item_vector_py(int item) {
-    const typename Distance::node* m = _get(item);
-    const T* v = m->v;
-    python::list l;
-    for (int z = 0; z < _f; z++) {
-      l.append(v[z]);
-    }
-    return l;
-  }
-private:
+protected:
   void _allocate_size(int n) {
     if (n > _nodes_size) {
       int new_nodes_size = (_nodes_size + 1) * 2;
@@ -529,6 +495,47 @@ private:
   }
 };
 
+template<typename T, typename Distance>
+class AnnoyIndexPython : public AnnoyIndex<T, Distance > {
+public:
+  AnnoyIndexPython(int f): AnnoyIndex<T, Distance>(f) {}
+  void add_item_py(int item, const python::list& v) {
+    vector<T> w;
+    for (int z = 0; z < this->_f; z++)
+      w.push_back(python::extract<T>(v[z]));
+
+    add_item(item, &w[0]);
+  }
+  python::list get_nns_by_item_py(int item, size_t n) {
+    vector<int> result;
+    this->get_nns_by_item(item, n, &result);
+    python::list l;
+    for (size_t i = 0; i < result.size(); i++)
+      l.append(result[i]);
+    return l;
+  }
+  python::list get_nns_by_vector_py(python::list v, size_t n) {
+    vector<T> w(this->_f);
+    for (int z = 0; z < this->_f; z++)
+      w[z] = python::extract<T>(v[z]);
+    vector<int> result;
+    get_nns_by_vector(&w[0], n, &result);
+    python::list l;
+    for (size_t i = 0; i < result.size(); i++)
+      l.append(result[i]);
+    return l;
+  }
+  python::list get_item_vector_py(int item) {
+    const typename Distance::node* m = this->_get(item);
+    const T* v = m->v;
+    python::list l;
+    for (int z = 0; z < this->_f; z++) {
+      l.append(v[z]);
+    }
+    return l;
+  }
+};
+
 template<typename C>
 void expose_methods(python::class_<C> c) {
   c.def("add_item",          &C::add_item_py)
@@ -544,6 +551,6 @@ void expose_methods(python::class_<C> c) {
 
 BOOST_PYTHON_MODULE(annoylib)
 {
-  expose_methods(python::class_<AnnoyIndex<float, Angular<float> > >("AnnoyIndexAngular", python::init<int>()));
-  expose_methods(python::class_<AnnoyIndex<float, Euclidean<float> > >("AnnoyIndexEuclidean", python::init<int>()));
+  expose_methods(python::class_<AnnoyIndexPython<float, Angular<float> > >("AnnoyIndexAngular", python::init<int>()));
+  expose_methods(python::class_<AnnoyIndexPython<float, Euclidean<float> > >("AnnoyIndexEuclidean", python::init<int>()));
 }
