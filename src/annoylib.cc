@@ -33,6 +33,11 @@
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/bernoulli_distribution.hpp>
 
+#ifndef NO_PACKED_STRUCTS
+#define PACKED_STRUCTS_EXTRA __attribute__((__packed__))
+// TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
+#endif
+
 using namespace std;
 using namespace boost;
 
@@ -75,7 +80,7 @@ inline void normalize(T* v, int f) {
 
 template<typename T>
 struct Angular {
-  struct __attribute__((__packed__)) node {
+  struct PACKED_STRUCTS_EXTRA node {
     /*
      * We store a binary tree where each node has two things
      * - A vector associated with it
@@ -505,7 +510,7 @@ public:
     for (int z = 0; z < this->_f; z++)
       w.push_back(python::extract<T>(v[z]));
 
-    add_item(item, &w[0]);
+    this->add_item(item, &w[0]);
   }
   python::list get_nns_by_item_py(int item, size_t n) {
     vector<int> result;
@@ -520,7 +525,7 @@ public:
     for (int z = 0; z < this->_f; z++)
       w[z] = python::extract<T>(v[z]);
     vector<int> result;
-    get_nns_by_vector(&w[0], n, &result);
+    this->get_nns_by_vector(&w[0], n, &result);
     python::list l;
     for (size_t i = 0; i < result.size(); i++)
       l.append(result[i]);
