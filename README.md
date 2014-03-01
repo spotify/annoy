@@ -53,6 +53,10 @@ Using [random projections](http://en.wikipedia.org/wiki/Locality-sensitive_hashi
 
 We do this k times so that we get a forest of trees. k has to be tuned to your need, by looking at what tradeoff you have between precision and performance. In practice k should probably be on the order of dimensionality.
 
+## More info
+
+Checkout out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries: [Part 1: contestants](http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/), [Part 2: Querying](http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/).
+
 ## Source
 
 It's all written in C++ with a handful of ugly optimizations for performance and memory usage. You have been warned :)
