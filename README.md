@@ -55,7 +55,7 @@ We do this k times so that we get a forest of trees. k has to be tuned to your n
 
 ## More info
 
-Checkout out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries: [Part 1: contestants](http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/), [Part 2: Querying](http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/).
+For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries: [Part 1: contestants](http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/), [Part 2: Querying](http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/).
 
 ## Source
 
@@ -65,4 +65,5 @@ It's all written in C++ with a handful of ugly optimizations for performance and
 
 * Better support for other languages
 * More performance tweaks
+* Expose some performance/accuracy tradeoffs at query time rather than index building time
 * Figure what O and Y stand for in the backronym :)
