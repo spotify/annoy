@@ -55,7 +55,7 @@ We do this k times so that we get a forest of trees. k has to be tuned to your n
 
 ## More info
 
-For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries: [Part 1: contestants](http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/), [Part 2: Querying](http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/).
+For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries: [Part 1: intro](http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/) [Part 2: contestants](http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/), [Part 3: Querying](http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/).
 
 ## Source
 
