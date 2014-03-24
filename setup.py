@@ -19,8 +19,8 @@ from distutils.core import setup, Extension
 import os
 
 setup(name='annoy',
-      version='1.0',
-      description='Approximate nearest neighbor',
+      version='1.0.1',
+      description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.\n\nPlease see https://github.com/spotify/annoy',
       packages=['annoy'],
       ext_modules=[Extension('annoy.annoylib', ['src/annoylib.cc'], libraries=['boost_python'])],
     )
