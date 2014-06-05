@@ -24,7 +24,7 @@ for line in open('README.rst'):
 long_description = ''.join(long_description)
 
 setup(name='annoy',
-      version='1.0.2',
+      version='1.0.3',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[Extension('annoy.annoylib', ['src/annoylib.cc'], libraries=['boost_python'])],
