@@ -226,7 +226,9 @@ public:
     _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(int);
   }
   ~AnnoyIndex() {
-    if (!_loaded && _nodes) {
+    if (_loaded) {
+      unload();
+    } else if(_nodes) {
       free(_nodes);
     }
   }
@@ -285,6 +287,22 @@ public:
     _nodes = NULL;
     _roots.clear();
     load(filename);
+  }
+
+  void reinitialize() {
+    _nodes = NULL;
+    _loaded = false;
+    _n_items = 0;
+    _n_nodes = 0;
+    _nodes_size = 0;
+    _roots.clear();
+  }
+
+  void unload() {
+    off_t size = _n_nodes * _s;
+    munmap(_nodes, size);
+    reinitialize();
+    fprintf(stderr, "unloaded\n");
   }
 
   void load(const string& filename) {
@@ -548,6 +566,7 @@ void expose_methods(python::class_<C> c) {
     .def("build",             &C::build)
     .def("save",              &C::save)
     .def("load",              &C::load)
+    .def("unload",            &C::unload)
     .def("get_distance",      &C::get_distance)
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
     .def("get_nns_by_vector", &C::get_nns_by_vector_py)
