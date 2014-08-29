@@ -39,4 +39,12 @@ setup(name='annoy',
       author_email='erikbern@spotify.com',
       url='https://github.com/spotify/annoy',
       license='Apache License 2.0',
+      classifiers=[
+          'Development Status :: 5 - Production/Stable',
+          'Programming Language :: Python',
+          'Programming Language :: Python :: 2',
+          'Programming Language :: Python :: 2.6',
+          'Programming Language :: Python :: 2.7',
+      ],
+      keywords='nns, approximate nearest neighbor search',
     )
