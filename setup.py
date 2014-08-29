@@ -37,6 +37,6 @@ setup(name='annoy',
       long_description=long_description,
       author='Erik Bernhardsson',
       author_email='erikbern@spotify.com',
-      url='https://github.com/spotify/luigi',
+      url='https://github.com/spotify/annoy',
       license='Apache License 2.0',
     )
