@@ -18,10 +18,16 @@
 from distutils.core import setup, Extension
 import os
 
-long_description = ['Note: For the latest source, discussion, etc, please visit the `Github repository <https://github.com/spotify/annoy>`_\n\n']
-for line in open('README.rst'):
-    long_description.append(line)
-long_description = ''.join(long_description)
+readme_note = """\
+.. note::
+
+   For the latest source, discussion, etc, please visit the
+   `GitHub repository <https://github.com/spotify/annoy>`_\n\n
+"""
+
+with open('README.rst') as fobj:
+    long_description = readme_note + fobj.read()
+
 
 setup(name='annoy',
       version='1.0.3',
@@ -31,6 +37,14 @@ setup(name='annoy',
       long_description=long_description,
       author='Erik Bernhardsson',
       author_email='erikbern@spotify.com',
-      url='https://github.com/spotify/luigi',
+      url='https://github.com/spotify/annoy',
       license='Apache License 2.0',
+      classifiers=[
+          'Development Status :: 5 - Production/Stable',
+          'Programming Language :: Python',
+          'Programming Language :: Python :: 2',
+          'Programming Language :: Python :: 2.6',
+          'Programming Language :: Python :: 2.7',
+      ],
+      keywords='nns, approximate nearest neighbor search',
     )
