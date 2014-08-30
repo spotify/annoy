@@ -1,1 +1,2 @@
 include README.rst LICENSE ann.png
+include src/annoylib.h
