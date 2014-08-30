@@ -82,7 +82,6 @@ Feel free to post any questions or comments to the `annoy-user <https://groups.g
 Future stuff
 ------------
 
-* Better support for other languages
 * More performance tweaks
 * Expose some performance/accuracy tradeoffs at query time rather than index building time
 * Figure what O and Y stand for in the backronym :)
