@@ -49,13 +49,13 @@ struct Randomness {
   mt19937 _rng;
   normal_distribution<T> _nd;
   variate_generator<mt19937&, 
-		    normal_distribution<T> > _var_nor;
+                    normal_distribution<T> > _var_nor;
   uniform_01<T> _ud;
   variate_generator<mt19937&, 
-		    uniform_01<T> > _var_uni;
+                    uniform_01<T> > _var_uni;
   bernoulli_distribution<T> _bd;
   variate_generator<mt19937&, 
-		    bernoulli_distribution<T> > _var_ber;
+                    bernoulli_distribution<T> > _var_ber;
   Randomness() : _rng(), _nd(), _var_nor(_rng, _nd), _ud(), _var_uni(_rng, _ud), _bd(), _var_ber(_rng, _bd) {}
   inline T gaussian() {
     return _var_nor();
@@ -171,23 +171,23 @@ struct Euclidean {
     double max_proj = 0.0;
     for (int step = 0; step < 10; step++) {
       for (int z = 0; z < f; z++)
-	v[z] = random->gaussian();
+        v[z] = random->gaussian();
       normalize(v, f);
       // Project the nodes onto the vector and calculate max and min
       T min = INFINITY, max = -INFINITY;
       for (size_t i = 0; i < nodes.size(); i++) {
-	T dot = 0;
-	for (int z = 0; z < f; z++)
-	  dot += nodes[i]->v[z] * v[z];
-	if (dot > max)
-	  max = dot;
-	if (dot < min)
-	  min = dot;
+        T dot = 0;
+        for (int z = 0; z < f; z++)
+          dot += nodes[i]->v[z] * v[z];
+        if (dot > max)
+          max = dot;
+        if (dot < min)
+          min = dot;
       }
       if (max - min > random->uniform(0, max_proj)) {
-	max_proj = max - min;
-	memcpy(n->v, v, sizeof(T) * f);
-	n->a = -random->uniform(min, max); // Take a random split along this axis
+        max_proj = max - min;
+        memcpy(n->v, v, sizeof(T) * f);
+        n->a = -random->uniform(min, max); // Take a random split along this axis
       }
     }
     free(v);
@@ -253,14 +253,14 @@ public:
     _n_nodes = _n_items;
     while (1) {
       if (q == -1 && _n_nodes >= _n_items * 2)
-	break;
+        break;
       if (q != -1 && _roots.size() >= (size_t)q)
-	break;
+        break;
       fprintf(stderr, "pass %zd...\n", _roots.size());
 
       vector<int> indices;
       for (int i = 0; i < _n_items; i++)
-	indices.push_back(i);
+        indices.push_back(i);
 
       _roots.push_back(_make_tree(indices));
     }
@@ -270,13 +270,13 @@ public:
     for (size_t i = 0; i < _roots.size(); i++)
       memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
     _n_nodes += _roots.size();
-      
+
     fprintf(stderr, "has %d nodes\n", _n_nodes);
   }
 
   void save(const string& filename) {
     FILE *f = fopen(filename.c_str(), "w");
-    
+
     fwrite(_nodes, _s, _n_nodes, f);
 
     fclose(f);
@@ -326,10 +326,10 @@ public:
     for (int i = _n_nodes - 1; i >= 0; i--) {
       int k = _get(i)->n_descendants;
       if (m == -1 || k == m) {
-	_roots.push_back(i);
-	m = k;
+        _roots.push_back(i);
+        m = k;
       } else {
-	break;
+        break;
       }
     }
     _loaded = true;
@@ -359,7 +359,7 @@ protected:
     if (n > _nodes_size) {
       int new_nodes_size = (_nodes_size + 1) * 2;
       if (n > new_nodes_size)
-	new_nodes_size = n;
+        new_nodes_size = n;
       _nodes = realloc(_nodes, _s * new_nodes_size);
       memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
       _nodes_size = new_nodes_size;
@@ -381,7 +381,7 @@ protected:
 
     if (indices.size() <= (size_t)_K) {
       for (size_t i = 0; i < indices.size(); i++)
-	m->children[i] = indices[i];
+        m->children[i] = indices[i];
       return item;
     }
 
@@ -397,50 +397,50 @@ protected:
       vector<typename Distance::node*> children;
 
       for (size_t i = 0; i < indices.size(); i++) {
-	// TODO: this loop isn't needed for the angular distance, because
-	// we can just split by a random vector and it's fine. For Euclidean
-	// distance we need it to calculate the offset
-	int j = indices[i];
-	typename Distance::node* n = _get(j);
-	if (n)
-	  children.push_back(n);
+        // TODO: this loop isn't needed for the angular distance, because
+        // we can just split by a random vector and it's fine. For Euclidean
+        // distance we need it to calculate the offset
+        int j = indices[i];
+        typename Distance::node* n = _get(j);
+        if (n)
+          children.push_back(n);
       }
 
       Distance::create_split(children, _f, &_random, m);
-      
+
       children_indices[0].clear();
       children_indices[1].clear();
 
       for (size_t i = 0; i < indices.size(); i++) {
-	int j = indices[i];
-	typename Distance::node* n = _get(j);
-	if (n) {
-	  bool side = Distance::side(m, n->v, _f, &_random);
-	  children_indices[side].push_back(j);
-	}
+        int j = indices[i];
+        typename Distance::node* n = _get(j);
+        if (n) {
+          bool side = Distance::side(m, n->v, _f, &_random);
+          children_indices[side].push_back(j);
+        }
       }
 
       if (children_indices[0].size() > 0 && children_indices[1].size() > 0) {
-	break;
+        break;
       }
     }
 
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
       // If we didn't find a hyperplane, just randomize sides as a last option
       if (indices.size() > 100000)
-	fprintf(stderr, "Failed splitting %lu items\n", indices.size());
+        fprintf(stderr, "Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
 
       // Set the vector to 0.0
       for (int z = 0; z < _f; z++)
-	m->v[z] = 0.0;
+        m->v[z] = 0.0;
 
       for (size_t i = 0; i < indices.size(); i++) {
-	int j = indices[i];
-	// Just randomize...
-	children_indices[_random.flip()].push_back(j);
+        int j = indices[i];
+        // Just randomize...
+        children_indices[_random.flip()].push_back(j);
       }
     }
 
@@ -464,14 +464,14 @@ protected:
       result->push_back(i);
     } else if (n->n_descendants <= _K) {
       for (int j = 0; j < n->n_descendants; j++) {
-	result->push_back(n->children[j]);
+        result->push_back(n->children[j]);
       }
     } else {
       bool side = Distance::side(n, v, _f, &_random);
 
       _get_nns(v, n->children[side], result, limit);
       if (result->size() < (size_t)limit)
-	_get_nns(v, n->children[!side], result, limit);
+        _get_nns(v, n->children[!side], result, limit);
     }
   }
 
@@ -489,16 +489,16 @@ protected:
       const typename Distance::node* n = _get(top.second);
       q.pop();
       if (n->n_descendants == 1) {
-	nns.push_back(i);
+        nns.push_back(i);
       } else if (n->n_descendants <= _K) {
-	for (int x = 0; x < n->n_descendants; x++) {
-	  int j = n->children[x];
-	  nns.push_back(j);
-	}	
-      } else{
-	T margin = Distance::margin(n, v, _f);
-	q.push(make_pair(+margin, n->children[1]));
-	q.push(make_pair(-margin, n->children[0]));
+        for (int x = 0; x < n->n_descendants; x++) {
+          int j = n->children[x];
+          nns.push_back(j);
+        }
+      } else {
+        T margin = Distance::margin(n, v, _f);
+        q.push(make_pair(+margin, n->children[1]));
+        q.push(make_pair(-margin, n->children[0]));
       }
     }
 
@@ -508,7 +508,7 @@ protected:
     for (size_t i = 0; i < nns.size(); i++) {
       int j = nns[i];
       if (j == last)
-	continue;
+        continue;
       last = j;
       nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
     }
