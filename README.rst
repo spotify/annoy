@@ -16,7 +16,7 @@ Why is this useful? If you want to find nearest neighbors and you have many CPU'
 
 We use it at `Spotify <http://www.spotify.com/>`__ for music recommendations. After running matrix factorization algorithms, every user/item can be represented as a vector in f-dimensional space. This library helps us search for similar users/items. We have many millions of tracks in a high-dimensional space, so memory usage is a prime concern.
 
-Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>` in a couple of afternoons during `Hack Week <http://labs.spotify.com/2013/02/15/organizing-a-hack-week/>`__.
+Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple of afternoons during `Hack Week <http://labs.spotify.com/2013/02/15/organizing-a-hack-week/>`__.
 
 Summary of features
 -------------------
