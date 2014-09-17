@@ -274,8 +274,10 @@ public:
     fprintf(stderr, "has %d nodes\n", _n_nodes);
   }
 
-  void save(const string& filename) {
+  bool save(const string& filename) {
     FILE *f = fopen(filename.c_str(), "w");
+    if (f == NULL)
+      return false;
 
     fwrite(_nodes, _s, _n_nodes, f);
 
@@ -287,7 +289,7 @@ public:
     _nodes_size = 0;
     _nodes = NULL;
     _roots.clear();
-    load(filename);
+    return load(filename);
   }
 
   void reinitialize() {
@@ -306,11 +308,11 @@ public:
     fprintf(stderr, "unloaded\n");
   }
 
-  void load(const string& filename) {
-    struct stat buf;
-    stat(filename.c_str(), &buf);
-    off_t size = buf.st_size;
+  bool load(const string& filename) {
     int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
+    if (fd == -1)
+      return false;
+    off_t size = lseek(fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (typename Distance::node*)mmap(
         0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
@@ -335,6 +337,7 @@ public:
     _loaded = true;
     _n_items = m;
     fprintf(stderr, "found %lu roots with degree %d\n", _roots.size(), m);
+    return true;
   }
 
   inline T get_distance(int i, int j) {
