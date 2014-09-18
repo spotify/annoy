@@ -19,6 +19,7 @@ import unittest
 import random
 from annoy import AnnoyIndex
 
+
 class AngularIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):
         f = 3
@@ -28,7 +29,7 @@ class AngularIndexTest(unittest.TestCase):
         i.add_item(2, [0,0,1])
         i.build(10)
 
-        self.assertEquals(i.get_nns_by_vector([3,2,1], 3), [0,1,2])
+        self.assertEqual(i.get_nns_by_vector([3,2,1], 3), [0,1,2])
 
     def test_get_nns_by_item(self):
         f = 3
@@ -38,8 +39,8 @@ class AngularIndexTest(unittest.TestCase):
         i.add_item(2, [0,0,1])
         i.build(10)
 
-        self.assertEquals(i.get_nns_by_item(0, 3), [0,1,2])
-        self.assertEquals(i.get_nns_by_item(1, 3), [1,0,2])
+        self.assertEqual(i.get_nns_by_item(0, 3), [0,1,2])
+        self.assertEqual(i.get_nns_by_item(1, 3), [1,0,2])
 
     def test_dist(self):
         f = 2
@@ -62,7 +63,7 @@ class AngularIndexTest(unittest.TestCase):
         i = AnnoyIndex(f)
         i.add_item(0, [97, 0])
         i.add_item(1, [42, 42])
-    
+
         dist = (1 - 2 ** -0.5) ** 2 + (2 ** -0.5) ** 2
 
         self.assertAlmostEqual(i.get_distance(0, 1), dist)
@@ -87,11 +88,11 @@ class AngularIndexTest(unittest.TestCase):
             y = [f2 * pi + random.gauss(0, 1e-2) for pi in p]
             i.add_item(j, x)
             i.add_item(j+1, y)
-        
+
         i.build(10)
         for j in xrange(0, 10000, 2):
-            self.assertEquals(i.get_nns_by_item(j, 2), [j, j+1])
-            self.assertEquals(i.get_nns_by_item(j+1, 2), [j+1, j])
+            self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
+            self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
 
 class EuclideanIndexTest(unittest.TestCase):
@@ -102,7 +103,7 @@ class EuclideanIndexTest(unittest.TestCase):
         i.add_item(1, [3,2])
         i.build(10)
 
-        self.assertEquals(i.get_nns_by_vector([3,3], 2), [1, 0])
+        self.assertEqual(i.get_nns_by_vector([3,3], 2), [1, 0])
 
     def test_dist(self):
         f = 2
@@ -123,11 +124,11 @@ class EuclideanIndexTest(unittest.TestCase):
             y = [1 + pi + random.gauss(0, 1e-2) for pi in p]
             i.add_item(j, x)
             i.add_item(j+1, y)
-        
+
         i.build(10)
         for j in xrange(0, 10000, 2):
-            self.assertEquals(i.get_nns_by_item(j, 2), [j, j+1])
-            self.assertEquals(i.get_nns_by_item(j+1, 2), [j+1, j])
+            self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
+            self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
     def precision(self, n, n_trees=10, n_points=10000):
         # create random points at distance x
@@ -142,7 +143,7 @@ class EuclideanIndexTest(unittest.TestCase):
         i.build(n_trees)
 
         nns = i.get_nns_by_vector([0] * f, n)
-        self.assertEquals(nns, sorted(nns)) # should be in order
+        self.assertEqual(nns, sorted(nns))  # should be in order
         # The number of gaps should be equal to the last item minus n-1
         found = len([x for x in nns if x < n])
         return 1.0 * found / n
