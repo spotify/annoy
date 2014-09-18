@@ -30,7 +30,6 @@ def suite():
 class run(unittest.TestProgram):
     """Runs tests and counts errors."""
     def __init__(self):
-        #sys.path.append(test)
         unittest.TestProgram.__init__(self, '__main__', 'suite')
 
     def usageExit(self, msg=None):
