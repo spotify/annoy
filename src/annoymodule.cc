@@ -15,9 +15,17 @@
 #include "annoylib.h"
 #include "Python.h"
 #include <boost/python.hpp>
+#include <exception>
 
 using namespace std;
 using namespace boost;
+
+
+struct ErrnoException : std::exception {};
+
+void TranslateException(ErrnoException const& e) {
+  PyErr_SetFromErrno(PyExc_IOError);
+}
 
 template<typename T, typename Distance>
 class AnnoyIndexPython : public AnnoyIndex<T, Distance > {
@@ -58,14 +66,22 @@ public:
     }
     return l;
   }
+  void save_py(const string& filename) {
+    if (!this->save(filename))
+      throw ErrnoException();
+  }
+  void load_py(const string& filename) {
+    if (!this->load(filename))
+      throw ErrnoException();
+  }
 };
 
 template<typename C>
 void expose_methods(python::class_<C> c) {
   c.def("add_item",          &C::add_item_py)
     .def("build",             &C::build)
-    .def("save",              &C::save)
-    .def("load",              &C::load)
+    .def("save",              &C::save_py)
+    .def("load",              &C::load_py)
     .def("unload",            &C::unload)
     .def("get_distance",      &C::get_distance)
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
@@ -76,6 +92,7 @@ void expose_methods(python::class_<C> c) {
 
 BOOST_PYTHON_MODULE(annoylib)
 {
+  python::register_exception_translator<ErrnoException>(&TranslateException);
   expose_methods(python::class_<AnnoyIndexPython<float, Angular<float> > >("AnnoyIndexAngular", python::init<int>()));
   expose_methods(python::class_<AnnoyIndexPython<float, Euclidean<float> > >("AnnoyIndexEuclidean", python::init<int>()));
 }

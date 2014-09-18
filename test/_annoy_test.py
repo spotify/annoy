@@ -159,3 +159,7 @@ class EuclideanIndexTest(unittest.TestCase):
 
     def test_precision_1000(self):
         self.assertTrue(self.precision(1000) >= 0.99)
+
+    def test_raises(self):
+        i = AnnoyIndex(10)
+        self.assertRaises(IOError, lambda: i.load("nonexists.tree"))
