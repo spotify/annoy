@@ -149,17 +149,18 @@ class EuclideanIndexTest(unittest.TestCase):
         return 1.0 * found / n
 
     def test_precision_1(self):
-        self.assertTrue(self.precision(1) == 1.0)
+        self.assertEqual(self.precision(1), 1.0)
 
     def test_precision_10(self):
-        self.assertTrue(self.precision(10) == 1.0)
+        self.assertEqual(self.precision(10), 1.0)
 
     def test_precision_100(self):
-        self.assertTrue(self.precision(100) >= 0.99)
+        self.assertGreaterEqual(self.precision(100), 0.99)
 
     def test_precision_1000(self):
-        self.assertTrue(self.precision(1000) >= 0.99)
+        self.assertGreaterEqual(self.precision(1000), 0.99)
 
-    def test_raises(self):
+    def test_not_found_tree(self):
         i = AnnoyIndex(10)
-        self.assertRaises(IOError, lambda: i.load("nonexists.tree"))
+        with self.assertRaises(IOError):
+            i.load("nonexists.tree")
