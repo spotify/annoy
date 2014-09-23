@@ -1,0 +1,6 @@
+*.egg-info/
+*.so
+build/
+dist/
+MANIFEST
+*.py[cod]
