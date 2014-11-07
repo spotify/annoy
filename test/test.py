@@ -34,8 +34,8 @@ class run(unittest.TestProgram):
 
     def usageExit(self, msg=None):
         if msg:
-            print msg
-        print self.USAGE % self.__dict__
+            print(msg)
+        print(self.USAGE % self.__dict__)
         sys.exit(-2)
 
     def runTests(self):

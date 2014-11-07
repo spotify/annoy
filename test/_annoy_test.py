@@ -19,6 +19,12 @@ import unittest
 import random
 from annoy import AnnoyIndex
 
+try:
+    xrange
+except NameError:
+    # Python 3 compat
+    xrange = range
+
 
 class AngularIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):
