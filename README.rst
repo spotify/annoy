@@ -48,7 +48,7 @@ ____________
 
   u = AnnoyIndex(f)
   u.load('test.tree') # super fast, will just mmap the file
-  print u.get_nns_by_item(0, 1000) # will find the 1000 nearest neighbors
+  print(u.get_nns_by_item(0, 1000)) # will find the 1000 nearest neighbors
 
 
 Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it generally assumes you will have items 0 … n.

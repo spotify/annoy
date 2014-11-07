@@ -1,5 +1,13 @@
+from __future__ import print_function
 import random, time
 from annoy import AnnoyIndex
+
+try:
+    xrange
+except NameError:
+    # Python 3 compat
+    xrange = range
+
 
 def precision(f=40, n=1000000):
     t = AnnoyIndex(f)
@@ -20,7 +28,7 @@ def precision(f=40, n=1000000):
 
     for i in xrange(prec_n):
         j = random.randrange(0, n)
-        print 'finding nbs for', j
+        print('finding nbs for', j)
         
         closest = set(t.get_nns_by_item(j, n)[:k])
         for limit in limits:
@@ -34,7 +42,9 @@ def precision(f=40, n=1000000):
             time_sum[limit] = time_sum.get(limit, 0.0) + T
 
         for limit in limits:
-            print 'limit: %-9d precision: %6.2f%% avg time: %.6fs' % (limit, 100.0 * prec_sum[limit] / (i + 1), time_sum[limit] / (i + 1))
+            print('limit: %-9d precision: %6.2f%% avg time: %.6fs'
+                  % (limit, 100.0 * prec_sum[limit] / (i + 1),
+                     time_sum[limit] / (i + 1)))
 
 if __name__ == '__main__':
     precision()
