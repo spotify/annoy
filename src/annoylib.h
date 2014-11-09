@@ -46,16 +46,16 @@ template<typename T>
 struct Randomness {
   // Just a dummy class to avoid code repetition.
   // Owned by the AnnoyIndex, passed around to the distance metrics
-  mt19937 _rng;
-  normal_distribution<T> _nd;
-  variate_generator<mt19937&, 
-                    normal_distribution<T> > _var_nor;
+  boost::random::mt19937 _rng;
+  boost::random::normal_distribution<T> _nd;
+  variate_generator<boost::random::mt19937&, 
+                    boost::random::normal_distribution<T> > _var_nor;
   uniform_01<T> _ud;
-  variate_generator<mt19937&, 
+  variate_generator<boost::random::mt19937&, 
                     uniform_01<T> > _var_uni;
-  bernoulli_distribution<T> _bd;
-  variate_generator<mt19937&, 
-                    bernoulli_distribution<T> > _var_ber;
+  boost::random::bernoulli_distribution<T> _bd;
+  variate_generator<boost::random::mt19937&, 
+                    boost::random::bernoulli_distribution<T> > _var_ber;
   Randomness() : _rng(), _nd(), _var_nor(_rng, _nd), _ud(), _var_uni(_rng, _ud), _bd(), _var_ber(_rng, _bd) {}
   inline T gaussian() {
     return _var_nor();
