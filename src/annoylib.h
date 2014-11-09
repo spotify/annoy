@@ -489,19 +489,19 @@ protected:
     while (nns.size() < n * _roots.size() && !q.empty()) {
       const pair<T, int>& top = q.top();
       int i = top.second;
-      const typename Distance::node* n = _get(top.second);
+      const typename Distance::node* nd = _get(top.second);
       q.pop();
-      if (n->n_descendants == 1) {
+      if (nd->n_descendants == 1) {
         nns.push_back(i);
-      } else if (n->n_descendants <= _K) {
-        for (int x = 0; x < n->n_descendants; x++) {
-          int j = n->children[x];
+      } else if (nd->n_descendants <= _K) {
+        for (int x = 0; x < nd->n_descendants; x++) {
+          int j = nd->children[x];
           nns.push_back(j);
         }
       } else {
-        T margin = Distance::margin(n, v, _f);
-        q.push(make_pair(+margin, n->children[1]));
-        q.push(make_pair(-margin, n->children[0]));
+        T margin = Distance::margin(nd, v, _f);
+        q.push(make_pair(+margin, nd->children[1]));
+        q.push(make_pair(-margin, nd->children[0]));
       }
     }
 
