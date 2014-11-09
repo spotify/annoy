@@ -1,0 +1,14 @@
+language: python
+
+python:
+  - "2.7"
+  - "2.6"
+
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq libboost-random-dev libboost-python-dev
+
+install:
+  - pip install .
+
+script: python setup.py nosetests

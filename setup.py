@@ -15,8 +15,9 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 import os
+import sys
 
 readme_note = """\
 .. note::
@@ -47,4 +48,5 @@ setup(name='annoy',
           'Programming Language :: Python :: 2.7',
       ],
       keywords='nns, approximate nearest neighbor search',
+      setup_requires=['nose>=1.0']
     )
