@@ -392,8 +392,9 @@ protected:
     m->n_descendants = indices.size();
 
     if (indices.size() <= (size_t)_K) {
-      for (size_t i = 0; i < indices.size(); i++)
-        m->children[i] = indices[i];
+      // Using std::copy instead of a loop seems to resolve issues #3 and #13,
+      // probably because gcc 4.8 goes overboard with optimizations.
+      copy(indices.begin(), indices.end(), m->children);
       return item;
     }
 
