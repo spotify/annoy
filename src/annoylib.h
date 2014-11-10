@@ -107,7 +107,7 @@ struct Angular {
      */
     int n_descendants;
     int children[2]; // Will possibly store more than 2
-    T v[1]; // Hack. We just allocate as much memory as we need and let this array overflow
+    T v[0]; // Hack. We just allocate as much memory as we need and let this array overflow
   };
   static inline T distance(const T* x, const T* y, int f) {
     // want to calculate (a/|a| - b/|b|)^2
@@ -149,7 +149,7 @@ struct Euclidean {
     int n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
     int children[2];
-    T v[1];
+    T v[0];
   };
   static inline T distance(const T* x, const T* y, int f) {
     T d = 0.0;
