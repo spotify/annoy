@@ -39,7 +39,7 @@
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
 // TODO: Add a member variable for true/false debug state
 #ifndef __Error_Printer_Override__
-  #define showUpdate(...) { fprintf(stderr, __VA_ARGS__ )); }
+  #define showUpdate(...) { fprintf(stderr, __VA_ARGS__ ); }
 #else
   #define showUpdate(...) { __Error_Printer_Override__( __VA_ARGS__ ); }
 #endif
