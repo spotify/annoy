@@ -35,13 +35,12 @@
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/bernoulli_distribution.hpp>
 
-// This allows other to supply their onw logger / error printer without
+// This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
-// TODO: Add a member variable for true/false debug state
-#ifndef __Error_Printer_Override__
+#ifndef __ERROR_PRINTER_OVERRIDE__
   #define showUpdate(...) { fprintf(stderr, __VA_ARGS__ ); }
 #else
-  #define showUpdate(...) { __Error_Printer_Override__( __VA_ARGS__ ); }
+  #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
 #endif
 
 #ifndef NO_PACKED_STRUCTS
