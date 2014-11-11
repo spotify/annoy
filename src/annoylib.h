@@ -266,7 +266,9 @@ public:
         break;
       if (q != -1 && _roots.size() >= (size_t)q)
         break;
+#ifdef DEBUG_PRINT
       fprintf(stderr, "pass %zd...\n", _roots.size());
+#endif
 
       vector<int> indices;
       for (int i = 0; i < _n_items; i++)
@@ -280,8 +282,6 @@ public:
     for (size_t i = 0; i < _roots.size(); i++)
       memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
     _n_nodes += _roots.size();
-
-    fprintf(stderr, "has %d nodes\n", _n_nodes);
   }
 
   bool save(const string& filename) {
@@ -315,7 +315,9 @@ public:
     off_t size = _n_nodes * _s;
     munmap(_nodes, size);
     reinitialize();
+#ifdef DEBUG_PRINT
     fprintf(stderr, "unloaded\n");
+#endif
   }
 
   bool load(const string& filename) {
@@ -346,7 +348,6 @@ public:
     }
     _loaded = true;
     _n_items = m;
-    fprintf(stderr, "found %lu roots with degree %d\n", _roots.size(), m);
     return true;
   }
 
@@ -441,8 +442,10 @@ protected:
 
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
       // If we didn't find a hyperplane, just randomize sides as a last option
+#ifdef DEBUG_PRINT
       if (indices.size() > 100000)
         fprintf(stderr, "Failed splitting %lu items\n", indices.size());
+#endif
 
       children_indices[0].clear();
       children_indices[1].clear();
