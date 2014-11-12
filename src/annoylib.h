@@ -231,6 +231,7 @@ protected:
   vector<int> _roots;
   int _K;
   bool _loaded;
+  bool _verbose;
 public:
   AnnoyIndex(int f) : _random() {
     _f = f;
@@ -241,6 +242,7 @@ public:
     _nodes_size = 0;
     _nodes = NULL;
     _loaded = false;
+    _verbose = false;
 
     _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(int);
   }
@@ -274,7 +276,7 @@ public:
         break;
       if (q != -1 && _roots.size() >= (size_t)q)
         break;
-      showUpdate("pass %zd...\n", _roots.size());
+      if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
       vector<int> indices;
       for (int i = 0; i < _n_items; i++)
@@ -289,7 +291,7 @@ public:
       memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
     _n_nodes += _roots.size();
 
-    showUpdate("has %d nodes\n", _n_nodes);
+    if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
   }
 
   bool save(const string& filename) {
@@ -323,7 +325,7 @@ public:
     off_t size = _n_nodes * _s;
     munmap(_nodes, size);
     reinitialize();
-    showUpdate("unloaded\n");
+    if (_verbose) showUpdate("unloaded\n");
   }
 
   bool load(const string& filename) {
@@ -354,7 +356,7 @@ public:
     }
     _loaded = true;
     _n_items = m;
-    showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
+    if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
     return true;
   }
 
@@ -375,6 +377,10 @@ public:
   int get_n_items() {
     return _n_items;
   }
+  void verbose(bool v) {
+    _verbose = v;
+  }
+
 protected:
   void _allocate_size(int n) {
     if (n > _nodes_size) {
@@ -449,7 +455,7 @@ protected:
 
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
       // If we didn't find a hyperplane, just randomize sides as a last option
-      if (indices.size() > 100000)
+      if (_verbose && indices.size() > 100000)
         showUpdate("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
