@@ -96,7 +96,7 @@ inline void normalize(T* v, int f) {
 }
 
 
-template<typename T>
+template<typename S, typename T>
 struct Angular {
   struct PACKED_STRUCTS_EXTRA node {
     /*
@@ -113,8 +113,8 @@ struct Angular {
      * Note that we can't really do sizeof(node<T>) because we cheat and allocate
      * more memory to be able to fit the vector outside
      */
-    int n_descendants;
-    int children[2]; // Will possibly store more than 2
+    S n_descendants;
+    S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
   static inline T distance(const T* x, const T* y, int f) {
@@ -151,12 +151,12 @@ struct Angular {
   }
 };
 
-template<typename T>
+template<typename S, typename T>
 struct Euclidean {
   struct __attribute__((__packed__)) node {
-    int n_descendants;
+    S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
-    int children[2];
+    S children[2];
     T v[1];
   };
   static inline T distance(const T* x, const T* y, int f) {
@@ -211,7 +211,7 @@ struct Euclidean {
   }
 };
 
-template<typename T, typename Distance>
+template<typename S, typename T, typename Distance>
 class AnnoyIndex {
   /*
    * We use random projection to build a forest of binary trees of all items.
@@ -223,13 +223,13 @@ class AnnoyIndex {
 protected:
   int _f;
   size_t _s;
-  int _n_items;
+  S _n_items;
   Randomness<T> _random;
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
-  int _n_nodes;
-  int _nodes_size;
+  S _n_nodes;
+  S _nodes_size;
   vector<int> _roots;
-  int _K;
+  size_t _K;
   bool _loaded;
   bool _verbose;
 public:
@@ -254,8 +254,8 @@ public:
     }
   }
 
-  void add_item(int item, const T* w) {
-    _allocate_size(item+1);
+  void add_item(S item, const T* w) {
+    _allocate_size(item + 1);
     typename Distance::node* n = _get(item);
 
     n->children[0] = 0;
@@ -279,16 +279,16 @@ public:
       if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
       vector<int> indices;
-      for (int i = 0; i < _n_items; i++)
+      for (S i = 0; i < _n_items; i++)
         indices.push_back(i);
 
       _roots.push_back(_make_tree(indices));
     }
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
-    _allocate_size(_n_nodes + _roots.size());
+    _allocate_size(_n_nodes + (S)_roots.size());
     for (size_t i = 0; i < _roots.size(); i++)
-      memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
+      memcpy(_get(_n_nodes + (S)i), _get(_roots[i]), _s);
     _n_nodes += _roots.size();
 
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
@@ -341,10 +341,10 @@ public:
         0, size, PROT_READ, MAP_SHARED, fd, 0);
 #endif
 
-    _n_nodes = size / _s;
+    _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
-    int m = -1;
+    S m = -1;
     for (int i = _n_nodes - 1; i >= 0; i--) {
       int k = _get(i)->n_descendants;
       if (m == -1 || k == m) {
@@ -360,21 +360,21 @@ public:
     return true;
   }
 
-  inline T get_distance(int i, int j) {
+  inline T get_distance(S i, S j) {
     const T* x = _get(i)->v;
     const T* y = _get(j)->v;
     return Distance::distance(x, y, _f);
   }
 
-  void get_nns_by_item(int item, size_t n, vector<int>* result) {
+  void get_nns_by_item(S item, size_t n, vector<S>* result) {
     const typename Distance::node* m = _get(item);
     _get_all_nns(m->v, n, result);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, vector<int>* result) {
+  void get_nns_by_vector(const T* w, size_t n, vector<S>* result) {
     _get_all_nns(w, n, result);
   }
-  int get_n_items() {
+  S get_n_items() {
     return _n_items;
   }
   void verbose(bool v) {
@@ -382,9 +382,9 @@ public:
   }
 
 protected:
-  void _allocate_size(int n) {
+  void _allocate_size(S n) {
     if (n > _nodes_size) {
-      int new_nodes_size = (_nodes_size + 1) * 2;
+      S new_nodes_size = (_nodes_size + 1) * 2;
       if (n > new_nodes_size)
         new_nodes_size = n;
       _nodes = realloc(_nodes, _s * new_nodes_size);
@@ -393,18 +393,18 @@ protected:
     }
   }
 
-  inline typename Distance::node* _get(int i) {
+  inline typename Distance::node* _get(S i) {
     return (typename Distance::node*)((char *)_nodes + (_s * i)/sizeof(char));
   }
 
-  int _make_tree(const vector<int >& indices) {
+  S _make_tree(const vector<S >& indices) {
     if (indices.size() == 1)
       return indices[0];
 
     _allocate_size(_n_nodes + 1);
-    int item = _n_nodes++;
+    S item = _n_nodes++;
     typename Distance::node* m = _get(item);
-    m->n_descendants = indices.size();
+    m->n_descendants = (S)indices.size();
 
     if (indices.size() <= (size_t)_K) {
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
@@ -413,7 +413,7 @@ protected:
       return item;
     }
 
-    vector<int> children_indices[2];
+    vector<S> children_indices[2];
     for (int attempt = 0; attempt < 20; attempt ++) {
       /*
        * Create a random hyperplane.
@@ -472,8 +472,8 @@ protected:
       }
     }
 
-    int children_0 = _make_tree(children_indices[0]);
-    int children_1 = _make_tree(children_indices[1]);
+    S children_0 = _make_tree(children_indices[0]);
+    S children_1 = _make_tree(children_indices[1]);
 
     // We need to fetch m again because it might have been reallocated
     m = _get(item);
@@ -483,7 +483,7 @@ protected:
     return item;
   }
 
-  void _get_nns(const T* v, int i, vector<int>* result, int limit) {
+  void _get_nns(const T* v, S i, vector<S>* result, int limit) {
     const typename Distance::node* n = _get(i);
 
     if (n->n_descendants == 0) {
@@ -501,17 +501,17 @@ protected:
     }
   }
 
-  void _get_all_nns(const T* v, size_t n, vector<int>* result) {
-    std::priority_queue<pair<T, int> > q;
+  void _get_all_nns(const T* v, size_t n, vector<S>* result) {
+    std::priority_queue<pair<T, S> > q;
 
     for (size_t i = 0; i < _roots.size(); i++) {
       q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
     }
 
-    vector<int> nns;
+    vector<S> nns;
     while (nns.size() < n * _roots.size() && !q.empty()) {
-      const pair<T, int>& top = q.top();
-      int i = top.second;
+      const pair<T, S>& top = q.top();
+      S i = top.second;
       const typename Distance::node* nd = _get(top.second);
       q.pop();
       if (nd->n_descendants == 1) {
@@ -526,10 +526,10 @@ protected:
     }
 
     sort(nns.begin(), nns.end());
-    vector<pair<T, int> > nns_dist;
-    int last = -1;
+    vector<pair<T, S> > nns_dist;
+    S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
-      int j = nns[i];
+      S j = nns[i];
       if (j == last)
         continue;
       last = j;

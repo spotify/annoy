@@ -16,6 +16,7 @@
 #include "Python.h"
 #include <boost/python.hpp>
 #include <exception>
+#include <stdint.h>:
 
 using namespace std;
 using namespace boost;
@@ -27,19 +28,19 @@ void TranslateException(ErrnoException const& e) {
   PyErr_SetFromErrno(PyExc_IOError);
 }
 
-template<typename T, typename Distance>
-class AnnoyIndexPython : public AnnoyIndex<T, Distance > {
+template<typename S, typename T, typename Distance>
+class AnnoyIndexPython : public AnnoyIndex<S, T, Distance > {
 public:
-  AnnoyIndexPython(int f): AnnoyIndex<T, Distance>(f) {}
-  void add_item_py(int item, const python::list& v) {
+  AnnoyIndexPython(int f): AnnoyIndex<S, T, Distance>(f) {}
+  void add_item_py(S item, const python::list& v) {
     vector<T> w;
     for (int z = 0; z < this->_f; z++)
       w.push_back(python::extract<T>(v[z]));
 
     this->add_item(item, &w[0]);
   }
-  python::list get_nns_by_item_py(int item, size_t n) {
-    vector<int> result;
+  python::list get_nns_by_item_py(S item, size_t n) {
+    vector<S> result;
     this->get_nns_by_item(item, n, &result);
     python::list l;
     for (size_t i = 0; i < result.size(); i++)
@@ -50,14 +51,14 @@ public:
     vector<T> w(this->_f);
     for (int z = 0; z < this->_f; z++)
       w[z] = python::extract<T>(v[z]);
-    vector<int> result;
+    vector<S> result;
     this->get_nns_by_vector(&w[0], n, &result);
     python::list l;
     for (size_t i = 0; i < result.size(); i++)
       l.append(result[i]);
     return l;
   }
-  python::list get_item_vector_py(int item) {
+  python::list get_item_vector_py(S item) {
     const typename Distance::node* m = this->_get(item);
     const T* v = m->v;
     python::list l;
@@ -94,6 +95,6 @@ void expose_methods(python::class_<C> c) {
 BOOST_PYTHON_MODULE(annoylib)
 {
   python::register_exception_translator<ErrnoException>(&TranslateException);
-  expose_methods(python::class_<AnnoyIndexPython<float, Angular<float> > >("AnnoyIndexAngular", python::init<int>()));
-  expose_methods(python::class_<AnnoyIndexPython<float, Euclidean<float> > >("AnnoyIndexEuclidean", python::init<int>()));
+  expose_methods(python::class_<AnnoyIndexPython<int32_t, float, Angular<int32_t, float> > >("AnnoyIndexAngular", python::init<int>()));
+  expose_methods(python::class_<AnnoyIndexPython<int32_t, float, Euclidean<int32_t, float> > >("AnnoyIndexEuclidean", python::init<int>()));
 }
