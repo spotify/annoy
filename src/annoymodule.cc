@@ -87,7 +87,8 @@ void expose_methods(python::class_<C> c) {
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
     .def("get_nns_by_vector", &C::get_nns_by_vector_py)
     .def("get_item_vector",   &C::get_item_vector_py)
-    .def("get_n_items",       &C::get_n_items);
+    .def("get_n_items",       &C::get_n_items)
+    .def("verbose",           &C::verbose);
 }
 
 BOOST_PYTHON_MODULE(annoylib)
