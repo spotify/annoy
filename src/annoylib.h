@@ -229,7 +229,7 @@ protected:
   S _n_nodes;
   S _nodes_size;
   vector<int> _roots;
-  size_t _K;
+  S _K;
   bool _loaded;
   bool _verbose;
 public:
