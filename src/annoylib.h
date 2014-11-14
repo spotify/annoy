@@ -228,7 +228,7 @@ protected:
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   S _n_nodes;
   S _nodes_size;
-  vector<int> _roots;
+  vector<S> _roots;
   S _K;
   bool _loaded;
   bool _verbose;
@@ -244,7 +244,7 @@ public:
     _loaded = false;
     _verbose = false;
 
-    _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(int);
+    _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(S);
   }
   ~AnnoyIndex() {
     if (_loaded) {
@@ -346,7 +346,7 @@ public:
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     S m = -1;
     for (int i = _n_nodes - 1; i >= 0; i--) {
-      int k = _get(i)->n_descendants;
+      S k = _get(i)->n_descendants;
       if (m == -1 || k == m) {
         _roots.push_back(i);
         m = k;
