@@ -22,7 +22,7 @@ Summary of features
 -------------------
 
 * Euclidean distance (squared) or cosine similarity (using the squared distance of the normalized vectors)
-* Works better if you don't have too many dimensions (like <100)
+* Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
@@ -41,7 +41,7 @@ ____________
           v.append(random.gauss(0, 1))
       t.add_item(i, v)
 
-  t.build(50) # 50 trees
+  t.build(10) # 10 trees
   t.save('test.tree')
     
   # …
@@ -51,7 +51,7 @@ ____________
   print(u.get_nns_by_item(0, 1000)) # will find the 1000 nearest neighbors
 
 
-Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it generally assumes you will have items 0 … n.
+Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it assumes your items are numbered 0 … n-1. If you need other id's, you will have to keep track of a map yourself.
 
 How does it work
 ----------------
@@ -63,21 +63,27 @@ We do this k times so that we get a forest of trees. k has to be tuned to your n
 More info
 ---------
 
-For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries
+Dirk Eddelbuettel `provides an R version <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__ of Annoy.
+
+For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries:
 
 * `Part 1: Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__
 * `Part 2: Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__
 * `Part 3: Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
+
+There's also some biased performance metrics in a `blog post <http://erikbern.com/?p=783>`__ by me. It compares Annoy, `FLANN <http://www.cs.ubc.ca/research/flann/>`__, `PANNS <https://github.com/ryanrhymes/panns>`__, and a `pull request <https://github.com/scikit-learn/scikit-learn/pull/3304>`__ to scikit-learn.
 
 Source code
 -----------
 
 It's all written in C++ with a handful of ugly optimizations for performance and memory usage. You have been warned :)
 
+The code should support Windows, thanks to `thirdwing <https://github.com/thirdwing>`__.
+
 Discuss
 -------
 
-Feel free to post any questions or comments to the `annoy-user <https://groups.google.com/group/annoy-user>`__ group.
+Feel free to post any questions or comments to the `annoy-user <https://groups.google.com/group/annoy-user>`__ group. I'm `@fulhack <https://twitter.com/fulhack>`__ on Twitter.
 
 Future stuff
 ------------
