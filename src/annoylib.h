@@ -23,7 +23,14 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
+
+#ifdef __MINGW32__
+#include "mman.h"
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
+
 #include <string.h>
 #include <math.h>
 #include <vector>
