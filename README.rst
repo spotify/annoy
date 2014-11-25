@@ -34,7 +34,7 @@ ____________
 .. code-block:: python
 
   f = 40
-  t = AnnoyIndex(f)
+  t = AnnoyIndex(f)  # Length of item vector that will be indexed
   for i in xrange(n):
       v = []
       for z in xrange(f):
