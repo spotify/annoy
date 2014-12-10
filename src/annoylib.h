@@ -251,7 +251,7 @@ public:
     _loaded = false;
     _verbose = false;
 
-    _K = (sizeof(T) * f + sizeof(int) * 2) / sizeof(S);
+    _K = (sizeof(T) * f + sizeof(S) * 2) / sizeof(S);
   }
   ~AnnoyIndex() {
     if (_loaded) {
@@ -285,7 +285,7 @@ public:
         break;
       if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
-      vector<int> indices;
+      vector<S> indices;
       for (S i = 0; i < _n_items; i++)
         indices.push_back(i);
 
@@ -352,7 +352,7 @@ public:
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     S m = -1;
-    for (int i = _n_nodes - 1; i >= 0; i--) {
+    for (S i = _n_nodes - 1; i >= 0; i--) {
       S k = _get(i)->n_descendants;
       if (m == -1 || k == m) {
         _roots.push_back(i);
@@ -435,7 +435,7 @@ protected:
         // TODO: this loop isn't needed for the angular distance, because
         // we can just split by a random vector and it's fine. For Euclidean
         // distance we need it to calculate the offset
-        int j = indices[i];
+        S j = indices[i];
         typename Distance::node* n = _get(j);
         if (n)
           children.push_back(n);
@@ -447,7 +447,7 @@ protected:
       children_indices[1].clear();
 
       for (size_t i = 0; i < indices.size(); i++) {
-        int j = indices[i];
+        S j = indices[i];
         typename Distance::node* n = _get(j);
         if (n) {
           bool side = Distance::side(m, n->v, _f, &_random);
@@ -473,7 +473,7 @@ protected:
         m->v[z] = 0.0;
 
       for (size_t i = 0; i < indices.size(); i++) {
-        int j = indices[i];
+        S j = indices[i];
         // Just randomize...
         children_indices[_random.flip()].push_back(j);
       }
@@ -490,7 +490,7 @@ protected:
     return item;
   }
 
-  void _get_nns(const T* v, S i, vector<S>* result, int limit) {
+  void _get_nns(const T* v, S i, vector<S>* result, S limit) {
     const typename Distance::node* n = _get(i);
 
     if (n->n_descendants == 0) {
