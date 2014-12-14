@@ -55,8 +55,13 @@
 // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
 #endif
 
-using namespace std;
-using namespace boost;
+using std::vector;
+using std::string;
+using std::pair;
+using std::numeric_limits;
+using std::make_pair;
+using boost::variate_generator;
+using boost::uniform_01;
 
 #if BOOST_VERSION > 1004400
 #define BOOST_RANDOM boost::random
