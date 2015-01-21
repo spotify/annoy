@@ -503,7 +503,8 @@ protected:
     } else if (n->n_descendants == 1) {
       result->push_back(i);
     } else if (n->n_descendants <= _K) {
-      result->insert(result->end(), n->children, &(n->children[n->n_descendants]));
+      const S* dst = n->children;
+      result->insert(result->end(), n->children, &dst[n->descendants]);
     } else {
       bool side = Distance::side(n, v, _f, &_random);
 
@@ -529,7 +530,8 @@ protected:
       if (nd->n_descendants == 1) {
         nns.push_back(i);
       } else if (nd->n_descendants <= _K) {
-	nns.insert(nns.end(), nd->children, &(nd->children[nd->n_descendants]));
+	const S* dst = nd->children;
+	nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
       } else {
         T margin = Distance::margin(nd, v, _f);
         q.push(make_pair(+margin, nd->children[1]));
