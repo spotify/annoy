@@ -16,7 +16,7 @@
 #include "Python.h"
 #include <boost/python.hpp>
 #include <exception>
-#include <stdint.h>:
+#include <stdint.h>
 
 using namespace std;
 using namespace boost;
