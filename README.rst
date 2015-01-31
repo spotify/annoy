@@ -63,7 +63,8 @@ We do this k times so that we get a forest of trees. k has to be tuned to your n
 More info
 ---------
 
-Dirk Eddelbuettel `provides an R version <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__ of Annoy.
+* `Dirk Eddelbuettel <http://dirk.eddelbuettel.com/>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
+* `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__ although currently limited to cosine and read-only.
 
 For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries:
 
