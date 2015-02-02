@@ -64,7 +64,7 @@ More info
 ---------
 
 * `Dirk Eddelbuettel <http://dirk.eddelbuettel.com/>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
-* `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__ although currently limited to cosine and read-only.
+* `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
 
 For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries:
 
