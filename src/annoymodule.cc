@@ -39,6 +39,13 @@ public:
 
     this->add_item(item, &w[0]);
   }
+  S add_item_to_index_py(const python::list& v) {
+    vector<T> w;
+    for (int z = 0; z < this->_f; z++)
+      w.push_back(python::extract<T>(v[z]));
+
+   return this->add_item_to_index(&w[0]);
+  }
   python::list get_nns_by_item_py(S item, size_t n) {
     vector<S> result;
     this->get_nns_by_item(item, n, &result);
@@ -75,14 +82,20 @@ public:
     if (!this->load(filename))
       throw ErrnoException();
   }
+  void load_memory_py(const string& filename) {
+    if (!this->load_memory(filename))
+      throw ErrnoException();
+  }
 };
 
 template<typename C>
 void expose_methods(python::class_<C> c) {
   c.def("add_item",          &C::add_item_py)
+    .def("add_item_to_index", &C::add_item_to_index_py)
     .def("build",             &C::build)
     .def("save",              &C::save_py)
     .def("load",              &C::load_py)
+    .def("load_memory",       &C::load_memory_py)
     .def("unload",            &C::unload)
     .def("get_distance",      &C::get_distance)
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
