@@ -668,7 +668,7 @@ protected:
       if (nd->n_descendants == 1) {
         if (r.find(i) == r.end())
         {
-            if (cset.find(nd->label) != cset.end()) {
+            if (cset.size() == 0 || cset.find(nd->label) != cset.end()) {
                nns_dist.push_back(make_pair(Distance::distance(v, _get(i)->v, _f), i));
                r.insert(make_pair(i, true));
             }
@@ -678,7 +678,7 @@ protected:
         for (size_t kk = 0; kk < nd->n_descendants; kk ++ ) {
           int w = nd->children[kk];
           if (r.find(w) == r.end()) {
-            if (cset.find(_get(w)->label) != cset.end()) {
+            if (cset.size() == 0 || cset.find(_get(w)->label) != cset.end()) {
               nns_dist.push_back(make_pair(Distance::distance(v, _get(w)->v, _f), w));
               r.insert(make_pair(w, true));
             }
