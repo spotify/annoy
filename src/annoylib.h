@@ -34,6 +34,7 @@
 #include <string.h>
 #include <math.h>
 #include <vector>
+#include <map>
 #include <queue>
 #include <limits>
 #include <boost/version.hpp>
@@ -126,6 +127,7 @@ struct Angular {
      * more memory to be able to fit the vector outside
      */
     S n_descendants;
+    S label;
     S parent;
     S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
@@ -168,6 +170,7 @@ template<typename S, typename T>
 struct Euclidean {
   struct __attribute__((__packed__)) node {
     S n_descendants;
+    S label;
     S parent;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
@@ -270,7 +273,7 @@ public:
     }
   }
   //add one item to existing built index, return the item id 
-  S add_item_to_index(const T* w) {
+  S add_item_to_index(const T* w, S label) {
     S item = _n_items;
     _n_items += 1; 
     _allocate_size(_n_nodes + 1);
@@ -305,7 +308,7 @@ public:
     _n_nodes += 1;
 
     //store it
-    add_item(item, w); 
+    add_item(item, w, label); 
     
     //put it in the trees
     for (size_t r = 0; r < _roots.size(); r ++ ) {
@@ -315,10 +318,10 @@ public:
     return item;
   }
 
-  void add_item(S item, const T* w) {
+  void add_item(S item, const T* w, S label) {
     _allocate_size(item + 1);
     typename Distance::node* n = _get(item);
-
+    n->label = label;
     n->children[0] = 0;
     n->children[1] = 0;
     n->n_descendants = 1;
@@ -445,14 +448,16 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  void get_nns_by_item(S item, size_t n, vector<S>* result) {
+  void get_nns_by_item(S item, size_t n, vector<S>* result, vector<S>& label_set, size_t tn = -1) {
     const typename Distance::node* m = _get(item);
-    _get_all_nns(m->v, n, result);
+    _get_all_nns(m->v, n, result, label_set, tn);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, vector<S>* result) {
-    _get_all_nns(w, n, result);
+
+  void get_nns_by_vector(const T* w, size_t n, vector<S>* result, vector<S> & label_set, size_t tn = -1) {
+    _get_all_nns(w, n, result, label_set, tn);
   }
+
   S get_n_items() {
     return _n_items;
   }
@@ -658,40 +663,51 @@ protected:
     }
   }
 
-  void _get_all_nns(const T* v, size_t n, vector<S>* result) {
+  void _get_all_nns(const T* v, size_t n, vector<S>* result, vector<S>& label_set, size_t tn) {
     std::priority_queue<pair<T, S> > q;
-
+    std::map<S, bool> r; // retrieved items map
+    std::map<S, bool> cset; // category set map
+    size_t c = 0;  //retrieved count
+    for(size_t i = 0; i < label_set.size(); i ++) {
+      cset.insert(make_pair(label_set[i], true));
+    }
     for (size_t i = 0; i < _roots.size(); i++) {
       q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
     }
+    if (tn == -1) {
+      tn = n * _roots.size();
+    }
 
-    vector<S> nns;
-    while (nns.size() < n * _roots.size() && !q.empty()) {
+    vector<pair<T, S> > nns_dist;
+    while (nns_dist.size() < tn && !q.empty()) {
       const pair<T, S>& top = q.top();
       S i = top.second;
       const typename Distance::node* nd = _get(top.second);
       q.pop();
       if (nd->n_descendants == 1) {
-        nns.push_back(i);
+        if (r.find(i) == r.end())
+        {
+            if (cset.find(nd->label) != cset.end()) {
+               nns_dist.push_back(make_pair(Distance::distance(v, _get(i)->v, _f), i));
+               r.insert(make_pair(i, true));
+            }
+        }
       } else if (nd->n_descendants <= _K) {
 	const S* dst = nd->children;
-	nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
+        for (size_t kk = 0; kk < nd->n_descendants; kk ++ ) {
+          int w = nd->children[kk];
+          if (r.find(w) == r.end()) {
+            if (cset.find(_get(w)->label) != cset.end()) {
+              nns_dist.push_back(make_pair(Distance::distance(v, _get(w)->v, _f), w));
+              r.insert(make_pair(w, true));
+            }
+          }
+        }
       } else {
         T margin = Distance::margin(nd, v, _f);
         q.push(make_pair(+margin, nd->children[1]));
         q.push(make_pair(-margin, nd->children[0]));
       }
-    }
-
-    sort(nns.begin(), nns.end());
-    vector<pair<T, S> > nns_dist;
-    S last = -1;
-    for (size_t i = 0; i < nns.size(); i++) {
-      S j = nns[i];
-      if (j == last)
-        continue;
-      last = j;
-      nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
     }
 
     sort(nns_dist.begin(), nns_dist.end());

@@ -32,39 +32,49 @@ template<typename S, typename T, typename Distance>
 class AnnoyIndexPython : public AnnoyIndex<S, T, Distance > {
 public:
   AnnoyIndexPython(int f): AnnoyIndex<S, T, Distance>(f) {}
-  void add_item_py(S item, const python::list& v) {
+  void add_item_py(S item, const python::list& v, size_t label) {
     vector<T> w;
     for (int z = 0; z < this->_f; z++)
       w.push_back(python::extract<T>(v[z]));
 
-    this->add_item(item, &w[0]);
+    this->add_item(item, &w[0], label);
   }
-  S add_item_to_index_py(const python::list& v) {
+  S add_item_to_index_py(const python::list& v, size_t label) {
     vector<T> w;
     for (int z = 0; z < this->_f; z++)
       w.push_back(python::extract<T>(v[z]));
 
-   return this->add_item_to_index(&w[0]);
+   return this->add_item_to_index(&w[0], label);
   }
-  python::list get_nns_by_item_py(S item, size_t n) {
+  python::list get_nns_by_item_py(S item, size_t n, python::list c, size_t tn) {
+    size_t c_size = boost::python::len(c);
+    vector<S> w(c_size);
+    for (int z = 0; z < c_size; z++)
+      w[z] = python::extract<S>(c[z]);
     vector<S> result;
-    this->get_nns_by_item(item, n, &result);
+    this->get_nns_by_item(item, n, &result, w, tn);
     python::list l;
     for (size_t i = 0; i < result.size(); i++)
       l.append(result[i]);
     return l;
   }
-  python::list get_nns_by_vector_py(python::list v, size_t n) {
+
+  python::list get_nns_by_vector_py(python::list v, size_t n, python::list c, size_t tn) {
+    size_t c_size = boost::python::len(c);
+    vector<S> cs(c_size);
+    for (int z = 0; z < c_size; z++)
+      cs[z] = python::extract<S>(c[z]);
     vector<T> w(this->_f);
     for (int z = 0; z < this->_f; z++)
       w[z] = python::extract<T>(v[z]);
     vector<S> result;
-    this->get_nns_by_vector(&w[0], n, &result);
+    this->get_nns_by_vector(&w[0], n, &result, cs, tn);
     python::list l;
     for (size_t i = 0; i < result.size(); i++)
       l.append(result[i]);
     return l;
   }
+
   python::list get_item_vector_py(S item) {
     const typename Distance::node* m = this->_get(item);
     const T* v = m->v;
@@ -74,6 +84,7 @@ public:
     }
     return l;
   }
+
   void save_py(const string& filename) {
     if (!this->save(filename))
       throw ErrnoException();
