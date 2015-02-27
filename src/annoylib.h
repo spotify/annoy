@@ -644,25 +644,6 @@ protected:
           
   }
 
-  void _get_nns(const T* v, S i, vector<S>* result, S limit) {
-    const typename Distance::node* n = _get(i);
-
-    if (n->n_descendants == 0) {
-      // unknown item, nothing to do...
-    } else if (n->n_descendants == 1) {
-      result->push_back(i);
-    } else if (n->n_descendants <= _K) {
-      const S* dst = n->children;
-      result->insert(result->end(), n->children, &dst[n->descendants]);
-    } else {
-      bool side = Distance::side(n, v, _f, &_random);
-
-      _get_nns(v, n->children[side], result, limit);
-      if (result->size() < (size_t)limit)
-        _get_nns(v, n->children[!side], result, limit);
-    }
-  }
-
   void _get_all_nns(const T* v, size_t n, vector<S>* result, vector<S>& label_set, size_t tn) {
     std::priority_queue<pair<T, S> > q;
     std::map<S, bool> r; // retrieved items map
