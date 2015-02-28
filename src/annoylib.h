@@ -448,14 +448,50 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  void get_nns_by_item(S item, size_t n, vector<S>* result, vector<S>& label_set, size_t tn = -1) {
+  void get_nns_by_item(S item, size_t n, vector<pair<T, S> >* result, vector<S>& label_set, size_t tn = -1) {
     const typename Distance::node* m = _get(item);
     _get_all_nns(m->v, n, result, label_set, tn);
   }
 
 
-  void get_nns_by_vector(const T* w, size_t n, vector<S>* result, vector<S> & label_set, size_t tn = -1) {
+  void get_nns_by_vector(const T* w, size_t n, vector<pair<T, S> >* result, vector<S> & label_set, size_t tn = -1) {
     _get_all_nns(w, n, result, label_set, tn);
+  }
+
+  void get_nns_group_by_item(S item, size_t n, vector<vector<S> >* group_results_ptr, vector<S>& label_set, size_t tn, T dist_threshold) {
+    const typename Distance::node* m = _get(item);
+    get_nns_group_by_vector(m->v, n, group_results_ptr, label_set, tn, dist_threshold);
+  }
+
+  void get_nns_group_by_vector(const T* v, size_t n, vector<vector<S> >* group_results_ptr, vector<S>& label_set, size_t tn, T dist_threshold) {
+    vector<pair<T, S> > nns_dist;
+    vector<vector<S> >& group_results = *group_results_ptr;
+    _get_all_nns( v, n, &nns_dist, label_set, tn); 
+    
+    for (size_t i = 0; i < nns_dist.size(); i ++ ) {
+     //insert into groups 
+     S item = nns_dist[i].second;
+     T* vw = _get(item)->v;
+     bool found = false;
+     for (size_t j = 0; j < group_results.size(); j ++ ) {
+        for (size_t k = 0; k < group_results[j].size(); k ++ ) {
+           T distance = Distance::distance(vw, _get(group_results[j][k])->v, _f);
+           if (distance < dist_threshold) {
+             group_results[j].push_back(item);
+             found = true; 
+             break;
+           }
+        }
+        if (found) break;
+     } 
+     //a new group
+     if (! found) {
+       vector<S> g;
+       g.push_back(item); 
+       group_results.push_back(g);
+     }
+    }
+    return ; 
   }
 
   S get_n_items() {
@@ -644,7 +680,10 @@ protected:
           
   }
 
-  void _get_all_nns(const T* v, size_t n, vector<S>* result, vector<S>& label_set, size_t tn) {
+
+
+ 
+  void _get_all_nns(const T* v, size_t n, vector<pair<T, S> >* result, vector<S>& label_set, size_t tn) {
     std::priority_queue<pair<T, S> > q;
     std::map<S, bool> r; // retrieved items map
     std::map<S, bool> cset; // category set map
@@ -693,7 +732,7 @@ protected:
 
     sort(nns_dist.begin(), nns_dist.end());
     for (size_t i = 0; i < nns_dist.size() && result->size() < n; i++) {
-      result->push_back(nns_dist[i].second);
+      result->push_back(nns_dist[i]);
     }
   }
 };

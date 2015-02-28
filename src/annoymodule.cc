@@ -51,14 +51,54 @@ public:
     vector<S> w(c_size);
     for (int z = 0; z < c_size; z++)
       w[z] = python::extract<S>(c[z]);
-    vector<S> result;
+    vector<pair<T, S> > result;
     this->get_nns_by_item(item, n, &result, w, tn);
     python::list l;
-    for (size_t i = 0; i < result.size(); i++)
-      l.append(result[i]);
+    for (size_t i = 0; i < result.size(); i++) {
+      python::list t;
+      t.append(result[i].first);
+      t.append(result[i].second);
+      l.append(t);
+    }
     return l;
   }
 
+  python::list get_nns_group_by_item_py(S item, size_t n, python::list c, size_t tn, T dist_threshold) {
+    size_t c_size = boost::python::len(c);
+    vector<S> cs(c_size);
+    vector<vector<S> > group_result;
+    this->get_nns_group_by_item(item, n, &group_result, cs, tn, dist_threshold);
+    python::list l;
+    for (size_t i = 0; i < group_result.size(); i++) {
+      python::list a;
+      for (size_t j = 0; j < group_result[i].size(); j ++ ) { 
+        a.append(group_result[i][j]); 
+      }
+      l.append(a);
+    }
+    return l;
+  }
+
+  python::list get_nns_group_by_vector_py(python::list v, size_t n, python::list c, size_t tn, T dist_threshold) {
+    size_t c_size = boost::python::len(c);
+    vector<S> cs(c_size);
+    for (int z = 0; z < c_size; z++)
+      cs[z] = python::extract<S>(c[z]);
+    vector<T> w(this->_f);
+    for (int z = 0; z < this->_f; z++)
+      w[z] = python::extract<T>(v[z]);
+    vector<vector<S> > group_result;
+    this->get_nns_group_by_vector(&w[0], n, &group_result, cs, tn, dist_threshold);
+    python::list l;
+    for (size_t i = 0; i < group_result.size(); i++) {
+      python::list a;
+      for (size_t j = 0; j < group_result[i].size(); j ++ ) { 
+        a.append(group_result[i][j]); 
+      }
+      l.append(a);
+    }
+    return l;
+  }
   python::list get_nns_by_vector_py(python::list v, size_t n, python::list c, size_t tn) {
     size_t c_size = boost::python::len(c);
     vector<S> cs(c_size);
@@ -67,11 +107,15 @@ public:
     vector<T> w(this->_f);
     for (int z = 0; z < this->_f; z++)
       w[z] = python::extract<T>(v[z]);
-    vector<S> result;
+    vector<pair<T, S> > result;
     this->get_nns_by_vector(&w[0], n, &result, cs, tn);
     python::list l;
-    for (size_t i = 0; i < result.size(); i++)
-      l.append(result[i]);
+    for (size_t i = 0; i < result.size(); i++) {
+      python::list t;
+      t.append(result[i].first);
+      t.append(result[i].second);
+      l.append(t);
+    }
     return l;
   }
 
@@ -110,10 +154,13 @@ void expose_methods(python::class_<C> c) {
     .def("unload",            &C::unload)
     .def("get_distance",      &C::get_distance)
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
+    .def("get_nns_group_by_item",     &C::get_nns_group_by_item_py)
+    .def("get_nns_group_by_vector",     &C::get_nns_group_by_vector_py)
     .def("get_nns_by_vector", &C::get_nns_by_vector_py)
     .def("get_item_vector",   &C::get_item_vector_py)
     .def("get_n_items",       &C::get_n_items)
     .def("verbose",           &C::verbose);
+
 }
 
 BOOST_PYTHON_MODULE(annoylib)
