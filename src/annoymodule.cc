@@ -39,6 +39,9 @@ public:
 
     this->add_item(item, &w[0], label);
   }
+  S set_item_size_py(size_t size) { 
+    return this->set_item_size(size); 
+  }
   S add_item_to_index_py(const python::list& v, size_t label) {
     vector<T> w;
     for (int z = 0; z < this->_f; z++)
@@ -46,6 +49,12 @@ public:
 
    return this->add_item_to_index(&w[0], label);
   }
+
+  void get_all_groups_py(T dist_threshold) {
+    this->get_all_groups(dist_threshold);
+    return;
+  }
+
   python::list get_nns_by_item_py(S item, size_t n, python::list c, size_t tn) {
     size_t c_size = boost::python::len(c);
     vector<S> w(c_size);
@@ -147,12 +156,14 @@ template<typename C>
 void expose_methods(python::class_<C> c) {
   c.def("add_item",          &C::add_item_py)
     .def("add_item_to_index", &C::add_item_to_index_py)
+    .def("set_item_size",     &C::set_item_size)
     .def("build",             &C::build)
     .def("save",              &C::save_py)
     .def("load",              &C::load_py)
     .def("load_memory",       &C::load_memory_py)
     .def("unload",            &C::unload)
     .def("get_distance",      &C::get_distance)
+    .def("get_all_groups",    &C::get_all_groups_py)
     .def("get_nns_by_item",   &C::get_nns_by_item_py)
     .def("get_nns_group_by_item",     &C::get_nns_group_by_item_py)
     .def("get_nns_group_by_vector",     &C::get_nns_group_by_vector_py)

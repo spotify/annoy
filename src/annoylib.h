@@ -250,6 +250,7 @@ protected:
   bool _loaded;
   bool _verbose;
   bool _appended;
+  std::map<S, S> _group_id_map;
 public:
   AnnoyIndex(int f) : _random() {
     _f = f;
@@ -457,6 +458,12 @@ public:
   void get_nns_by_vector(const T* w, size_t n, vector<pair<T, S> >* result, vector<S> & label_set, size_t tn = -1) {
     _get_all_nns(w, n, result, label_set, tn);
   }
+ 
+  void get_all_groups(T dist_threshold) {
+     for (size_t i = 0; i < _roots.size(); i++) {
+      _get_all_groups( _roots[i], dist_threshold);
+    }
+  }
 
   void get_nns_group_by_item(S item, size_t n, vector<vector<S> >* group_results_ptr, vector<S>& label_set, size_t tn, T dist_threshold) {
     const typename Distance::node* m = _get(item);
@@ -492,6 +499,10 @@ public:
      }
     }
     return ; 
+  }
+  S set_item_size(S n) {
+      _allocate_size(n);
+    return n;
   }
 
   S get_n_items() {
@@ -679,8 +690,29 @@ protected:
      }
           
   }
-
-
+  //ggg
+  void _get_all_groups(S root, T dist_threshold) {
+    const typename Distance::node* nd = _get(root);
+    if (nd->n_descendants == 1) { 
+         return;
+    } else if (nd->n_descendants <= _K) {
+       for (size_t x = 0; x < nd->n_descendants; x ++ ) {
+          S x_idx = nd->children[x];
+          T* v_x = _get(x_idx)->v;
+          for (size_t y = 0; y < x ; y ++ ) {
+             S y_idx = nd->children[y];
+             T* v_y = _get(y_idx)->v;
+             T distance = Distance::distance(v_x, v_y, _f);
+             if (distance < dist_threshold) { 
+               printf("%d\t%d\t%3.3f\n", x_idx, y_idx, distance);
+             }
+          }
+       }
+    } else { 
+       _get_all_groups(nd->children[1], dist_threshold);
+       _get_all_groups(nd->children[0], dist_threshold);
+    }
+  }
 
  
   void _get_all_nns(const T* v, size_t n, vector<pair<T, S> >* result, vector<S>& label_set, size_t tn) {
