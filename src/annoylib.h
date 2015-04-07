@@ -273,6 +273,18 @@ public:
       free(_nodes);
     }
   }
+  //update the label of an item
+  S update_label(S item_id, S label) {
+    if (item_id >= _n_items || item_id < 0) {
+      return -1;
+    }
+    typename Distance::node* m = _get(item_id);  
+    if (m != NULL) {
+       m->label = label;
+    }
+    return 1;
+  }
+
   //add one item to existing built index, return the item id 
   S add_item_to_index(const T* w, S label) {
     S item = _n_items;
