@@ -30,11 +30,17 @@ with open('README.rst') as fobj:
     long_description = readme_note + fobj.read()
 
 
+def get_libraries():
+    if sys.version_info < (3,):
+        return ['boost_python']
+    else:
+        return ['boost_python3']
+
 setup(name='annoy',
       version='1.0.5',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
-      ext_modules=[Extension('annoy.annoylib', ['src/annoymodule.cc'], libraries=['boost_python'])],
+      ext_modules=[Extension('annoy.annoylib', ['src/annoymodule.cc'], libraries=get_libraries())],
       long_description=long_description,
       author='Erik Bernhardsson',
       author_email='erikbern@spotify.com',
@@ -46,6 +52,8 @@ setup(name='annoy',
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3.3',
+          'Programming Language :: Python :: 3.4',
       ],
       keywords='nns, approximate nearest neighbor search',
       setup_requires=['nose>=1.0']
