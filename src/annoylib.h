@@ -251,6 +251,8 @@ protected:
   bool _verbose;
   bool _appended;
   std::map<S, S> _group_id_map;
+  size_t _scanned ;  
+  size_t _last_scanned;
 public:
   AnnoyIndex(int f) : _random() {
     _f = f;
@@ -263,6 +265,8 @@ public:
     _loaded = false;
     _verbose = false;
     _appended = false;
+    _scanned = 0;
+    _last_scanned = 0;
 
     _K = (sizeof(T) * f + sizeof(S) * 2) / sizeof(S);
   }
@@ -471,8 +475,9 @@ public:
     _get_all_nns(w, n, result, label_set, tn);
   }
  
-  void get_all_groups(T dist_threshold) {
-     for (size_t i = 0; i < _roots.size(); i++) {
+  void get_all_groups(T dist_threshold, S search_tree_count ) {
+     _scanned = 0;
+     for (size_t i = 0; i < _roots.size() && i < search_tree_count; i++) {
       _get_all_groups( _roots[i], dist_threshold);
     }
   }
@@ -706,7 +711,12 @@ protected:
   void _get_all_groups(S root, T dist_threshold) {
     const typename Distance::node* nd = _get(root);
     if (nd->n_descendants == 1) { 
-         return;
+      _scanned += 1;
+      if (_scanned > _last_scanned + 1000) {
+         fprintf(stderr, "\r%d items scanned for dedup.", _scanned);
+         _last_scanned = _scanned;
+      }
+      return;
     } else if (nd->n_descendants <= _K) {
        for (size_t x = 0; x < nd->n_descendants; x ++ ) {
           S x_idx = nd->children[x];
@@ -719,6 +729,11 @@ protected:
                printf("%d\t%d\t%3.3f\n", x_idx, y_idx, distance);
              }
           }
+       }
+       _scanned += nd->n_descendants;
+       if (_scanned > _last_scanned + 1000) {
+         fprintf(stderr, "\r%d items scanned for dedup.", _scanned);
+         _last_scanned = _scanned;
        }
     } else { 
        _get_all_groups(nd->children[1], dist_threshold);

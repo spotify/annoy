@@ -53,8 +53,8 @@ public:
     return this->update_label(item, label);
   }
 
-  void get_all_groups_py(T dist_threshold) {
-    this->get_all_groups(dist_threshold);
+  void get_all_groups_py(T dist_threshold, S search_tree_count) {
+    this->get_all_groups(dist_threshold, search_tree_count);
     return;
   }
 
