@@ -39,6 +39,9 @@ public:
 
     this->add_item(item, &w[0], label);
   }
+  S set_K_py(S K) { 
+    return this->set_K(K); 
+  }
   S set_item_size_py(size_t size) { 
     return this->set_item_size(size); 
   }
@@ -160,7 +163,8 @@ void expose_methods(python::class_<C> c) {
   c.def("add_item",          &C::add_item_py)
     .def("add_item_to_index", &C::add_item_to_index_py)
     .def("set_item_size",     &C::set_item_size)
-    .def("update_label",	&C::update_label_py)
+    .def("set_K",    	      &C::set_K_py)
+    .def("update_label",      &C::update_label_py)
     .def("build",             &C::build)
     .def("save",              &C::save_py)
     .def("load",              &C::load_py)
