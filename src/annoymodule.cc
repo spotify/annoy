@@ -49,8 +49,11 @@ public:
     vector<T> w;
     for (int z = 0; z < this->_f; z++)
       w.push_back(python::extract<T>(v[z]));
+    return this->add_item_to_index(&w[0], label);
+  }
 
-   return this->add_item_to_index(&w[0], label);
+  S update_label_py(S item, size_t label) {
+    return this->update_label(item, label);
   }
 
   void get_all_groups_py(T dist_threshold) {
@@ -161,6 +164,7 @@ void expose_methods(python::class_<C> c) {
     .def("add_item_to_index", &C::add_item_to_index_py)
     .def("set_item_size",     &C::set_item_size)
     .def("set_K",    	      &C::set_K_py)
+    .def("update_label",      &C::update_label_py)
     .def("build",             &C::build)
     .def("save",              &C::save_py)
     .def("load",              &C::load_py)
