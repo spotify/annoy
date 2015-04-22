@@ -201,6 +201,29 @@ struct Euclidean {
     // The probability of each angle is in proportion to the extent of the projection.
     // This is good because it means we try to split in the longest direction.
     // Doing this using Metropolis-Hastings sampling using 10 steps
+      for (int z = 0; z < f; z++)
+        n->v[z] = random->gaussian();
+      normalize(n->v, f);
+      // Project the nodes onto the vector and calculate max and min
+      T min = INFINITY, max = -INFINITY;
+      for (size_t i = 0; i < nodes.size(); i++) {
+        T dot = 0;
+        for (int z = 0; z < f; z++)
+          dot += nodes[i]->v[z] * n->v[z];
+        if (dot > max)
+          max = dot;
+        if (dot < min)
+          min = dot;
+      }
+      n->a = (max + min) / 2.0;// use the middle for random split
+  }
+/*
+  static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
+    // See http://en.wikipedia.org/wiki/Bertrand_paradox_(probability)
+    // We want to sample a random hyperplane out of all hyperplanes that cut the convex hull.
+    // The probability of each angle is in proportion to the extent of the projection.
+    // This is good because it means we try to split in the longest direction.
+    // Doing this using Metropolis-Hastings sampling using 10 steps
     T* v = (T*)malloc(sizeof(T) * f); // TODO: would be really nice to get rid of this allocation
     double max_proj = 0.0;
     for (int step = 0; step < 10; step++) {
@@ -226,6 +249,7 @@ struct Euclidean {
     }
     free(v);
   }
+*/
 };
 
 template<typename S, typename T, typename Distance>
@@ -273,6 +297,14 @@ public:
       free(_nodes);
     }
   }
+
+  S set_K(S K) {
+    if (K < _K) {
+      _K = K;
+    }
+    return _K;
+  }
+
   //add one item to existing built index, return the item id 
   S add_item_to_index(const T* w, S label) {
     S item = _n_items;
@@ -768,5 +800,4 @@ protected:
     }
   }
 };
-
 #endif
