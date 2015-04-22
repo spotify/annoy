@@ -31,11 +31,13 @@ Summary of features
 -------------------
 
 * Euclidean distance (squared) or cosine similarity (using the squared distance of the normalized vectors)
-* Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
-* Small memory usage
+* Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions; works pretty fine with dimension up to 4000. 
+* Small memory usage in searching because memory map is used
 * Lets you share memory between multiple processes
-* Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
+* Index creation is separate from lookup
 * Native Python support
+* Support dynamic index add. ( will support delete and update in the future)
+* Each sample contains a field label for filtering results -- i.e. search query can contain a list of target labels to search for.
 
 Code example
 ____________
@@ -48,7 +50,7 @@ ____________
       v = []
       for z in xrange(f):
           v.append(random.gauss(0, 1))
-      t.add_item(i, v)
+      t.add_item(i, v, 1)  # add items with label 1
 
   t.build(10) # 10 trees
   t.save('test.tree')
@@ -57,7 +59,7 @@ ____________
 
   u = AnnoyIndex(f)
   u.load('test.tree') # super fast, will just mmap the file
-  print(u.get_nns_by_item(0, 1000)) # will find the 1000 nearest neighbors
+  print(u.get_nns_by_item(0, 1000, [1,2], 10000)) # will find the 1000 nearest neighbors, accurate search from top 10000 candidates with label 1 or 2
 
 
 Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it assumes your items are numbered 0 … n-1. If you need other id's, you will have to keep track of a map yourself.

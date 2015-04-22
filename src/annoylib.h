@@ -34,6 +34,7 @@
 #include <string.h>
 #include <math.h>
 #include <vector>
+#include <map>
 #include <queue>
 #include <limits>
 #include <boost/version.hpp>
@@ -126,6 +127,8 @@ struct Angular {
      * more memory to be able to fit the vector outside
      */
     S n_descendants;
+    S label;
+    S parent;
     S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
@@ -167,6 +170,8 @@ template<typename S, typename T>
 struct Euclidean {
   struct __attribute__((__packed__)) node {
     S n_descendants;
+    S label;
+    S parent;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
     T v[1];
@@ -190,6 +195,29 @@ struct Euclidean {
     else
       return random->flip();
   }
+  static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
+    // See http://en.wikipedia.org/wiki/Bertrand_paradox_(probability)
+    // We want to sample a random hyperplane out of all hyperplanes that cut the convex hull.
+    // The probability of each angle is in proportion to the extent of the projection.
+    // This is good because it means we try to split in the longest direction.
+    // Doing this using Metropolis-Hastings sampling using 10 steps
+      for (int z = 0; z < f; z++)
+        n->v[z] = random->gaussian();
+      normalize(n->v, f);
+      // Project the nodes onto the vector and calculate max and min
+      T min = INFINITY, max = -INFINITY;
+      for (size_t i = 0; i < nodes.size(); i++) {
+        T dot = 0;
+        for (int z = 0; z < f; z++)
+          dot += nodes[i]->v[z] * n->v[z];
+        if (dot > max)
+          max = dot;
+        if (dot < min)
+          min = dot;
+      }
+      n->a = (max + min) / 2.0;// use the middle for random split
+  }
+/*
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
     // See http://en.wikipedia.org/wiki/Bertrand_paradox_(probability)
     // We want to sample a random hyperplane out of all hyperplanes that cut the convex hull.
@@ -221,6 +249,7 @@ struct Euclidean {
     }
     free(v);
   }
+*/
 };
 
 template<typename S, typename T, typename Distance>
@@ -244,6 +273,10 @@ protected:
   S _K;
   bool _loaded;
   bool _verbose;
+  bool _appended;
+  std::map<S, S> _group_id_map;
+  size_t _scanned ;  
+  size_t _last_scanned;
 public:
   AnnoyIndex(int f) : _random() {
     _f = f;
@@ -255,6 +288,9 @@ public:
     _nodes = NULL;
     _loaded = false;
     _verbose = false;
+    _appended = false;
+    _scanned = 0;
+    _last_scanned = 0;
 
     _K = (sizeof(T) * f + sizeof(S) * 2) / sizeof(S);
   }
@@ -266,10 +302,74 @@ public:
     }
   }
 
-  void add_item(S item, const T* w) {
+  S set_K(S K) {
+    if (K < _K) {
+      _K = K;
+    }
+    return _K;
+  }
+  //update the label of an item
+  S update_label(S item_id, S label) {
+    if (item_id >= _n_items || item_id < 0) {
+      return -1;
+    }
+    typename Distance::node* m = _get(item_id);  
+    if (m != NULL) {
+       m->label = label;
+    }
+    return 1;
+  }
+
+  //add one item to existing built index, return the item id 
+  S add_item_to_index(const T* w, S label) {
+    S item = _n_items;
+    _n_items += 1; 
+    _allocate_size(_n_nodes + 1);
+    
+    //first, move the non-leaf node stored at (item) position to the end of array; 
+    memcpy(_get(_n_nodes), _get(item), _s);
+    typename Distance::node* nd = _get(_n_nodes);
+    if (nd->parent != 0) {
+      typename Distance::node* nparent = _get(nd->parent);
+      if (nparent->children[0] == item) {
+         nparent->children[0] = _n_nodes;
+      } else if (nparent->children[1] == item) {
+         nparent->children[1] = _n_nodes;
+      }
+    }
+    if (nd->n_descendants > _K) {
+      S c0 = nd->children[0];
+      typename Distance::node* nc0 = _get(c0);
+      nc0->parent = _n_nodes;
+
+      S c1 = nd->children[1];
+      typename Distance::node* nc1 = _get(c1);
+      nc1->parent = _n_nodes;
+    }
+
+    // if it is root, move root, 
+    for (size_t r = 0; r < _roots.size(); r ++ ) {
+      if (_roots[r] == item) {
+          _roots[r] = _n_nodes;
+      }
+    }
+    _n_nodes += 1;
+
+    //store it
+    add_item(item, w, label); 
+    
+    //put it in the trees
+    for (size_t r = 0; r < _roots.size(); r ++ ) {
+      S new_root = _add_item_to_tree(item, _roots[r]);      
+      _roots[r] = new_root;
+    }
+    return item;
+  }
+
+  void add_item(S item, const T* w, S label) {
     _allocate_size(item + 1);
     typename Distance::node* n = _get(item);
-
+    n->label = label;
     n->children[0] = 0;
     n->children[1] = 0;
     n->n_descendants = 1;
@@ -298,23 +398,22 @@ public:
     }
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
-    _allocate_size(_n_nodes + (S)_roots.size());
-    for (size_t i = 0; i < _roots.size(); i++)
-      memcpy(_get(_n_nodes + (S)i), _get(_roots[i]), _s);
-    _n_nodes += _roots.size();
-
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
   }
+
 
   bool save(const string& filename) {
     FILE *f = fopen(filename.c_str(), "w");
     if (f == NULL)
       return false;
+    if (! _appended) {
+      _append_roots_at_tail();
+    }
 
     fwrite(_nodes, _s, _n_nodes, f);
 
     fclose(f);
-
+     
     free(_nodes);
     _n_items = 0;
     _n_nodes = 0;
@@ -334,41 +433,60 @@ public:
   }
 
   void unload() {
-    off_t size = _n_nodes * _s;
+    off_t size = _nodes_size * _s;
     munmap(_nodes, size);
     reinitialize();
     if (_verbose) showUpdate("unloaded\n");
   }
 
-  bool load(const string& filename) {
+  bool load_memory(const string& filename) {
     int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
+    if (fd == -1) {
+      return false;
+    }
+    off_t size = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
+    _n_nodes = (S)(size / _s);
+    _allocate_size(_n_nodes);
+    int fr = read(fd, _nodes, size);
+    if (fr == -1) {
+      printf("error in reading the file %s \n", filename.c_str());
+    }
+    printf("file contains %d nodes \n", _n_nodes);
+    _appended = true;
+    _remove_roots_at_tail();
+    if (_roots.size() == 0) 
+      return false;
+    _loaded = true;
+    _n_items = _get(_roots[0])->n_descendants;
+    
+    if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), _n_items);
+    return true;
+  }
+
+
+  bool load(const string& filename) {
+    int fd = open(filename.c_str(), O_RDWR, (mode_t)0400);
     if (fd == -1)
       return false;
     off_t size = lseek(fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (typename Distance::node*)mmap(
-        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
+        0, size, PROT_READ|PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, 0);
 #else
     _nodes = (typename Distance::node*)mmap(
-        0, size, PROT_READ, MAP_SHARED, fd, 0);
+        0, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 #endif
 
     _n_nodes = (S)(size / _s);
-
-    // Find the roots by scanning the end of the file and taking the nodes with most descendants
-    S m = -1;
-    for (S i = _n_nodes - 1; i >= 0; i--) {
-      S k = _get(i)->n_descendants;
-      if (m == -1 || k == m) {
-        _roots.push_back(i);
-        m = k;
-      } else {
-        break;
-      }
-    }
+    _appended = true;
+    _remove_roots_at_tail();
+    if (_roots.size() == 0) 
+      return false;
     _loaded = true;
-    _n_items = m;
-    if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
+    _n_items = _get(_roots[0])->n_descendants;
+    
+    if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), _n_items);
     return true;
   }
 
@@ -378,14 +496,63 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  void get_nns_by_item(S item, size_t n, vector<S>* result) {
+  void get_nns_by_item(S item, size_t n, vector<pair<T, S> >* result, vector<S>& label_set, size_t tn = -1) {
     const typename Distance::node* m = _get(item);
-    _get_all_nns(m->v, n, result);
+    _get_all_nns(m->v, n, result, label_set, tn);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, vector<S>* result) {
-    _get_all_nns(w, n, result);
+
+  void get_nns_by_vector(const T* w, size_t n, vector<pair<T, S> >* result, vector<S> & label_set, size_t tn = -1) {
+    _get_all_nns(w, n, result, label_set, tn);
   }
+ 
+  void get_all_groups(T dist_threshold, S search_tree_count ) {
+     _scanned = 0;
+     for (size_t i = 0; i < _roots.size() && i < search_tree_count; i++) {
+      _get_all_groups( _roots[i], dist_threshold);
+    }
+  }
+
+  void get_nns_group_by_item(S item, size_t n, vector<vector<S> >* group_results_ptr, vector<S>& label_set, size_t tn, T dist_threshold) {
+    const typename Distance::node* m = _get(item);
+    get_nns_group_by_vector(m->v, n, group_results_ptr, label_set, tn, dist_threshold);
+  }
+
+  void get_nns_group_by_vector(const T* v, size_t n, vector<vector<S> >* group_results_ptr, vector<S>& label_set, size_t tn, T dist_threshold) {
+    vector<pair<T, S> > nns_dist;
+    vector<vector<S> >& group_results = *group_results_ptr;
+    _get_all_nns( v, n, &nns_dist, label_set, tn); 
+    
+    for (size_t i = 0; i < nns_dist.size(); i ++ ) {
+     //insert into groups 
+     S item = nns_dist[i].second;
+     T* vw = _get(item)->v;
+     bool found = false;
+     for (size_t j = 0; j < group_results.size(); j ++ ) {
+        for (size_t k = 0; k < group_results[j].size(); k ++ ) {
+           T distance = Distance::distance(vw, _get(group_results[j][k])->v, _f);
+           if (distance < dist_threshold) {
+             group_results[j].push_back(item);
+             found = true; 
+             break;
+           }
+        }
+        if (found) break;
+     } 
+     //a new group
+     if (! found) {
+       vector<S> g;
+       g.push_back(item); 
+       group_results.push_back(g);
+     }
+    }
+    return ; 
+  }
+  S set_item_size(S n) {
+      _allocate_size(n);
+    return n;
+  }
+
   S get_n_items() {
     return _n_items;
   }
@@ -394,13 +561,51 @@ public:
   }
 
 protected:
+  void _append_roots_at_tail() {
+    if (_appended) {
+       return ;
+    }
+    _allocate_size(_n_nodes + (S)_roots.size());
+    for (size_t i = 0; i < _roots.size(); i++)
+      memcpy(_get(_n_nodes + (S)i), _get(_roots[i]), _s);
+
+    // a root's n_descendants would point to the actual node
+    S total_size = _n_nodes + _roots.size();
+    for (size_t i = 0; i < _roots.size(); i++) {
+      typename Distance::node* nd = _get(_n_nodes + (S) i );
+      nd->n_descendants = _roots[i] + total_size; 
+    }
+    _n_nodes += _roots.size();
+    _appended = true;
+  }
+
+  void _remove_roots_at_tail() {
+    if (!_appended) {
+       return ;
+    }
+    // Find the roots by scanning the end of the file and taking the nodes with most descendants
+    for (S i = _n_nodes - 1; i >= 0; i--) {
+      S k1 = _get(i)->n_descendants; // k1 would be the original root + total_size, rather than the duplicated root at the end of the array 
+      if (k1 >=  _n_nodes) {
+         _roots.push_back(k1 - _n_nodes);
+      } else {
+        break;
+      }
+    }
+    _nodes_size = _n_nodes;
+    _n_nodes -= (S)_roots.size(); //reclaim the space used by duplicated roots
+    _appended = false;
+  }
+  
   void _allocate_size(S n) {
     if (n > _nodes_size) {
       S new_nodes_size = (_nodes_size + 1) * 2;
-      if (n > new_nodes_size)
+      if (n > new_nodes_size) 
         new_nodes_size = n;
+      
       _nodes = realloc(_nodes, _s * new_nodes_size);
       memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
+      
       _nodes_size = new_nodes_size;
     }
   }
@@ -409,12 +614,13 @@ protected:
     return (typename Distance::node*)((char *)_nodes + (_s * i)/sizeof(char));
   }
 
-  S _make_tree(const vector<S >& indices) {
+  S _make_tree(const vector<S >& indices, S item = -1) {
     if (indices.size() == 1)
       return indices[0];
-
-    _allocate_size(_n_nodes + 1);
-    S item = _n_nodes++;
+    if (item == -1) {
+      _allocate_size(_n_nodes + 1);
+      item = _n_nodes++;
+    }
     typename Distance::node* m = _get(item);
     m->n_descendants = (S)indices.size();
 
@@ -486,6 +692,8 @@ protected:
 
     S children_0 = _make_tree(children_indices[0]);
     S children_1 = _make_tree(children_indices[1]);
+    _get(children_0)->parent = item;
+    _get(children_1)->parent = item;
 
     // We need to fetch m again because it might have been reallocated
     m = _get(item);
@@ -495,43 +703,116 @@ protected:
     return item;
   }
 
-  void _get_nns(const T* v, S i, vector<S>* result, S limit) {
-    const typename Distance::node* n = _get(i);
-
-    if (n->n_descendants == 0) {
-      // unknown item, nothing to do...
-    } else if (n->n_descendants == 1) {
-      result->push_back(i);
-    } else if (n->n_descendants <= _K) {
-      const S* dst = n->children;
-      result->insert(result->end(), n->children, &dst[n->descendants]);
-    } else {
-      bool side = Distance::side(n, v, _f, &_random);
-
-      _get_nns(v, n->children[side], result, limit);
-      if (result->size() < (size_t)limit)
-        _get_nns(v, n->children[!side], result, limit);
+  S _add_item_to_tree(S item, S root) {
+     typename Distance::node* nr = _get(root);
+     typename Distance::node* ni = _get(item);
+     if (nr->n_descendants == 1) {
+       vector<S> children;
+       children.push_back(item);
+       children.push_back(root);
+       S new_node = _make_tree(children);   
+       return new_node;
+     } else if (nr->n_descendants < _K - 1) {
+       nr->children[nr->n_descendants] = item;
+       nr->n_descendants += 1; 
+       return root;
+     } else if (nr->n_descendants == _K) {
+       vector<S> children;
+       for (size_t kk = 0; kk < nr->n_descendants; kk ++ ) {
+          children.push_back(nr->children[kk]);
+       }
+       children.push_back(item);
+       nr->n_descendants += 1; 
+       _make_tree(children, root);
+       return root;
+     } else  { //non-leaf node
+         nr = _get(root); 
+         ni = _get(item);
+         
+         bool side = Distance::side(nr, ni->v, _f, &_random);
+         S child = nr->children[side];
+         S new_child = _add_item_to_tree(item, child);
+         nr->children[side] = new_child;
+         nr->n_descendants += 1;
+         return root;
+     }
+          
+  }
+  //ggg
+  void _get_all_groups(S root, T dist_threshold) {
+    const typename Distance::node* nd = _get(root);
+    if (nd->n_descendants == 1) { 
+      _scanned += 1;
+      if (_scanned > _last_scanned + 1000) {
+         fprintf(stderr, "\r%d items scanned for dedup.", _scanned);
+         _last_scanned = _scanned;
+      }
+      return;
+    } else if (nd->n_descendants <= _K) {
+       for (size_t x = 0; x < nd->n_descendants; x ++ ) {
+          S x_idx = nd->children[x];
+          T* v_x = _get(x_idx)->v;
+          for (size_t y = 0; y < x ; y ++ ) {
+             S y_idx = nd->children[y];
+             T* v_y = _get(y_idx)->v;
+             T distance = Distance::distance(v_x, v_y, _f);
+             if (distance < dist_threshold) { 
+               printf("%d\t%d\t%3.3f\n", x_idx, y_idx, distance);
+             }
+          }
+       }
+       _scanned += nd->n_descendants;
+       if (_scanned > _last_scanned + 1000) {
+         fprintf(stderr, "\r%d items scanned for dedup.", _scanned);
+         _last_scanned = _scanned;
+       }
+    } else { 
+       _get_all_groups(nd->children[1], dist_threshold);
+       _get_all_groups(nd->children[0], dist_threshold);
     }
   }
 
-  void _get_all_nns(const T* v, size_t n, vector<S>* result) {
+ 
+  void _get_all_nns(const T* v, size_t n, vector<pair<T, S> >* result, vector<S>& label_set, size_t tn) {
     std::priority_queue<pair<T, S> > q;
-
+    std::map<S, bool> r; // retrieved items map
+    std::map<S, bool> cset; // category set map
+    size_t c = 0;  //retrieved count
+    for(size_t i = 0; i < label_set.size(); i ++) {
+      cset.insert(make_pair(label_set[i], true));
+    }
     for (size_t i = 0; i < _roots.size(); i++) {
       q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
     }
+    if (tn == -1) {
+      tn = n * _roots.size();
+    }
 
-    vector<S> nns;
-    while (nns.size() < n * _roots.size() && !q.empty()) {
+    vector<pair<T, S> > nns_dist;
+    while (nns_dist.size() < tn && !q.empty()) {
       const pair<T, S>& top = q.top();
       S i = top.second;
       const typename Distance::node* nd = _get(top.second);
       q.pop();
       if (nd->n_descendants == 1) {
-        nns.push_back(i);
+        if (r.find(i) == r.end())
+        {
+            if (cset.size() == 0 || cset.find(nd->label) != cset.end()) {
+               nns_dist.push_back(make_pair(Distance::distance(v, _get(i)->v, _f), i));
+               r.insert(make_pair(i, true));
+            }
+        }
       } else if (nd->n_descendants <= _K) {
 	const S* dst = nd->children;
-	nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
+        for (size_t kk = 0; kk < nd->n_descendants; kk ++ ) {
+          int w = nd->children[kk];
+          if (r.find(w) == r.end()) {
+            if (cset.size() == 0 || cset.find(_get(w)->label) != cset.end()) {
+              nns_dist.push_back(make_pair(Distance::distance(v, _get(w)->v, _f), w));
+              r.insert(make_pair(w, true));
+            }
+          }
+        }
       } else {
         T margin = Distance::margin(nd, v, _f);
         q.push(make_pair(+margin, nd->children[1]));
@@ -539,22 +820,10 @@ protected:
       }
     }
 
-    sort(nns.begin(), nns.end());
-    vector<pair<T, S> > nns_dist;
-    S last = -1;
-    for (size_t i = 0; i < nns.size(); i++) {
-      S j = nns[i];
-      if (j == last)
-        continue;
-      last = j;
-      nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
-    }
-
     sort(nns_dist.begin(), nns_dist.end());
     for (size_t i = 0; i < nns_dist.size() && result->size() < n; i++) {
-      result->push_back(nns_dist[i].second);
+      result->push_back(nns_dist[i]);
     }
   }
 };
-
 #endif

@@ -9,13 +9,13 @@ except NameError:
     xrange = range
 
 
-def precision(f=40, n=1000000):
+def precision(f=40, n=1000):
     t = AnnoyIndex(f)
     for i in xrange(n):
         v = []
         for z in xrange(f):
             v.append(random.gauss(0, 1))
-        t.add_item(i, v)
+        t.add_item(i, v, 1)
 
     t.build(2 * f)
     t.save('test.tree')
@@ -30,10 +30,10 @@ def precision(f=40, n=1000000):
         j = random.randrange(0, n)
         print('finding nbs for', j)
         
-        closest = set(t.get_nns_by_item(j, n)[:k])
+        closest = set(t.get_nns_by_item(j, n, [1], j* 100)[:k])
         for limit in limits:
             t0 = time.time()
-            toplist = t.get_nns_by_item(j, limit)
+            toplist = t.get_nns_by_item(j, limit, [1], j* 100)
             T = time.time() - t0
             
             found = len(closest.intersection(toplist))
