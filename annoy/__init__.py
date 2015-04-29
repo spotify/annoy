@@ -15,8 +15,8 @@
 from .annoylib import *
 
 def AnnoyIndex(f, metric='angular'):
-    if metric == 'angular':
-        return AnnoyIndexAngular(f)
-    elif metric == 'euclidean':
-        return AnnoyIndexEuclidean(f)
+    """
+        :param metric: 'angular' or 'euclidean'
+    """
+    return Annoy(f, metric)
 

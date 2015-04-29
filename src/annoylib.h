@@ -34,13 +34,10 @@
 #include <string.h>
 #include <math.h>
 #include <vector>
+#include <algorithm>
 #include <queue>
 #include <limits>
-#include <boost/version.hpp>
-#include <boost/random.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/uniform_01.hpp>
-#include <boost/random/bernoulli_distribution.hpp>
+#include <random>
 
 // This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
@@ -60,40 +57,27 @@ using std::string;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
-using boost::variate_generator;
-using boost::uniform_01;
-
-#if BOOST_VERSION > 1004400
-#define BOOST_RANDOM boost::random
-#else
-#define BOOST_RANDOM boost
-#endif
 
 template<typename T>
 struct Randomness {
   // Just a dummy class to avoid code repetition.
   // Owned by the AnnoyIndex, passed around to the distance metrics
 
-  BOOST_RANDOM::mt19937 _rng;
-  BOOST_RANDOM::normal_distribution<T> _nd;
-  variate_generator<BOOST_RANDOM::mt19937&, 
-                    BOOST_RANDOM::normal_distribution<T> > _var_nor;
-  uniform_01<T> _ud;
-  variate_generator<BOOST_RANDOM::mt19937&, 
-                    uniform_01<T> > _var_uni;
-  BOOST_RANDOM::bernoulli_distribution<T> _bd;
-  variate_generator<BOOST_RANDOM::mt19937&, 
-                    BOOST_RANDOM::bernoulli_distribution<T> > _var_ber;
+  std::mt19937 generator;
+  std::normal_distribution<T> _var_nor;
+  std::bernoulli_distribution _var_ber;
+  std::uniform_real_distribution<T> _var_uni;
+  Randomness() : _var_nor(0,1), _var_ber(0.5), _var_uni() {};
 
-  Randomness() : _rng(), _nd(), _var_nor(_rng, _nd), _ud(), _var_uni(_rng, _ud), _bd(), _var_ber(_rng, _bd) {}
   inline T gaussian() {
-    return _var_nor();
+    return _var_nor(generator);
   }
+
   inline int flip() {
-    return _var_ber();
+    return _var_ber(generator); 
   }
   inline T uniform(T min, T max) {
-    return _var_uni() * (max - min) + min;
+    return _var_uni(generator) * (max - min) + min;
   }
 };
 
@@ -306,8 +290,8 @@ public:
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
   }
 
-  bool save(const string& filename) {
-    FILE *f = fopen(filename.c_str(), "w");
+  bool save(const char* filename) {
+    FILE *f = fopen(filename, "w");
     if (f == NULL)
       return false;
 
@@ -340,8 +324,8 @@ public:
     if (_verbose) showUpdate("unloaded\n");
   }
 
-  bool load(const string& filename) {
-    int fd = open(filename.c_str(), O_RDONLY, (mode_t)0400);
+  bool load(const char* filename) {
+    int fd = open(filename, O_RDONLY, (mode_t)0400);
     if (fd == -1)
       return false;
     off_t size = lseek(fd, 0, SEEK_END);
@@ -530,8 +514,8 @@ protected:
       if (nd->n_descendants == 1) {
         nns.push_back(i);
       } else if (nd->n_descendants <= _K) {
-	const S* dst = nd->children;
-	nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
+        const S* dst = nd->children;
+        nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
       } else {
         T margin = Distance::margin(nd, v, _f);
         q.push(make_pair(+margin, nd->children[1]));
@@ -539,7 +523,7 @@ protected:
       }
     }
 
-    sort(nns.begin(), nns.end());
+    std::sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
     S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
@@ -558,3 +542,4 @@ protected:
 };
 
 #endif
+// vim: tabstop=2 shiftwidth=2

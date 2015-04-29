@@ -1,6 +1,8 @@
 *.egg-info/
+*.egg/
 *.so
 build/
 dist/
 MANIFEST
 *.py[cod]
+*.idea
