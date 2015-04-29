@@ -77,7 +77,7 @@ struct Randomness {
     return _var_ber(generator); 
   }
   inline T uniform(T min, T max) {
-    return _var_uni(generator) + min + max;
+    return _var_uni(generator) * (max - min) + min;
   }
 };
 
