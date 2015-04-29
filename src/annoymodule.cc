@@ -41,9 +41,9 @@ public:
 
   PyObject* get_nns_by_vector_py(PyObject* v, size_t n) {
     vector<T> w(this->_f);
-    for (int z = 0; z < PyList_Size(v); z++) {
+    for (int z = 0; z < PyList_Size(v) && z < this->_f; z++) {
         PyObject *pf = PyList_GetItem(v,z);
-        w.push_back(PyFloat_AsDouble(pf));
+        w[z] = PyFloat_AsDouble(pf);
     }
     vector<S> result;
     this->get_nns_by_vector(&w[0], n, &result);
