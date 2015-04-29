@@ -34,7 +34,13 @@ setup(name='annoy',
       version='1.0.5',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
-      ext_modules=[Extension('annoy.annoylib', ['src/annoymodule.cc'], libraries=['boost_python'])],
+      ext_modules=[
+        Extension(
+            'annoy.annoylib', ['src/annoymodule.cc'],
+            depends=['src/annoylib.h'],
+            extra_compile_args=['-std=c++11'],
+        )
+      ],
       long_description=long_description,
       author='Erik Bernhardsson',
       author_email='erikbern@spotify.com',
