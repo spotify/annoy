@@ -176,7 +176,7 @@ py_an_load(py_annoy *self, PyObject *args) {
     break;
   }
   if (!res) {
-    PyErr_SetString(PyExc_IOError,"load error");
+    PyErr_SetFromErrno(PyExc_IOError);
     return NULL;
   }
   return PyInt_FromLong(0);
@@ -203,7 +203,7 @@ py_an_save(py_annoy *self, PyObject *args) {
     break;
   }
   if (!res) {
-    PyErr_SetString(PyExc_IOError,"load error");
+    PyErr_SetFromErrno(PyExc_IOError);
     return NULL;
   }
   return PyInt_FromLong(0);
