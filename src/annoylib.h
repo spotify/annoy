@@ -37,7 +37,6 @@
 #include <algorithm>
 #include <queue>
 #include <limits>
-#include <random>
 
 // This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
@@ -62,22 +61,36 @@ template<typename T>
 struct Randomness {
   // Just a dummy class to avoid code repetition.
   // Owned by the AnnoyIndex, passed around to the distance metrics
-
-  std::mt19937 generator;
-  std::normal_distribution<T> _var_nor;
-  std::bernoulli_distribution _var_ber;
-  std::uniform_real_distribution<T> _var_uni;
-  Randomness() : _var_nor(0,1), _var_ber(0.5), _var_uni() {};
+  Randomness() : _has_X2(true) {};
+  T _X1, _X2;
+  bool _has_X2;
 
   inline T gaussian() {
-    return _var_nor(generator);
+    // Taken from http://phoxis.org/2013/05/04/generating-random-numbers-from-normal-distribution-in-c/
+    _has_X2 = !_has_X2;
+    if (_has_X2)
+      return _X2;
+
+    T W, U1, U2;
+    do {
+      U1 = -1 + ((T)rand() / RAND_MAX) * 2;
+      U2 = -1 + ((T)rand() / RAND_MAX) * 2;
+      W = U1 * U1 + U2 * U2;
+    }
+    while (W >= 1 || W == 0);
+
+    T mult = sqrt((-2 * log(W)) / W);
+    _X1 = U1 * mult;
+    _X2 = U2 * mult;
+
+    return _X1;
   }
 
   inline int flip() {
-    return _var_ber(generator); 
+    return rand() % 2;
   }
   inline T uniform(T min, T max) {
-    return _var_uni(generator) * (max - min) + min;
+    return ((T)rand() / RAND_MAX) * (max - min) + min;
   }
 };
 
