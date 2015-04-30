@@ -42,7 +42,7 @@ setup(name='annoy',
       ],
       long_description=long_description,
       author='Erik Bernhardsson',
-      author_email='erikbern@spotify.com',
+      author_email='mail@erikbern.com',
       url='https://github.com/spotify/annoy',
       license='Apache License 2.0',
       classifiers=[
