@@ -153,29 +153,32 @@ class EuclideanIndexTest(unittest.TestCase):
             self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
-    def precision(self, n, n_trees=10, n_points=10000):
-        # create random points at distance x
-        f = 10
-        i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(n_points):
-            p = [random.gauss(0, 1) for z in xrange(f)]
-            norm = sum([pi ** 2 for pi in p]) ** 0.5
-            x = [pi / norm * j for pi in p]
-            i.add_item(j, x)
+    def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
+        found = 0
+        for r in xrange(n_rounds):
+            # create random points at distance x
+            f = 10
+            i = AnnoyIndex(f, 'euclidean')
+            for j in xrange(n_points):
+                p = [random.gauss(0, 1) for z in xrange(f)]
+                norm = sum([pi ** 2 for pi in p]) ** 0.5
+                x = [pi / norm * j for pi in p]
+                i.add_item(j, x)
 
-        i.build(n_trees)
+            i.build(n_trees)
 
-        nns = i.get_nns_by_vector([0] * f, n)
-        self.assertEqual(nns, sorted(nns))  # should be in order
-        # The number of gaps should be equal to the last item minus n-1
-        found = len([x for x in nns if x < n])
-        return 1.0 * found / n
+            nns = i.get_nns_by_vector([0] * f, n)
+            self.assertEqual(nns, sorted(nns))  # should be in order
+            # The number of gaps should be equal to the last item minus n-1
+            found += len([x for x in nns if x < n])
+
+        return 1.0 * found / (n * n_rounds)
 
     def test_precision_1(self):
-        self.assertEqual(self.precision(1), 1.0)
+        self.assertTrue(self.precision(1) >= 0.99)
 
     def test_precision_10(self):
-        self.assertEqual(self.precision(10), 1.0)
+        self.assertTrue(self.precision(10) >= 0.99)
 
     def test_precision_100(self):
         self.assertTrue(self.precision(100) >= 0.99)
