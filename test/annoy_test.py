@@ -103,6 +103,39 @@ class AngularIndexTest(unittest.TestCase):
             self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
+    def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
+        found = 0
+        for r in xrange(n_rounds):
+            # create random points at distance x from (1000, 0, 0, ...)
+            f = 10
+            i = AnnoyIndex(f, 'euclidean')
+            for j in xrange(n_points):
+                p = [random.gauss(0, 1) for z in xrange(f - 1)]
+                norm = sum([pi ** 2 for pi in p]) ** 0.5
+                x = [1000] + [pi / norm * j for pi in p]
+                i.add_item(j, x)
+
+            i.build(n_trees)
+
+            nns = i.get_nns_by_vector([1000] + [0] * (f-1), n)
+            self.assertEqual(nns, sorted(nns))  # should be in order
+            # The number of gaps should be equal to the last item minus n-1
+            found += len([x for x in nns if x < n])
+
+        return 1.0 * found / (n * n_rounds)
+
+    def test_precision_1(self):
+        self.assertTrue(self.precision(1) >= 0.99)
+
+    def test_precision_10(self):
+        self.assertTrue(self.precision(10) >= 0.99)
+
+    def test_precision_100(self):
+        self.assertTrue(self.precision(100) >= 0.99)
+
+    def test_precision_1000(self):
+        self.assertTrue(self.precision(1000) >= 0.99)
+
 
 class EuclideanIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):
