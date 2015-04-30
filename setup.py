@@ -37,8 +37,7 @@ setup(name='annoy',
       ext_modules=[
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
-            depends=['src/annoylib.h'],
-            extra_compile_args=['-std=c++11'],
+            depends=['src/annoylib.h']
         )
       ],
       long_description=long_description,
