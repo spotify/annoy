@@ -6,7 +6,7 @@ python:
 
 before_install:
  - sudo apt-get update -qq
- - sudo apt-get install -qq libboost-random-dev libboost-python-dev
+ - sudo apt-get install -qq
 
 install:
   - pip install .
