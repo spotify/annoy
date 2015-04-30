@@ -31,7 +31,7 @@ with open('README.rst') as fobj:
 
 
 setup(name='annoy',
-      version='1.0.5',
+      version='1.1.0',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
