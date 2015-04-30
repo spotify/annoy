@@ -30,23 +30,26 @@ class AngularIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):
         f = 3
         i = AnnoyIndex(f)
-        i.add_item(0, [1,0,0])
-        i.add_item(1, [0,1,0])
-        i.add_item(2, [0,0,1])
+        i.add_item(0, [0, 0, 1])
+        i.add_item(1, [0, 1, 0])
+        i.add_item(2, [1, 0, 0])
         i.build(10)
 
-        self.assertEqual(i.get_nns_by_vector([3,2,1], 3), [0,1,2])
+        self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3), [2, 1, 0])
+        self.assertEqual(i.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
 
     def test_get_nns_by_item(self):
         f = 3
         i = AnnoyIndex(f)
-        i.add_item(0, [2,1,0])
-        i.add_item(1, [1,2,0])
-        i.add_item(2, [0,0,1])
+        i.add_item(0, [2, 1, 0])
+        i.add_item(1, [1, 2, 0])
+        i.add_item(2, [0, 0, 1])
         i.build(10)
 
-        self.assertEqual(i.get_nns_by_item(0, 3), [0,1,2])
-        self.assertEqual(i.get_nns_by_item(1, 3), [1,0,2])
+        self.assertEqual(i.get_nns_by_item(0, 3), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
+        self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
     def test_dist(self):
         f = 2
@@ -105,11 +108,25 @@ class EuclideanIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):
         f = 2
         i = AnnoyIndex(f, 'euclidean')
-        i.add_item(0, [2,2])
-        i.add_item(1, [3,2])
+        i.add_item(0, [2, 2])
+        i.add_item(1, [3, 2])
+        i.add_item(2, [3, 3])
         i.build(10)
 
-        self.assertEqual(i.get_nns_by_vector([3,3], 2), [1, 0])
+        self.assertEqual(i.get_nns_by_vector([4, 4], 3), [2, 1, 0])
+        self.assertEqual(i.get_nns_by_vector([1, 1], 3), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_vector([4, 2], 3), [1, 2, 0])
+
+    def test_get_nns_by_item(self):
+        f = 2
+        i = AnnoyIndex(f, 'euclidean')
+        i.add_item(0, [2, 2])
+        i.add_item(1, [3, 2])
+        i.add_item(2, [3, 3])
+        i.build(10)
+
+        self.assertEqual(i.get_nns_by_item(0, 3), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_item(2, 3), [2, 1, 0])
 
     def test_dist(self):
         f = 2
