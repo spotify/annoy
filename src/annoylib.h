@@ -223,7 +223,7 @@ struct Euclidean {
 template<typename S, typename T>
 class AnnoyIndexInterface {
  public:
-  virtual ~AnnoyIndexInterface() = 0;
+  virtual ~AnnoyIndexInterface() {};
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
   virtual bool save(const char* filename) = 0;
