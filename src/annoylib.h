@@ -220,8 +220,26 @@ struct Euclidean {
   }
 };
 
+template<typename S, typename T>
+class AnnoyIndexInterface {
+ public:
+  virtual ~AnnoyIndexInterface() {};
+  virtual void add_item(S item, const T* w) = 0;
+  virtual void build(int q) = 0;
+  virtual bool save(const char* filename) = 0;
+  virtual void reinitialize() = 0;
+  virtual void unload() = 0;
+  virtual bool load(const char* filename) = 0;
+  virtual T get_distance(S i, S j) = 0;
+  virtual void get_nns_by_item(S item, size_t n, vector<S>* result) = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, vector<S>* result) = 0;
+  virtual S get_n_items() = 0;
+  virtual void verbose(bool v) = 0;
+  virtual void get_item(S item, vector<T>* v) = 0;
+};
+
 template<typename S, typename T, typename Distance>
-class AnnoyIndex {
+  class AnnoyIndex : public AnnoyIndexInterface<S, T> {
   /*
    * We use random projection to build a forest of binary trees of all items.
    * Basically just split the hyperspace into two sides by a hyperplane,
@@ -369,7 +387,7 @@ public:
     return true;
   }
 
-  inline T get_distance(S i, S j) {
+  T get_distance(S i, S j) {
     const T* x = _get(i)->v;
     const T* y = _get(j)->v;
     return Distance::distance(x, y, _f);
@@ -388,6 +406,12 @@ public:
   }
   void verbose(bool v) {
     _verbose = v;
+  }
+
+  void get_item(S item, vector<T>* v) {
+    typename Distance::node* m = _get(item);
+    for (int z = 0; z < _f; z++)
+      v->push_back(m->v[z]);
   }
 
 protected:

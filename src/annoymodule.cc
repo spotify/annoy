@@ -18,79 +18,13 @@
 #include <exception>
 #include <stdint.h>
 
-
-template<typename S, typename T, typename Distance>
-class AnnoyIndexPython : public AnnoyIndex<S, T, Distance > {
-public:
-
-  AnnoyIndexPython(int f): AnnoyIndex<S, T, Distance>(f) {}
-
-  void add_item_py(S item, const vector<T> w) {
-    this->add_item(item, &w[0]);
-  }
-
-  PyObject* get_nns_by_item_py(S item, size_t n) {
-    PyObject* l = PyList_New(0);
-    vector<S> result;
-    this->get_nns_by_item(item, n, &result);
-    for (size_t i = 0; i < result.size(); i++) {
-      PyList_Append(l, PyInt_FromLong(result[i]));
-    }
-    return l;
-  }
-
-  PyObject* get_nns_by_vector_py(PyObject* v, size_t n) {
-    vector<T> w(this->_f);
-    for (int z = 0; z < PyList_Size(v) && z < this->_f; z++) {
-        PyObject *pf = PyList_GetItem(v,z);
-        w[z] = PyFloat_AsDouble(pf);
-    }
-    vector<S> result;
-    this->get_nns_by_vector(&w[0], n, &result);
-    PyObject* l = PyList_New(0);
-    for (size_t i = 0; i < result.size(); i++) {
-      PyList_Append(l, PyInt_FromLong(result[i]));
-    }
-    return l;
-  }
-
-  PyObject* get_item_vector_py(S item) {
-    const typename Distance::node* m = this->_get(item);
-    const T* v = m->v;
-    PyObject* l = PyList_New(0);
-    for (int z = 0; z < this->_f; z++) {
-      PyList_Append(l, PyInt_FromLong(v[z]));
-    }
-    return l;
-  }
-
-  bool save_py(const char* filename) {
-    return this->save(filename);
-  }
-
-  bool load_py(const char* filename) {
-    return this->load(filename);
-  }
-
-};
-
-
-class AI : public AnnoyIndexPython <int32_t, float, Angular<int32_t, float> > {
-  public:
-  AI(int f) : AnnoyIndexPython <int32_t, float, Angular<int32_t, float> >(f){};
-};
-class EI : public AnnoyIndexPython <int32_t, float, Euclidean<int32_t, float> > {
-  public:
-  EI(int f) : AnnoyIndexPython <int32_t, float, Euclidean<int32_t, float> >(f){};
-};
-
+template class AnnoyIndexInterface<int32_t, float>;
 
 // annoy python object
 typedef struct {
   PyObject_HEAD
   int f;
-  char ch_metric;
-  void* ptr;
+  AnnoyIndexInterface<int32_t, float>* ptr;
 } py_annoy;
 
 
@@ -101,7 +35,6 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   self = (py_annoy *)type->tp_alloc(type, 0);
   if (self != NULL) {
     self->f = 0;
-    self->ch_metric = 0;
     self->ptr = NULL;
   }
 
@@ -115,16 +48,12 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
 
   if (!PyArg_ParseTuple(args, "is", &self->f, &metric))
     return -1;
-  self->ch_metric = metric[0];
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
+  switch(metric[0]) {
   case 'a':
-    ai = new AI(self->f);
-    self->ptr = static_cast<AI*>(static_cast<void*>(ai));
+    self->ptr = new AnnoyIndex<int32_t, float, Angular<int32_t, float> >(self->f);
     break;
   case 'e':
-    ei = new EI(self->f);
-    self->ptr = static_cast<EI*>(static_cast<void*>(ei));
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean<int32_t, float> >(self->f);
     break;
   }
   return 0;
@@ -134,14 +63,7 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
 static void 
 py_an_dealloc(py_annoy* self) {
   if (self->ptr) {
-    switch(self->ch_metric) {
-    case 'a':
-      delete (AI*)self->ptr;
-      break;
-    case 'e':
-      delete (EI*)self->ptr;
-      break;
-    }
+    delete self->ptr;
   }
   self->ob_type->tp_free((PyObject*)self);
 }
@@ -150,8 +72,6 @@ py_an_dealloc(py_annoy* self) {
 static PyMemberDef py_annoy_members[] = {
   {(char*)"_f", T_INT, offsetof(py_annoy, f), 0,
    (char*)""},
-  {(char*)"ch_metric", T_CHAR, offsetof(py_annoy, ch_metric), 0,
-   (char*)"a|e for angular|euclidean"},
   {NULL}	/* Sentinel */
 };
 
@@ -164,17 +84,9 @@ py_an_load(py_annoy *self, PyObject *args) {
     return Py_None;
   if (!PyArg_ParseTuple(args, "s", &filename))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    res = ai->load_py(filename);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    res = ei->load_py(filename);
-    break;
-  }
+
+  res = self->ptr->load(filename);
+
   if (!res) {
     PyErr_SetFromErrno(PyExc_IOError);
     return NULL;
@@ -191,17 +103,9 @@ py_an_save(py_annoy *self, PyObject *args) {
     return Py_None;
   if (!PyArg_ParseTuple(args, "s", &filename))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    res = ai->save_py(filename);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    res = ei->save_py(filename);
-    break;
-  }
+
+  res = self->ptr->save(filename);
+
   if (!res) {
     PyErr_SetFromErrno(PyExc_IOError);
     return NULL;
@@ -212,22 +116,17 @@ py_an_save(py_annoy *self, PyObject *args) {
 
 static PyObject* 
 py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
-  PyObject* l = PyList_New(0);
   int32_t item, n;
   if (!self->ptr) 
     return Py_None;
   if (!PyArg_ParseTuple(args, "ii", &item, &n))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    l = ai->get_nns_by_item_py(item, (size_t)n);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    l = ei->get_nns_by_item_py(item, (size_t)n);
-    break;
+
+  PyObject* l = PyList_New(0);
+  vector<int32_t> result;
+  self->ptr->get_nns_by_item(item, n, &result);
+  for (size_t i = 0; i < result.size(); i++) {
+    PyList_Append(l, PyInt_FromLong(result[i]));
   }
   return l;
 }
@@ -236,22 +135,22 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
 static PyObject* 
 py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
   PyObject* v;
-  PyObject* l = PyList_New(0);
   int32_t n;
   if (!self->ptr) 
     return Py_None;
   if (!PyArg_ParseTuple(args, "Oi", &v, &n))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    l = ai->get_nns_by_vector_py(v, (size_t)n);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    l = ei->get_nns_by_vector_py(v, (size_t)n);
-    break;
+
+  vector<float> w(self->f);
+  for (int z = 0; z < PyList_Size(v) && z < self->f; z++) {
+    PyObject *pf = PyList_GetItem(v,z);
+    w[z] = PyFloat_AsDouble(pf);
+  }
+  vector<int32_t> result;
+  self->ptr->get_nns_by_vector(&w[0], n, &result);
+  PyObject* l = PyList_New(0);
+  for (size_t i = 0; i < result.size(); i++) {
+    PyList_Append(l, PyInt_FromLong(result[i]));
   }
   return l;
 }
@@ -259,25 +158,20 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
 
 static PyObject* 
 py_an_get_item_vector(py_annoy *self, PyObject *args) {
-  PyObject* l = NULL;
   int32_t item;
   if (!self->ptr) 
     return Py_None;
   if (!PyArg_ParseTuple(args, "i", &item))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    l = ai->get_item_vector_py(item);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    l = ei->get_item_vector_py(item);
-    break;
+
+  vector<float> v;
+  self->ptr->get_item(item, &v);
+  PyObject* l = PyList_New(0);
+  for (int z = 0; z < self->f; z++) {
+    PyList_Append(l, PyInt_FromLong(v[z]));
   }
-  if (l) return l;
-  return Py_None;
+
+  return l;
 }
 
 
@@ -285,7 +179,6 @@ static PyObject*
 py_an_add_item(py_annoy *self, PyObject *args) {
   vector<float> w;
 
-  //void add_item_py(S item, const vector<T> w) {
   PyObject* l;
   int32_t item;
   if (!self->ptr) 
@@ -296,17 +189,8 @@ py_an_add_item(py_annoy *self, PyObject *args) {
     PyObject *pf = PyList_GetItem(l,z);
     w.push_back(PyFloat_AsDouble(pf));
   }
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    ai->add_item_py(item, w);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    ei->add_item_py(item, w);
-    break;
-  }
+  self->ptr->add_item(item, &w[0]);
+
   return PyInt_FromLong(0);
 }
 
@@ -318,17 +202,9 @@ py_an_build(py_annoy *self, PyObject *args) {
     return Py_None;
   if (!PyArg_ParseTuple(args, "i", &q))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    ai->build(q);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    ei->build(q);
-    break;
-  }
+
+  self->ptr->build(q);
+  
   return PyInt_FromLong(0);
 }
 
@@ -337,17 +213,9 @@ static PyObject *
 py_an_unload(py_annoy *self, PyObject *args) {
   if (!self->ptr) 
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    ai->unload();
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    ei->unload();
-    break;
-  }
+
+  self->ptr->unload();
+
   return PyInt_FromLong(0);
 }
 
@@ -360,17 +228,9 @@ py_an_get_distance(py_annoy *self, PyObject *args) {
     return Py_None;
   if (!PyArg_ParseTuple(args, "ii", &i, &j))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    d = ai->get_distance(i,j);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    d = ei->get_distance(i,j);
-    break;
-  }
+
+  d = self->ptr->get_distance(i,j);
+
   return PyFloat_FromDouble(d);
 }
 
@@ -381,19 +241,10 @@ py_an_get_n_items(py_annoy *self, PyObject *args) {
   bool is_n=false;
   if (!self->ptr) 
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    n = ai->get_n_items();
-    is_n = true;
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    n = ei->get_n_items();
-    is_n = true;
-    break;
-  }
+
+  n = self->ptr->get_n_items();
+  is_n = true;
+
   if (is_n) return PyInt_FromLong(n);
   return Py_None;
 }
@@ -406,17 +257,9 @@ py_an_verbose(py_annoy *self, PyObject *args) {
     return Py_None;
   if (!PyArg_ParseTuple(args, "i", &verbose))
     return Py_None;
-  AI *ai; EI *ei;
-  switch(self->ch_metric) {
-  case 'a':
-    ai = static_cast<AI*>(self->ptr);
-    ai->verbose((bool)verbose);
-    break;
-  case 'e':
-    ei = static_cast<EI*>(self->ptr);
-    ei->verbose((bool)verbose);
-    break;
-  }
+
+  self->ptr->verbose((bool)verbose);
+
   return PyInt_FromLong(0);
 }
 
