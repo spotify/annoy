@@ -156,24 +156,23 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
 }
 
 
-/*static PyObject* 
+static PyObject* 
 py_an_get_item_vector(py_annoy *self, PyObject *args) {
-  PyObject* l = NULL;
   int32_t item;
   if (!self->ptr) 
     return Py_None;
   if (!PyArg_ParseTuple(args, "i", &item))
     return Py_None;
 
-  const typename Distance::node* m = self->ptr->_get(item);
-  const T* v = m->v;
+  vector<float> v;
+  self->ptr->get_item(item, &v);
   PyObject* l = PyList_New(0);
-  for (int z = 0; z < this->_f; z++) {
+  for (int z = 0; z < self->f; z++) {
     PyList_Append(l, PyInt_FromLong(v[z]));
   }
 
   return l;
-  }*/
+}
 
 
 static PyObject* 
@@ -270,7 +269,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"save",	(PyCFunction)py_an_save, METH_VARARGS, ""},
   {"get_nns_by_item",(PyCFunction)py_an_get_nns_by_item, METH_VARARGS, ""},
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS, ""},
-  // {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
+  {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS, ""},
   {"build",(PyCFunction)py_an_build, METH_VARARGS, ""},
   {"unload",(PyCFunction)py_an_unload, METH_VARARGS, ""},
