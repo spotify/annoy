@@ -18,6 +18,20 @@
 #include <exception>
 #include <stdint.h>
 
+
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
+#ifndef Py_TYPE
+    #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
+#endif
+
+#ifdef IS_PY3K
+    #define PyInt_FromLong PyLong_FromLong 
+#endif
+
+
 template class AnnoyIndexInterface<int32_t, float>;
 
 // annoy python object
@@ -65,7 +79,7 @@ py_an_dealloc(py_annoy* self) {
   if (self->ptr) {
     delete self->ptr;
   }
-  self->ob_type->tp_free((PyObject*)self);
+  Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -281,8 +295,7 @@ static PyMethodDef AnnoyMethods[] = {
 
 
 static PyTypeObject PyAnnoyType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                      /*ob_size*/
+  PyVarObject_HEAD_INIT(NULL, 0)
   "annoy.Annoy",          /*tp_name*/
   sizeof(py_annoy),       /*tp_basicsize*/
   0,                      /*tp_itemsize*/
@@ -326,21 +339,49 @@ static PyMethodDef module_methods[] = {
   {NULL}	/* Sentinel */
 };
 
-PyMODINIT_FUNC initannoylib(void) {
+#if PY_MAJOR_VERSION >= 3
+  static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "annoylib",          /* m_name */
+    "",                  /* m_doc */
+    -1,                  /* m_size */
+    module_methods,      /* m_methods */
+    NULL,                /* m_reload */
+    NULL,                /* m_traverse */
+    NULL,                /* m_clear */
+    NULL,                /* m_free */
+  };
+#endif
+
+PyObject *create_module(void) {
   PyObject *m;
 
   if (PyType_Ready(&PyAnnoyType) < 0)
-    return;
+    return NULL;
 
+#if PY_MAJOR_VERSION >= 3
+  m = PyModule_Create(&moduledef);
+#else
   m = Py_InitModule("annoylib", module_methods);
-  if (m == NULL)
-    return;
+#endif
 
   if (m == NULL)
-    return;
+    return NULL;
 
   Py_INCREF(&PyAnnoyType);
   PyModule_AddObject(m, "Annoy", (PyObject *)&PyAnnoyType);
+  return m;
 }
+
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_annoylib(void) {
+    return create_module();      // it should return moudule object in py3
+  }
+#else
+  PyMODINIT_FUNC initannoylib(void) {
+    create_module();
+  }
+#endif
+
 
 // vim: tabstop=2 shiftwidth=2

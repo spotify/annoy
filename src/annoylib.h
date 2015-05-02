@@ -560,7 +560,7 @@ protected:
       }
     }
 
-    std::sort(nns.begin(), nns.end());
+    sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
     S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
