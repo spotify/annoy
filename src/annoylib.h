@@ -51,6 +51,17 @@
 // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
 #endif
 
+// This allows others to supply their own random number generator function
+// which is assumed to be uniformly distributed over over 0 .. RAND_MAX
+inline long int randomDraw() {
+#ifndef __UNIFORM_RAND_OVERRIDE__
+  // by default we use random(); if for some reason you do not have random() try rand()
+  return random() * RAND_MAX;
+#else
+  return __UNIFORM_RAND_OVERRIDE__;
+}
+#endif
+
 using std::vector;
 using std::string;
 using std::pair;
@@ -73,8 +84,8 @@ struct Randomness {
 
     T W, U1, U2;
     do {
-      U1 = -1 + ((T)rand() / RAND_MAX) * 2;
-      U2 = -1 + ((T)rand() / RAND_MAX) * 2;
+      U1 = -1 + ((T) randomDraw() / RAND_MAX) * 2;
+      U2 = -1 + ((T) randomDraw() / RAND_MAX) * 2;
       W = U1 * U1 + U2 * U2;
     }
     while (W >= 1 || W == 0);
@@ -87,10 +98,10 @@ struct Randomness {
   }
 
   inline int flip() {
-    return rand() % 2;
+    return randomDraw() % 2;
   }
   inline T uniform(T min, T max) {
-    return ((T)rand() / RAND_MAX) * (max - min) + min;
+    return ((T) randomDraw() / RAND_MAX) * (max - min) + min;
   }
 };
 
