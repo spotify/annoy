@@ -56,7 +56,7 @@
 inline long int randomDraw() {
 #ifndef __UNIFORM_RAND_OVERRIDE__
   // by default we use random(); if for some reason you do not have random() try rand()
-  return random() * RAND_MAX;
+  return rand() * RAND_MAX;
 #else
   return __UNIFORM_RAND_OVERRIDE__;
 }
