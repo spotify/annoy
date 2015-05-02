@@ -61,6 +61,7 @@ inline long int randomDraw() {
   return __UNIFORM_RAND_OVERRIDE__;
 }
 #endif
+}
 
 using std::vector;
 using std::string;
