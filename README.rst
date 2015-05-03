@@ -38,7 +38,7 @@ Summary of features
 * Small memory usage
 * Lets you share memory between multiple processes
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
-* Native Python support
+* Native Python support, tested with 2.6, 2.7, 3.3, 3.4
 
 Code example
 ____________
