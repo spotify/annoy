@@ -55,11 +55,9 @@
 // which is assumed to be uniformly distributed over over 0 .. RAND_MAX
 inline long int randomDraw() {
 #ifndef __UNIFORM_RAND_OVERRIDE__
-  // by default we use random(); if for some reason you do not have random() try rand()
   return rand() * RAND_MAX;
 #else
   return __UNIFORM_RAND_OVERRIDE__;
-}
 #endif
 }
 
