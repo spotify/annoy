@@ -24,6 +24,9 @@ readme_note = """\
 
    For the latest source, discussion, etc, please visit the
    `GitHub repository <https://github.com/spotify/annoy>`_\n\n
+
+.. image:: https://img.shields.io/github/stars/spotify/annoy.svg
+    :target: https://github.com/spotify/annoy
 """
 
 with open('README.rst') as fobj:
