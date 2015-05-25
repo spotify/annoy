@@ -12,11 +12,16 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+from __future__ import print_function
+
 import unittest
 import random
 import os
 from annoy import AnnoyIndex
-import urllib
+try:
+    from urllib import urlretrieve
+except ImportError:
+    from urllib.request import urlretrieve # Python 3
 import gzip
 from nose.plugins.attrib import attr
 
@@ -29,13 +34,13 @@ class AccuracyTest(unittest.TestCase):
             if not os.path.exists(input):
                 # Download GloVe pretrained vectors: http://nlp.stanford.edu/projects/glove/
                 url = 'http://www-nlp.stanford.edu/data/glove.twitter.27B.%dd.txt.gz' % f
-                print 'downloading', url, '->', input
-                urllib.urlretrieve(url, input)
+                print('downloading', url, '->', input)
+                urlretrieve(url, input)
 
-            print 'building index', distance, f
+            print('building index', distance, f)
             annoy = AnnoyIndex(f, distance)
             for i, line in enumerate(gzip.open(input, 'rb')):
-                v = map(float, line.strip().split()[1:])
+                v = [float(x) for x in line.strip().split()[1:]]
                 annoy.add_item(i, v);
                 
             annoy.build(10)
@@ -50,7 +55,7 @@ class AccuracyTest(unittest.TestCase):
 
         n, k = 0, 0
 
-        for i in xrange(10000):
+        for i in range(10000):
             js_fast = annoy.get_nns_by_item(i, 11)[1:11]
             js_slow = annoy.get_nns_by_item(i, 1001)[1:11]
 
@@ -58,7 +63,7 @@ class AccuracyTest(unittest.TestCase):
             k += len(set(js_fast).intersection(js_slow))
 
         accuracy = 100.0 * k / n
-        print '%20s %4d accuracy: %5.2f%%' % (distance, f, accuracy)
+        print('%20s %4d accuracy: %5.2f%%' % (distance, f, accuracy))
 
         self.assertTrue(accuracy > exp_accuracy - 1.0) # should be within 1%
 
