@@ -92,6 +92,8 @@ It's all written in C++ with a handful of ugly optimizations for performance and
 
 The code should support Windows, thanks to `thirdwing <https://github.com/thirdwing>`__.
 
+To run the tests, execute `python setup.py nosetests`. The test suite includes a big real world dataset that is downloaded from the internet, so it will take a few minutes to execute.
+
 Discuss
 -------
 
