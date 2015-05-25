@@ -9,4 +9,4 @@ python:
 install:
   - pip install .
 
-script: python setup.py nosetests
+script: python setup.py nosetests -a '!slow'
