@@ -18,6 +18,7 @@ import os
 from annoy import AnnoyIndex
 import urllib
 import gzip
+from nose.plugins.attrib import attr
 
 class AccuracyTest(unittest.TestCase):
     def _get_index(self, f, distance):
@@ -67,20 +68,26 @@ class AccuracyTest(unittest.TestCase):
     def test_euclidean_25(self):
         self._test_index(25, 'euclidean', 47.34)
 
+    @attr('slow')
     def test_angular_50(self):
         self._test_index(50, 'angular', 31.00)
 
+    @attr('slow')
     def test_euclidean_50(self):
         self._test_index(50, 'euclidean', 33.04)
 
+    @attr('slow')
     def test_angular_100(self):
         self._test_index(100, 'angular', 24.50)
 
+    @attr('slow')
     def test_euclidean_100(self):
         self._test_index(100, 'euclidean', 25.10)
 
+    @attr('slow')
     def test_angular_200(self):
         self._test_index(200, 'angular', 15.18)
 
+    @attr('slow')
     def test_euclidean_200(self):
         self._test_index(200, 'euclidean', 17.99)        
