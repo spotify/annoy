@@ -27,6 +27,7 @@ readme_note = """\
 
 .. image:: https://img.shields.io/github/stars/spotify/annoy.svg
     :target: https://github.com/spotify/annoy
+
 """
 
 with open('README.rst') as fobj:
@@ -34,7 +35,7 @@ with open('README.rst') as fobj:
 
 
 setup(name='annoy',
-      version='1.2.3',
+      version='1.3.1',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
