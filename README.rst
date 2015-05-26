@@ -5,9 +5,6 @@ Annoy
    :alt: Annoy example
    :align: center
 
-What is this?
--------------
-
 .. image:: https://img.shields.io/travis/spotify/annoy/master.svg?style=flat
     :target: https://travis-ci.org/spotify/annoy
 
@@ -21,7 +18,13 @@ What is this?
 
 Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor>`__ Something Something) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
 
+Install
+-------
+
 To install, simply do ``sudo pip install annoy`` to pull down the latest version from `PyPI <https://pypi.python.org/pypi/annoy>`_.
+
+Background
+----------
 
 There are some other libraries to do nearest neighbor search. Annoy appears to be both faster and more accurate in benchmarks (see below), but there is actually another feature that really sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
 
