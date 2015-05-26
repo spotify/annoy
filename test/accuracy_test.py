@@ -63,7 +63,7 @@ class AccuracyTest(unittest.TestCase):
             k += len(set(js_fast).intersection(js_slow))
 
         accuracy = 100.0 * k / n
-        print('%20s %4d accuracy: %5.2f%%' % (distance, f, accuracy))
+        print('%20s %4d accuracy: %5.2f%% (expected %5.2f%%)' % (distance, f, accuracy, exp_accuracy))
 
         self.assertTrue(accuracy > exp_accuracy - 1.0) # should be within 1%
 
