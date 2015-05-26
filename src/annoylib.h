@@ -71,12 +71,17 @@ template<typename T>
 struct Randomness {
   // Just a dummy class to avoid code repetition.
   // Owned by the AnnoyIndex, passed around to the distance metrics
-  Randomness() {};
   inline int flip() {
     return randomDraw() % 2;
   }
   inline int index(int n) {
     return randomDraw() % n;
+  }
+  inline void index2(int n, int* i, int* j) {
+    // Draw two random variables so that i != j
+    *i = index(n);
+    *j = index(n-1);
+    *j += (*j >= *i);
   }
 };
 
@@ -147,8 +152,8 @@ struct Angular {
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
     // Sample two random points from the set of nodes
     // Calculate the hyperplane equidistant from them
-    int i = random->index(nodes.size());
-    int j = random->index(nodes.size());
+    int i, j;
+    random->index2(nodes.size(), &i, &j);
     T i_norm = get_norm(nodes[i]->v, f);
     T j_norm = get_norm(nodes[j]->v, f);
     for (int z = 0; z < f; z++)
@@ -186,8 +191,8 @@ struct Euclidean {
   }
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
     // Same as Angular version, but no normalization and has to compute the offset too
-    int i = random->index(nodes.size());
-    int j = random->index(nodes.size());
+    int i, j;
+    random->index2(nodes.size(), &i, &j);
     n->a = 0.0;
     for (int z = 0; z < f; z++) {
       n->v[z] = nodes[i]->v[z] - nodes[j]->v[z];
