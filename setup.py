@@ -24,6 +24,10 @@ readme_note = """\
 
    For the latest source, discussion, etc, please visit the
    `GitHub repository <https://github.com/spotify/annoy>`_\n\n
+
+.. image:: https://img.shields.io/github/stars/spotify/annoy.svg
+    :target: https://github.com/spotify/annoy
+
 """
 
 with open('README.rst') as fobj:
@@ -31,7 +35,7 @@ with open('README.rst') as fobj:
 
 
 setup(name='annoy',
-      version='1.2.2',
+      version='1.3.1',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[

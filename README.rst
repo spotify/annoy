@@ -17,12 +17,13 @@ What is this?
 .. image:: https://img.shields.io/pypi/l/annoy.svg?style=flat
    :target: https://pypi.python.org/pypi/annoy
 
-.. image:: https://pypip.in/py_versions/python/badge.svg?style=flat
-   :target: https://pypi.python.org/pypi/annoy
+.. image:: https://pypip.in/py_versions/annoy/badge.svg?style=flat
 
 Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor>`__ Something Something) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
 
-There's a couple of other libraries to do approximate nearest neighbor search, including `FLANN <https://github.com/mariusmuja/flann>`__, etc. Other libraries may be both faster and more accurate, but there are one major difference that sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
+To install, simply do ``sudo pip install annoy`` to pull down the latest version from `PyPI <https://pypi.python.org/pypi/annoy>`_.
+
+There are some other libraries to do nearest neighbor search. Annoy appears to be both faster and more accurate in benchmarks (see below), but there is actually another feature that really sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
 
 Why is this useful? If you want to find nearest neighbors and you have many CPU's, you only need the RAM to fit the index once. You can also pass around and distribute static files to use in production environment, in Hadoop jobs, etc. Any process will be able to load (mmap) the index into memory and will be able to do lookups immediately.
 
@@ -54,12 +55,12 @@ ____________
       t.add_item(i, v)
 
   t.build(10) # 10 trees
-  t.save('test.tree')
+  t.save('test.ann')
     
   # …
 
   u = AnnoyIndex(f)
-  u.load('test.tree') # super fast, will just mmap the file
+  u.load('test.ann') # super fast, will just mmap the file
   print(u.get_nns_by_item(0, 1000)) # will find the 1000 nearest neighbors
 
 
@@ -92,6 +93,8 @@ Source code
 It's all written in C++ with a handful of ugly optimizations for performance and memory usage. You have been warned :)
 
 The code should support Windows, thanks to `thirdwing <https://github.com/thirdwing>`__.
+
+To run the tests, execute `python setup.py nosetests`. The test suite includes a big real world dataset that is downloaded from the internet, so it will take a few minutes to execute.
 
 Discuss
 -------

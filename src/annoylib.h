@@ -55,7 +55,7 @@
 // which is assumed to be uniformly distributed over over 0 .. RAND_MAX
 inline long int randomDraw() {
 #ifndef __UNIFORM_RAND_OVERRIDE__
-  return rand() * RAND_MAX;
+  return rand();
 #else
   return __UNIFORM_RAND_OVERRIDE__;
 #endif
@@ -75,41 +75,25 @@ struct Randomness {
   T _X1, _X2;
   bool _has_X2;
 
-  inline T gaussian() {
-    // Taken from http://phoxis.org/2013/05/04/generating-random-numbers-from-normal-distribution-in-c/
-    _has_X2 = !_has_X2;
-    if (_has_X2)
-      return _X2;
-
-    T W, U1, U2;
-    do {
-      U1 = -1 + ((T) randomDraw() / RAND_MAX) * 2;
-      U2 = -1 + ((T) randomDraw() / RAND_MAX) * 2;
-      W = U1 * U1 + U2 * U2;
-    }
-    while (W >= 1 || W == 0);
-
-    T mult = sqrt((-2 * log(W)) / W);
-    _X1 = U1 * mult;
-    _X2 = U2 * mult;
-
-    return _X1;
-  }
-
   inline int flip() {
     return randomDraw() % 2;
   }
-  inline T uniform(T min, T max) {
-    return ((T) randomDraw() / RAND_MAX) * (max - min) + min;
+  inline int index(int n) {
+    return randomDraw() % n;
   }
 };
 
 template<typename T>
-inline void normalize(T* v, int f) {
+inline T get_norm(T* v, int f) {
   T sq_norm = 0;
   for (int z = 0; z < f; z++)
     sq_norm += v[z] * v[z];
-  T norm = sqrt(sq_norm);
+  return sqrt(sq_norm);
+}
+
+template<typename T>
+inline void normalize(T* v, int f) {
+  T norm = get_norm(v, f);
   for (int z = 0; z < f; z++)
     v[z] /= norm;
 }
@@ -164,8 +148,14 @@ struct Angular {
       return random->flip();
   }
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
+    // Sample two random points from the set of nodes
+    // Calculate the hyperplane equidistant from them
+    int i = random->index(nodes.size());
+    int j = random->index(nodes.size());
+    T i_norm = get_norm(nodes[i]->v, f);
+    T j_norm = get_norm(nodes[j]->v, f);
     for (int z = 0; z < f; z++)
-      n->v[z] = random->gaussian();
+      n->v[z] = nodes[i]->v[z] / i_norm - nodes[j]->v[z] / j_norm;
     normalize(n->v, f);
   }
 };
@@ -198,35 +188,14 @@ struct Euclidean {
       return random->flip();
   }
   static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
-    // See http://en.wikipedia.org/wiki/Bertrand_paradox_(probability)
-    // We want to sample a random hyperplane out of all hyperplanes that cut the convex hull.
-    // The probability of each angle is in proportion to the extent of the projection.
-    // This is good because it means we try to split in the longest direction.
-    // Doing this using Metropolis-Hastings sampling using 10 steps
-    T* v = (T*)malloc(sizeof(T) * f); // TODO: would be really nice to get rid of this allocation
-    double max_proj = 0.0;
-    for (int step = 0; step < 10; step++) {
-      for (int z = 0; z < f; z++)
-        v[z] = random->gaussian();
-      normalize(v, f);
-      // Project the nodes onto the vector and calculate max and min
-      T min = INFINITY, max = -INFINITY;
-      for (size_t i = 0; i < nodes.size(); i++) {
-        T dot = 0;
-        for (int z = 0; z < f; z++)
-          dot += nodes[i]->v[z] * v[z];
-        if (dot > max)
-          max = dot;
-        if (dot < min)
-          min = dot;
-      }
-      if (max - min > random->uniform(0, max_proj)) {
-        max_proj = max - min;
-        memcpy(n->v, v, sizeof(T) * f);
-        n->a = -random->uniform(min, max); // Take a random split along this axis
-      }
+    // Same as Angular version, but no normalization and has to compute the offset too
+    int i = random->index(nodes.size());
+    int j = random->index(nodes.size());
+    n->a = 0.0;
+    for (int z = 0; z < f; z++) {
+      n->v[z] = nodes[i]->v[z] - nodes[j]->v[z];
+      n->a += -n->v[z] * (nodes[i]->v[z] + nodes[j]->v[z]) / 2;
     }
-    free(v);
   }
 };
 
