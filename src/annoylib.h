@@ -71,10 +71,7 @@ template<typename T>
 struct Randomness {
   // Just a dummy class to avoid code repetition.
   // Owned by the AnnoyIndex, passed around to the distance metrics
-  Randomness() : _has_X2(true) {};
-  T _X1, _X2;
-  bool _has_X2;
-
+  Randomness() : {};
   inline int flip() {
     return randomDraw() % 2;
   }
