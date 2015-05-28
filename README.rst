@@ -23,6 +23,8 @@ Install
 
 To install, simply do ``sudo pip install annoy`` to pull down the latest version from `PyPI <https://pypi.python.org/pypi/annoy>`_.
 
+For the C++ version, just clone the repo and ``#include "annoylib.h"``.
+
 Background
 ----------
 
@@ -44,8 +46,8 @@ Summary of features
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
 * Native Python support, tested with 2.6, 2.7, 3.3, 3.4
 
-Code example
-____________
+Python code example
+-------------------
 
 .. code-block:: python
 
@@ -69,8 +71,8 @@ ____________
 
 Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it assumes your items are numbered 0 … n-1. If you need other id's, you will have to keep track of a map yourself.
 
-Full API
---------
+Full Python API
+---------------
 
 * ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be either ``"angular"`` or ``"euclidean"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory up to ``i+1``.
@@ -79,9 +81,15 @@ Full API
 * ``a.load(fn)`` loads (mmaps) an index from disk.
 * ``a.unload(fn)`` unloads.
 * ``a.get_nns_by_item(i, n)`` returns the ``n`` closest items. During the query it will inspect up to ``n_trees * n`` nodes. Note that for better performance you might want to oversample ``n``, eg. to fetch the top 100 items with higher precision, do ``a.get_nns_by_item(i, 1000)[:100]``. Also note that the array returned will include ``i`` as the first element.
-* ``a.get_nns_by_vector(i, v)`` same but query by vector.
+* ``a.get_nns_by_vector(v, n)`` same but query by vector ``v``.
+* ``a.get_item_vector_item(i)`` returns the vector for item ``i`` that was previously added.
 * ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``.
 * ``a.get_n_items()`` returns the number of items in the index.
+
+Note that there's no bounds checking performed on the values so be careful.
+
+The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
+
 
 How does it work
 ----------------
