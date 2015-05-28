@@ -49,32 +49,46 @@ ____________
 
 .. code-block:: python
 
+  from annoy import AnnoyIndex
+  import random
+
   f = 40
   t = AnnoyIndex(f)  # Length of item vector that will be indexed
-  for i in xrange(n):
-      v = []
-      for z in xrange(f):
-          v.append(random.gauss(0, 1))
-      t.add_item(i, v)
+  for i in xrange(1000):
+      v = [random.gauss(0, 1) for z in xrange(f)]
+          t.add_item(i, v)
 
   t.build(10) # 10 trees
   t.save('test.ann')
-    
-  # …
+
+  # ...
 
   u = AnnoyIndex(f)
   u.load('test.ann') # super fast, will just mmap the file
   print(u.get_nns_by_item(0, 1000)) # will find the 1000 nearest neighbors
 
-
 Right now it only accepts integers as identifiers for items. Note that it will allocate memory for max(id)+1 items because it assumes your items are numbered 0 … n-1. If you need other id's, you will have to keep track of a map yourself.
+
+Full API
+--------
+
+* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be either ``"angular"`` or ``"euclidean"``.
+* ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory up to ``i+1``.
+* ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. Better trees gives higher precision when querying.
+* ``a.save(fn)`` saves the index to disk.
+* ``a.load(fn)`` loads (mmaps) an index from disk.
+* ``a.unload(fn)`` unloads.
+* ``a.get_nns_by_item(i, n)`` returns the ``n`` closest items. During the query it will inspect up to ``n_trees * n`` nodes. Note that for better performance you might want to oversample ``n``, eg. to fetch the top 100 items with higher precision, do ``a.get_nns_by_item(i, 1000)[:100]``. Also note that the array returned will include ``i`` as the first element.
+* ``a.get_nns_by_vector(i, v)`` same but query by vector.
+* ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``.
+* ``a.get_n_items()`` returns the number of items in the index.
 
 How does it work
 ----------------
 
-Using `random projections <http://en.wikipedia.org/wiki/Locality-sensitive_hashing#Random_projection>`__ and by building up a tree. At every intermediate node in the tree, a random hyperplane is chosen, which divides the space into two subspaces.
+Using `random projections <http://en.wikipedia.org/wiki/Locality-sensitive_hashing#Random_projection>`__ and by building up a tree. At every intermediate node in the tree, a random hyperplane is chosen, which divides the space into two subspaces. This hyperplane is chosen by sampling two points from the subset and taking the hyperplane equidistant from them.
 
-We do this k times so that we get a forest of trees. k has to be tuned to your need, by looking at what tradeoff you have between precision and performance. In practice k should probably be on the order of dimensionality.
+We do this k times so that we get a forest of trees. k has to be tuned to your need, by looking at what tradeoff you have between precision and performance.
 
 More info
 ---------
