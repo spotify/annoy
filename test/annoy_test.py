@@ -17,6 +17,7 @@
 
 import unittest
 import random
+import numpy
 from annoy import AnnoyIndex
 
 try:
@@ -136,6 +137,21 @@ class AngularIndexTest(unittest.TestCase):
     def test_precision_1000(self):
         self.assertTrue(self.precision(1000) >= 0.98)
 
+    def test_load_save_get_item_vector(self):
+        f = 3
+        i = AnnoyIndex(f)
+        i.add_item(0, [1.1, 2.2, 3.3])
+        i.add_item(1, [4.4, 5.5, 6.6])
+        i.add_item(2, [7.7, 8.8, 9.9])
+ 
+        numpy.testing.assert_array_almost_equal(i.get_item_vector(0), [1.1, 2.2, 3.3])
+        self.assertTrue(i.build(10))
+        self.assertTrue(i.save('blah.ann'))
+        numpy.testing.assert_array_almost_equal(i.get_item_vector(1), [4.4, 5.5, 6.6])
+        j = AnnoyIndex(f)
+        self.assertTrue(j.load('blah.ann'))
+        numpy.testing.assert_array_almost_equal(j.get_item_vector(2), [7.7, 8.8, 9.9])
+
 
 class EuclideanIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):
@@ -231,3 +247,4 @@ class IndexTest(unittest.TestCase):
 
         # This might change in the future if we change the search algorithm, but in that case let's update the test
         self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
+
