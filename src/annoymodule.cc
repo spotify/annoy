@@ -182,7 +182,7 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   self->ptr->get_item(item, &v);
   PyObject* l = PyList_New(0);
   for (int z = 0; z < self->f; z++) {
-    PyList_Append(l, PyInt_FromLong(v[z]));
+    PyList_Append(l, PyFloat_FromDouble(v[z]));
   }
 
   return l;
