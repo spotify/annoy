@@ -105,7 +105,7 @@ py_an_load(py_annoy *self, PyObject *args) {
     PyErr_SetFromErrno(PyExc_IOError);
     return NULL;
   }
-  return PyInt_FromLong(0);
+  Py_RETURN_TRUE;
 }
 
 
@@ -124,7 +124,7 @@ py_an_save(py_annoy *self, PyObject *args) {
     PyErr_SetFromErrno(PyExc_IOError);
     return NULL;
   }
-  return PyInt_FromLong(0);
+  Py_RETURN_TRUE;
 }
 
 
@@ -218,8 +218,8 @@ py_an_build(py_annoy *self, PyObject *args) {
     return Py_None;
 
   self->ptr->build(q);
-  
-  return PyInt_FromLong(0);
+
+  Py_RETURN_TRUE;
 }
 
 
@@ -230,7 +230,7 @@ py_an_unload(py_annoy *self, PyObject *args) {
 
   self->ptr->unload();
 
-  return PyInt_FromLong(0);
+  Py_RETURN_TRUE;
 }
 
 
@@ -274,7 +274,7 @@ py_an_verbose(py_annoy *self, PyObject *args) {
 
   self->ptr->verbose((bool)verbose);
 
-  return PyInt_FromLong(0);
+  Py_RETURN_TRUE;
 }
 
 
