@@ -205,7 +205,7 @@ py_an_add_item(py_annoy *self, PyObject *args) {
   }
   self->ptr->add_item(item, &w[0]);
 
-  return PyInt_FromLong(0);
+  Py_RETURN_NONE;
 }
 
 
