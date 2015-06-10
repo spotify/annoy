@@ -16,7 +16,7 @@ Annoy
 
 .. image:: https://pypip.in/py_versions/annoy/badge.svg?style=flat
 
-Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor>`__ Something Something) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
+Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor>`__ Oh Yeah) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
 
 Install
 -------
@@ -131,4 +131,3 @@ Future stuff
 
 * More performance tweaks
 * Expose some performance/accuracy tradeoffs at query time rather than index building time
-* Figure what O and Y stand for in the backronym :)
