@@ -41,7 +41,8 @@ setup(name='annoy',
       ext_modules=[
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
-            depends=['src/annoylib.h']
+            depends=['src/annoylib.h'],
+            extra_compile_args=['-O3', '-msse2'],
         )
       ],
       long_description=long_description,
