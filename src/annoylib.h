@@ -127,10 +127,10 @@ struct Angular {
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
     // = 2 - 2cos
     T pp = 0, qq = 0, pq = 0;
-    for (int z = 0; z < f; z++) {
-      pp += x[z] * x[z];
-      qq += y[z] * y[z];
-      pq += x[z] * y[z];
+    for (int z = 0; z < f; z++, x++, y++) {
+      pp += (*x) * (*x);
+      qq += (*y) * (*y);
+      pq += (*x) * (*y);
     }
     T ppqq = pp * qq;
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
@@ -172,8 +172,8 @@ struct Euclidean {
   };
   static inline T distance(const T* x, const T* y, int f) {
     T d = 0.0;
-    for (int i = 0; i < f; i++) 
-      d += (x[i] - y[i]) * (x[i] - y[i]);
+    for (int i = 0; i < f; i++, x++, y++)
+      d += ((*x) - (*y)) * ((*x) - (*y));
     return d;
   }
   static inline T margin(const node* n, const T* y, int f) {
@@ -522,6 +522,8 @@ protected:
       }
     }
 
+    // Get distances for all items
+    // To avoid calculating distance multiple times for any items, sort by id
     sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
     S last = -1;
