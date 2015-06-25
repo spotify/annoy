@@ -90,6 +90,16 @@ Note that there's no bounds checking performed on the values so be careful.
 
 The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
 
+Tradeoffs
+---------
+
+There are just two parameters you can use to tune Annoy: the number of trees ``n_trees`` and the number of nodes to inspect during searching ``search_k``.
+
+* ``n_trees`` is provided during build time and affects the build time and the index size. A larger value will give more accurate results, but larger indexes.
+* ``search_k`` is provided in runtime and affects the search performance. A larger value will give more accurate results, but will take longer time to return.
+
+If ``search_k`` is not provided, it will default to ``n * n_trees`` where ``n`` is the number of approximate nearest neighbors. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
+
 How does it work
 ----------------
 
