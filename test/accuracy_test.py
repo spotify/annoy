@@ -56,8 +56,10 @@ class AccuracyTest(unittest.TestCase):
         n, k = 0, 0
 
         for i in range(10000):
-            js_fast = annoy.get_nns_by_item(i, 11)[1:11]
-            js_slow = annoy.get_nns_by_item(i, 1001)[1:11]
+            js_fast = annoy.get_nns_by_item(i, 11)[1:]
+            js_slow = annoy.get_nns_by_item(i, 11, 10000)[1:]
+            assert len(js_fast) == 10
+            assert len(js_slow) == 10
 
             n += 10
             k += len(set(js_fast).intersection(js_slow))
