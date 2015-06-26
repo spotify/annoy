@@ -510,6 +510,7 @@ protected:
     vector<S> nns;
     while (nns.size() < search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
+      T d = top.first;
       S i = top.second;
       const typename Distance::node* nd = _get(top.second);
       q.pop();
@@ -520,8 +521,8 @@ protected:
         nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
       } else {
         T margin = Distance::margin(nd, v, _f);
-        q.push(make_pair(+margin, nd->children[1]));
-        q.push(make_pair(-margin, nd->children[0]));
+        q.push(make_pair(std::min(d, +margin), nd->children[1]));
+        q.push(make_pair(std::min(d, -margin), nd->children[0]));
       }
     }
 
