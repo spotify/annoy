@@ -28,7 +28,7 @@ For the C++ version, just clone the repo and ``#include "annoylib.h"``.
 Background
 ----------
 
-There are some other libraries to do nearest neighbor search. Annoy appears to be both faster and more accurate in benchmarks (see below), but there is actually another feature that really sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
+There are some other libraries to do nearest neighbor search. Annoy is almost as fast as the fastest libraries, (see below), but there is actually another feature that really sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
 
 Why is this useful? If you want to find nearest neighbors and you have many CPU's, you only need the RAM to fit the index once. You can also pass around and distribute static files to use in production environment, in Hadoop jobs, etc. Any process will be able to load (mmap) the index into memory and will be able to do lookups immediately.
 
@@ -90,7 +90,6 @@ Note that there's no bounds checking performed on the values so be careful.
 
 The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
 
-
 How does it work
 ----------------
 
@@ -110,7 +109,12 @@ For some interesting stats, check out Radim Řehůřek's great blog posts compar
 * `Part 2: Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__
 * `Part 3: Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 
-There's also some biased performance metrics in a `blog post <http://erikbern.com/?p=783>`__ by me. It compares Annoy, `FLANN <http://www.cs.ubc.ca/research/flann/>`__, `PANNS <https://github.com/ryanrhymes/panns>`__, and a `pull request <https://github.com/scikit-learn/scikit-learn/pull/3304>`__ to scikit-learn.
+Also check out `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ which is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
+
+.. figure:: https://raw.github.com/erikbern/ann-benchmarks/master/results/sift.png
+   :alt: ANN benchmarks
+   :align: center
+   :target: https://github.com/erikbern/ann-benchmarks
 
 Source code
 -----------
