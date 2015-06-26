@@ -130,15 +130,15 @@ py_an_save(py_annoy *self, PyObject *args) {
 
 static PyObject* 
 py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
-  int32_t item, n;
+  int32_t item, n, search_k=-1;
   if (!self->ptr) 
     return Py_None;
-  if (!PyArg_ParseTuple(args, "ii", &item, &n))
+  if (!PyArg_ParseTuple(args, "ii|i", &item, &n, &search_k))
     return Py_None;
 
   PyObject* l = PyList_New(0);
   vector<int32_t> result;
-  self->ptr->get_nns_by_item(item, n, &result);
+  self->ptr->get_nns_by_item(item, n, &result, search_k);
   for (size_t i = 0; i < result.size(); i++) {
     PyList_Append(l, PyInt_FromLong(result[i]));
   }
@@ -149,10 +149,10 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
 static PyObject* 
 py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
   PyObject* v;
-  int32_t n;
+  int32_t n, search_k=-1;
   if (!self->ptr) 
     return Py_None;
-  if (!PyArg_ParseTuple(args, "Oi", &v, &n))
+  if (!PyArg_ParseTuple(args, "Oi|i", &v, &n, &search_k))
     return Py_None;
 
   vector<float> w(self->f);
@@ -161,7 +161,7 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
     w[z] = PyFloat_AsDouble(pf);
   }
   vector<int32_t> result;
-  self->ptr->get_nns_by_vector(&w[0], n, &result);
+  self->ptr->get_nns_by_vector(&w[0], n, &result, search_k);
   PyObject* l = PyList_New(0);
   for (size_t i = 0; i < result.size(); i++) {
     PyList_Append(l, PyInt_FromLong(result[i]));

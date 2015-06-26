@@ -152,6 +152,17 @@ class AngularIndexTest(unittest.TestCase):
         self.assertTrue(j.load('blah.ann'))
         numpy.testing.assert_array_almost_equal(j.get_item_vector(2), [7.7, 8.8, 9.9])
 
+    def test_get_nns_search_k(self):
+        f = 3
+        i = AnnoyIndex(f)
+        i.add_item(0, [0, 0, 1])
+        i.add_item(1, [0, 1, 0])
+        i.add_item(2, [1, 0, 0])
+        i.build(10)
+
+        self.assertEqual(i.get_nns_by_item(0, 3, 10), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3, 10), [2, 1, 0])
+
 
 class EuclideanIndexTest(unittest.TestCase):
     def test_get_nns_by_vector(self):

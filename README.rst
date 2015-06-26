@@ -80,7 +80,7 @@ Full Python API
 * ``a.save(fn)`` saves the index to disk.
 * ``a.load(fn)`` loads (mmaps) an index from disk.
 * ``a.unload(fn)`` unloads.
-* ``a.get_nns_by_item(i, n)`` returns the ``n`` closest items. During the query it will inspect up to ``n_trees * n`` nodes. Note that for better performance you might want to oversample ``n``, eg. to fetch the top 100 items with higher precision, do ``a.get_nns_by_item(i, 1000)[:100]``. Also note that the array returned will include ``i`` as the first element.
+* ``a.get_nns_by_item(i, n, search_k=-1)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed.
 * ``a.get_nns_by_vector(v, n)`` same but query by vector ``v``.
 * ``a.get_item_vector_item(i)`` returns the vector for item ``i`` that was previously added.
 * ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``.
@@ -89,6 +89,16 @@ Full Python API
 Note that there's no bounds checking performed on the values so be careful.
 
 The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
+
+Tradeoffs
+---------
+
+There are just two parameters you can use to tune Annoy: the number of trees ``n_trees`` and the number of nodes to inspect during searching ``search_k``.
+
+* ``n_trees`` is provided during build time and affects the build time and the index size. A larger value will give more accurate results, but larger indexes.
+* ``search_k`` is provided in runtime and affects the search performance. A larger value will give more accurate results, but will take longer time to return.
+
+If ``search_k`` is not provided, it will default to ``n * n_trees`` where ``n`` is the number of approximate nearest neighbors. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
 
 How does it work
 ----------------

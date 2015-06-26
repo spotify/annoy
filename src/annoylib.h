@@ -212,8 +212,8 @@ class AnnoyIndexInterface {
   virtual void unload() = 0;
   virtual bool load(const char* filename) = 0;
   virtual T get_distance(S i, S j) = 0;
-  virtual void get_nns_by_item(S item, size_t n, vector<S>* result) = 0;
-  virtual void get_nns_by_vector(const T* w, size_t n, vector<S>* result) = 0;
+  virtual void get_nns_by_item(S item, size_t n, vector<S>* result, size_t search_k=-1) = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, vector<S>* result, size_t search_k=-1) = 0;
   virtual S get_n_items() = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, vector<T>* v) = 0;
@@ -374,13 +374,13 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  void get_nns_by_item(S item, size_t n, vector<S>* result) {
+  void get_nns_by_item(S item, size_t n, vector<S>* result, size_t search_k=-1) {
     const typename Distance::node* m = _get(item);
-    _get_all_nns(m->v, n, result);
+    _get_all_nns(m->v, n, result, search_k);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, vector<S>* result) {
-    _get_all_nns(w, n, result);
+  void get_nns_by_vector(const T* w, size_t n, vector<S>* result, size_t search_k=-1) {
+    _get_all_nns(w, n, result, search_k);
   }
   S get_n_items() {
     return _n_items;
@@ -497,15 +497,18 @@ protected:
     return item;
   }
 
-  void _get_all_nns(const T* v, size_t n, vector<S>* result) {
+  void _get_all_nns(const T* v, size_t n, vector<S>* result, size_t search_k) {
     std::priority_queue<pair<T, S> > q;
+
+    if (search_k == -1)
+      search_k = n * _roots.size(); // slightly arbitrary default value
 
     for (size_t i = 0; i < _roots.size(); i++) {
       q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
     }
 
     vector<S> nns;
-    while (nns.size() < n * _roots.size() && !q.empty()) {
+    while (nns.size() < search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
       S i = top.second;
       const typename Distance::node* nd = _get(top.second);
@@ -535,8 +538,10 @@ protected:
       nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
     }
 
-    sort(nns_dist.begin(), nns_dist.end());
-    for (size_t i = 0; i < nns_dist.size() && result->size() < n; i++) {
+    size_t m = nns_dist.size();
+    size_t p = n < m ? n : m; // Return this many items
+    std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
+    for (size_t i = 0; i < p; i++) {
       result->push_back(nns_dist[i].second);
     }
   }
