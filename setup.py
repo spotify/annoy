@@ -42,7 +42,7 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h'],
-            extra_compile_args=['-O3', '-msse2'],
+            extra_compile_args=['-O3', '-march=native', '-ffast-math'],
         )
       ],
       long_description=long_description,
