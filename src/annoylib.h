@@ -86,11 +86,16 @@ struct Randomness {
 };
 
 template<typename T>
-inline T get_norm(T* v, int f) {
+inline T get_sq_norm(const T* v, int f) {
   T sq_norm = 0;
   for (int z = 0; z < f; z++)
     sq_norm += v[z] * v[z];
-  return sqrt(sq_norm);
+  return sq_norm;
+}
+
+template<typename T>
+inline T get_norm(const T* v, int f) {
+  return sqrt(get_sq_norm(v, f));
 }
 
 template<typename T>
@@ -119,9 +124,15 @@ struct Angular {
      * more memory to be able to fit the vector outside
      */
     S n_descendants;
-    S children[2]; // Will possibly store more than 2
+    union {
+      S children[2]; // Will possibly store more than 2 - only for non-leaves
+      T norm; // For leaves
+    };
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
+  static inline void init(node* a, int f) {
+    a->norm = get_norm(a->v, f);
+  }
   static inline T distance(const node* a, const node* b, int f) {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
@@ -168,10 +179,18 @@ template<typename S, typename T>
 struct Euclidean {
   struct __attribute__((__packed__)) node {
     S n_descendants;
-    T a; // need an extra constant term to determine the offset of the plane
-    S children[2];
+    union {
+      struct {
+	T a; // need an extra constant term to determine the offset of the plane
+	S children[2];
+      }; // For non-leaves
+      T sq_norm; // For leaves
+    };
     T v[1];
   };
+  static inline void init(node* a, int f) {
+    a->sq_norm = get_sq_norm(a->v, f);
+  }
   static inline T distance(const node* a, const node* b, int f) {
     T d = 0.0;
     const T* x = a->v;
@@ -274,8 +293,8 @@ public:
     n->children[1] = 0;
     n->n_descendants = 1;
 
-    for (int z = 0; z < _f; z++)
-      n->v[z] = w[z];
+    memcpy(n->v, w, _f * sizeof(T));
+    Distance::init(n, _f);
 
     if (item >= _n_items)
       _n_items = item + 1;
@@ -384,6 +403,7 @@ public:
   void get_nns_by_vector(const T* w, size_t n, vector<S>* result, size_t search_k=-1) {
     typename Distance::node* m = (typename Distance::node*)malloc(_s);
     memcpy(m->v, w, _f * sizeof(T));
+    Distance::init(m, _f);
     _get_all_nns(m, n, result, search_k);
     free(m);
   }
