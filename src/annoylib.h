@@ -137,16 +137,16 @@ struct Angular {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
     // = 2 - 2cos
-    T pp = 0, qq = 0, pq = 0;
+    T pq = 0;
     const T* x = a->v;
     const T* y = b->v;
     for (int z = 0; z < f; z++, x++, y++) {
-      pp += (*x) * (*x);
-      qq += (*y) * (*y);
       pq += (*x) * (*y);
     }
-    T ppqq = pp * qq;
-    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    T norm_prod = a->norm * b->norm;
+    // Backwards compatibility for indexes with no precomputed norms:
+    if (norm_prod == 0) norm_prod = get_norm(a->v, f) * get_norm(b->v, f);
+    if (norm_prod > 0) return 2.0 - 2.0 * pq / norm_prod;
     else return 2.0; // cos is 0
   }
   static inline T margin(const node* n, const T* y, int f) {
@@ -192,11 +192,14 @@ struct Euclidean {
     a->sq_norm = get_sq_norm(a->v, f);
   }
   static inline T distance(const node* a, const node* b, int f) {
-    T d = 0.0;
+    // (x - y)^2 = x^2 + y^2 - 2*x*y
+    T d = a->sq_norm + b->sq_norm;
+    // Backwards compatibility for indexes with no precomputed norms:
+    if (d == 0) d = get_sq_norm(a->v, f) + get_sq_norm(b->v, f);
     const T* x = a->v;
     const T* y = b->v;
     for (int i = 0; i < f; i++, x++, y++)
-      d += ((*x) - (*y)) * ((*x) - (*y));
+      d -= 2 * (*x) * (*y);
     return d;
   }
   static inline T margin(const node* n, const T* y, int f) {
