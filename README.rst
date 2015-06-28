@@ -139,9 +139,3 @@ Discuss
 -------
 
 Feel free to post any questions or comments to the `annoy-user <https://groups.google.com/group/annoy-user>`__ group. I'm `@fulhack <https://twitter.com/fulhack>`__ on Twitter.
-
-Future stuff
-------------
-
-* More performance tweaks
-* Expose some performance/accuracy tradeoffs at query time rather than index building time
