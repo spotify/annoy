@@ -122,11 +122,13 @@ struct Angular {
     S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
-  static inline T distance(const T* x, const T* y, int f) {
+  static inline T distance(const node* a, const node* b, int f) {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
     // = 2 - 2cos
     T pp = 0, qq = 0, pq = 0;
+    const T* x = a->v;
+    const T* y = b->v;
     for (int z = 0; z < f; z++, x++, y++) {
       pp += (*x) * (*x);
       qq += (*y) * (*y);
@@ -170,8 +172,10 @@ struct Euclidean {
     S children[2];
     T v[1];
   };
-  static inline T distance(const T* x, const T* y, int f) {
+  static inline T distance(const node* a, const node* b, int f) {
     T d = 0.0;
+    const T* x = a->v;
+    const T* y = b->v;
     for (int i = 0; i < f; i++, x++, y++)
       d += ((*x) - (*y)) * ((*x) - (*y));
     return d;
@@ -369,18 +373,19 @@ public:
   }
 
   T get_distance(S i, S j) {
-    const T* x = _get(i)->v;
-    const T* y = _get(j)->v;
-    return Distance::distance(x, y, _f);
+    return Distance::distance(_get(i), _get(j), _f);
   }
 
   void get_nns_by_item(S item, size_t n, vector<S>* result, size_t search_k=-1) {
     const typename Distance::node* m = _get(item);
-    _get_all_nns(m->v, n, result, search_k);
+    _get_all_nns(m, n, result, search_k);
   }
 
   void get_nns_by_vector(const T* w, size_t n, vector<S>* result, size_t search_k=-1) {
-    _get_all_nns(w, n, result, search_k);
+    typename Distance::node* m = (typename Distance::node*)malloc(_s);
+    memcpy(m->v, w, _f * sizeof(T));
+    _get_all_nns(m, n, result, search_k);
+    free(m);
   }
   S get_n_items() {
     return _n_items;
@@ -497,7 +502,7 @@ protected:
     return item;
   }
 
-  void _get_all_nns(const T* v, size_t n, vector<S>* result, size_t search_k) {
+  void _get_all_nns(const typename Distance::node* m, size_t n, vector<S>* result, size_t search_k) {
     std::priority_queue<pair<T, S> > q;
 
     if (search_k == -1)
@@ -520,7 +525,7 @@ protected:
         const S* dst = nd->children;
         nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
       } else {
-        T margin = Distance::margin(nd, v, _f);
+        T margin = Distance::margin(nd, m->v, _f);
         q.push(make_pair(std::min(d, +margin), nd->children[1]));
         q.push(make_pair(std::min(d, -margin), nd->children[0]));
       }
@@ -536,12 +541,12 @@ protected:
       if (j == last)
         continue;
       last = j;
-      nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
+      nns_dist.push_back(make_pair(Distance::distance(m, _get(j), _f), j));
     }
 
-    size_t m = nns_dist.size();
-    size_t p = n < m ? n : m; // Return this many items
-    std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
+    size_t o = nns_dist.size();
+    size_t p = n < o ? n : o; // Return this many items
+    std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[o]);
     for (size_t i = 0; i < p; i++) {
       result->push_back(nns_dist[i].second);
     }
