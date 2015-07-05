@@ -503,6 +503,8 @@ protected:
     if (search_k == -1)
       search_k = n * _roots.size(); // slightly arbitrary default value
 
+    size_t search_m = sqrt(double(n) * double(search_k)); // Very arbitrary value, but seems to work well
+
     for (size_t i = 0; i < _roots.size(); i++) {
       q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
     }
@@ -526,15 +528,36 @@ protected:
       }
     }
 
-    // Get distances for all items
-    // To avoid calculating distance multiple times for any items, sort by id
-    sort(nns.begin(), nns.end());
-    vector<pair<T, S> > nns_dist;
+    // Sort all items so we can detect duplicates
+    // Sorting probably also helps memory locality when computing distances
+    std::sort(nns.begin(), nns.end());
+
+    // Build a histogram of how many trees each item was found in
+    vector<int> histogram(_roots.size()+1, 0);
     S last = -1;
+    int last_count = 0;
+    for (size_t i = 0; i < nns.size(); i++) {
+      if (nns[i] != last)
+        last_count = 0;
+      histogram[++last_count]++; // histogram[x] will store how many items occurred AT LEAST x times
+      last = nns[i];
+    }
+
+    // Compute a threshold for least number of trees to consider
+    int t;
+    for (t = _roots.size(); t >= 0; t--)
+      if (histogram[t] >= search_m)
+        break;
+
+    // Get distances for all items
+    vector<pair<T, S> > nns_dist;
+    last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
       S j = nns[i];
       if (j == last)
         continue;
+      if (i + t - 1 >= nns.size() || nns[i + t - 1] != j)
+        continue; // Make sure there's at least t occurrences of j
       last = j;
       nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
     }
