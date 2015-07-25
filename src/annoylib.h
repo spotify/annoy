@@ -415,17 +415,19 @@ protected:
     if (indices.size() == 1)
       return indices[0];
 
-    _allocate_size(_n_nodes + 1);
-    S item = _n_nodes++;
-    typename Distance::node* m = _get(item);
-    m->n_descendants = (S)indices.size();
-
     if (indices.size() <= (size_t)_K) {
+      _allocate_size(_n_nodes + 1);
+      S item = _n_nodes++;
+      typename Distance::node* m = _get(item);
+      m->n_descendants = (S)indices.size();
+
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
       copy(indices.begin(), indices.end(), m->children);
       return item;
     }
+
+    typename Distance::node* m = (typename Distance::node*)malloc(_s); // TODO: avoid
 
     vector<S> children_indices[2];
     for (int attempt = 0; attempt < 20; attempt ++) {
@@ -489,10 +491,14 @@ protected:
     S children_0 = _make_tree(children_indices[0]);
     S children_1 = _make_tree(children_indices[1]);
 
-    // We need to fetch m again because it might have been reallocated
-    m = _get(item);
+    m->n_descendants = (S)indices.size();
     m->children[0] = children_0;
     m->children[1] = children_1;
+
+    _allocate_size(_n_nodes + 1);
+    S item = _n_nodes++;
+    memcpy(_get(item), m, _s);
+    free(m);
 
     return item;
   }
