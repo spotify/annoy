@@ -265,7 +265,9 @@ class TypesTest(unittest.TestCase):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
         for j in xrange(n_points):
-            i.add_item(j, numpy.random.normal(size=f))
+            a = numpy.random.normal(size=f)
+            a = a.astype(random.choice([numpy.float64, numpy.float32, numpy.uint8, numpy.int16]))
+            i.add_item(j, a)
 
         i.build(n_trees)
 
@@ -274,5 +276,14 @@ class TypesTest(unittest.TestCase):
         i = AnnoyIndex(f, 'euclidean')
         for j in xrange(n_points):
             i.add_item(j, (random.gauss(0, 1) for x in xrange(f)))
+
+        i.build(n_trees)
+
+    def test_wrong_length(self, n_points=1000, n_trees=10):
+        f = 10
+        i = AnnoyIndex(f, 'euclidean')
+        i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
+        self.assertRaises(IndexError, i.add_item, 1, [random.gauss(0, 1) for x in xrange(f+1000)])
+        self.assertRaises(IndexError, i.add_item, 2, [])
 
         i.build(n_trees)

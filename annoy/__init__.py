@@ -19,12 +19,20 @@ class AnnoyIndex(Annoy):
         """
         :param metric: 'angular' or 'euclidean'
         """
+        self.f = f
         super(AnnoyIndex, self).__init__(f, metric)
+
+    def check_list(self, vector):
+        if type(vector) != list:
+            vector = list(vector)
+        if len(vector) != self.f:
+            raise IndexError('Vector must be of length %d' % self.f)
+        return vector
 
     def add_item(self, i, vector):
         # Wrapper to convert inputs to list
-        return super(AnnoyIndex, self).add_item(i, list(vector))
+        return super(AnnoyIndex, self).add_item(i, self.check_list(vector))
 
     def get_nns_by_vector(self, vector, n, search_k=-1):
         # Same
-        return super(AnnoyIndex, self).get_nns_by_vector(list(vector), n, search_k)
+        return super(AnnoyIndex, self).get_nns_by_vector(self.check_list(vector), n, search_k)
