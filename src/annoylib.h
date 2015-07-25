@@ -415,17 +415,19 @@ protected:
     if (indices.size() == 1)
       return indices[0];
 
-    _allocate_size(_n_nodes + 1);
-    S item = _n_nodes++;
-    typename Distance::node* m = _get(item);
-    m->n_descendants = (S)indices.size();
-
     if (indices.size() <= (size_t)_K) {
+      _allocate_size(_n_nodes + 1);
+      S item = _n_nodes++;
+      typename Distance::node* m = _get(item);
+      m->n_descendants = (S)indices.size();
+
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
       copy(indices.begin(), indices.end(), m->children);
       return item;
     }
+
+    typename Distance::node* m = (typename Distance::node*)malloc(_s); // TODO: avoid
 
     vector<S> children_indices[2];
     for (int attempt = 0; attempt < 20; attempt ++) {
@@ -486,13 +488,17 @@ protected:
       }
     }
 
-    S children_0 = _make_tree(children_indices[0]);
-    S children_1 = _make_tree(children_indices[1]);
+    int flip = (children_indices[0].size() > children_indices[1].size());
 
-    // We need to fetch m again because it might have been reallocated
-    m = _get(item);
-    m->children[0] = children_0;
-    m->children[1] = children_1;
+    m->n_descendants = (S)indices.size();
+    for (int side = 0; side < 2; side++)
+      // run _make_tree for the smallest child first (for cache locality)
+      m->children[side^flip] = _make_tree(children_indices[side^flip]);
+
+    _allocate_size(_n_nodes + 1);
+    S item = _n_nodes++;
+    memcpy(_get(item), m, _s);
+    free(m);
 
     return item;
   }
@@ -500,7 +506,7 @@ protected:
   void _get_all_nns(const T* v, size_t n, vector<S>* result, size_t search_k) {
     std::priority_queue<pair<T, S> > q;
 
-    if (search_k == -1)
+    if (search_k == (size_t)-1)
       search_k = n * _roots.size(); // slightly arbitrary default value
 
     for (size_t i = 0; i < _roots.size(); i++) {
