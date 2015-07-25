@@ -259,3 +259,20 @@ class IndexTest(unittest.TestCase):
         # This might change in the future if we change the search algorithm, but in that case let's update the test
         self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
+
+class TypesTest(unittest.TestCase):
+    def test_numpy(self, n_points=1000, n_trees=10):
+        f = 10
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(n_points):
+            i.add_item(j, numpy.random.normal(size=f))
+
+        i.build(n_trees)
+
+    def test_tuple(self, n_points=1000, n_trees=10):
+        f = 10
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(n_points):
+            i.add_item(j, (random.gauss(0, 1) for x in xrange(f)))
+
+        i.build(n_trees)

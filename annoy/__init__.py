@@ -14,9 +14,17 @@
 
 from .annoylib import *
 
-def AnnoyIndex(f, metric='angular'):
-    """
+class AnnoyIndex(Annoy):
+    def __init__(self, f, metric='angular'):
+        """
         :param metric: 'angular' or 'euclidean'
-    """
-    return Annoy(f, metric)
+        """
+        super(AnnoyIndex, self).__init__(f, metric)
 
+    def add_item(self, i, vector):
+        # Wrapper to convert inputs to list
+        return super(AnnoyIndex, self).add_item(i, list(vector))
+
+    def get_nns_by_vector(self, vector, n, search_k=-1):
+        # Same
+        return super(AnnoyIndex, self).get_nns_by_vector(list(vector), n, search_k)
