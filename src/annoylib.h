@@ -488,12 +488,12 @@ protected:
       }
     }
 
-    S children_0 = _make_tree(children_indices[0]);
-    S children_1 = _make_tree(children_indices[1]);
+    int flip = (children_indices[0].size() > children_indices[1].size());
 
     m->n_descendants = (S)indices.size();
-    m->children[0] = children_0;
-    m->children[1] = children_1;
+    for (int side = 0; side < 2; side++)
+      // run _make_tree for the smallest child first (for cache locality)
+      m->children[side^flip] = _make_tree(children_indices[side^flip]);
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
