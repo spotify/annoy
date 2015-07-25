@@ -506,7 +506,7 @@ protected:
   void _get_all_nns(const T* v, size_t n, vector<S>* result, size_t search_k) {
     std::priority_queue<pair<T, S> > q;
 
-    if (search_k == -1)
+    if (search_k == (size_t)-1)
       search_k = n * _roots.size(); // slightly arbitrary default value
 
     for (size_t i = 0; i < _roots.size(); i++) {
