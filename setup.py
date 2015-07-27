@@ -30,7 +30,7 @@ readme_note = """\
 
 """
 
-with open('README.rst') as fobj:
+with open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
 
