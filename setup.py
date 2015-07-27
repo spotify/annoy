@@ -16,6 +16,7 @@
 # the License.
 
 from setuptools import setup, Extension
+import codecs
 import os
 import sys
 
@@ -30,7 +31,7 @@ readme_note = """\
 
 """
 
-with open('README.rst', encoding='utf-8') as fobj:
+with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
 
