@@ -119,7 +119,7 @@ For some interesting stats, check out Radim Řehůřek's great blog posts compar
 
 Also check out `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ which is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
 
-.. figure:: https://raw.github.com/erikbern/ann-benchmarks/master/results/sift.png
+.. figure:: https://raw.github.com/erikbern/ann-benchmarks/master/results/glove.png
    :alt: ANN benchmarks
    :align: center
    :target: https://github.com/erikbern/ann-benchmarks
