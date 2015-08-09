@@ -212,8 +212,8 @@ class AnnoyIndexInterface {
   virtual void unload() = 0;
   virtual bool load(const char* filename) = 0;
   virtual T get_distance(S i, S j) = 0;
-  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result) = 0;
-  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result) = 0;
+  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
   virtual S get_n_items() = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, vector<T>* v) = 0;
@@ -374,13 +374,13 @@ public:
     return Distance::distance(x, y, _f);
   }
 
-  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result) {
+  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
     const typename Distance::node* m = _get(item);
-    _get_all_nns(m->v, n, search_k, result);
+    _get_all_nns(m->v, n, search_k, result, distances);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result) {
-    _get_all_nns(w, n, search_k, result);
+  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+    _get_all_nns(w, n, search_k, result, distances);
   }
   S get_n_items() {
     return _n_items;
@@ -503,7 +503,7 @@ protected:
     return item;
   }
 
-  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result) {
+  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
     std::priority_queue<pair<T, S> > q;
 
     if (search_k == (size_t)-1)
@@ -549,6 +549,8 @@ protected:
     size_t p = n < m ? n : m; // Return this many items
     std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
     for (size_t i = 0; i < p; i++) {
+      if (distances)
+	distances->push_back(nns_dist[i].first);
       result->push_back(nns_dist[i].second);
     }
   }

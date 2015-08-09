@@ -138,7 +138,7 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
 
   PyObject* l = PyList_New(0);
   vector<int32_t> result;
-  self->ptr->get_nns_by_item(item, n, search_k, &result);
+  self->ptr->get_nns_by_item(item, n, search_k, &result, NULL);
   for (size_t i = 0; i < result.size(); i++) {
     PyList_Append(l, PyInt_FromLong(result[i]));
   }
@@ -161,7 +161,7 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
     w[z] = PyFloat_AsDouble(pf);
   }
   vector<int32_t> result;
-  self->ptr->get_nns_by_vector(&w[0], n, search_k, &result);
+  self->ptr->get_nns_by_vector(&w[0], n, search_k, &result, NULL);
   PyObject* l = PyList_New(0);
   for (size_t i = 0; i < result.size(); i++) {
     PyList_Append(l, PyInt_FromLong(result[i]));
