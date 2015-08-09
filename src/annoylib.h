@@ -160,6 +160,10 @@ struct Angular {
       n->v[z] = nodes[i]->v[z] / i_norm - nodes[j]->v[z] / j_norm;
     normalize(n->v, f);
   }
+  static inline T normalized_distance(T distance) {
+    // Used when requesting distances from Python layer
+    return sqrt(distance);
+  }
 };
 
 template<typename S, typename T>
@@ -198,6 +202,9 @@ struct Euclidean {
       n->v[z] = nodes[i]->v[z] - nodes[j]->v[z];
       n->a += -n->v[z] * (nodes[i]->v[z] + nodes[j]->v[z]) / 2;
     }
+  }
+  static inline T normalized_distance(T distance) {
+    return sqrt(distance);
   }
 };
 
@@ -550,7 +557,7 @@ protected:
     std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
     for (size_t i = 0; i < p; i++) {
       if (distances)
-	distances->push_back(nns_dist[i].first);
+	distances->push_back(Distance::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
   }

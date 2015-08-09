@@ -256,15 +256,15 @@ class EuclideanIndexTest(unittest.TestCase):
 
         l, d = i.get_nns_by_item(0, 3, -1, True)
         self.assertEquals(l, [0, 1, 2])
-        self.assertAlmostEquals(d[0], 0.0)
-        self.assertAlmostEquals(d[1], 2.0)
-        self.assertAlmostEquals(d[2], 5.0)
+        self.assertAlmostEquals(d[0]**2, 0.0)
+        self.assertAlmostEquals(d[1]**2, 2.0)
+        self.assertAlmostEquals(d[2]**2, 5.0)
 
         l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
         self.assertEquals(l, [1, 0, 2])
-        self.assertAlmostEquals(d[0], 6.0)
-        self.assertAlmostEquals(d[1], 8.0)
-        self.assertAlmostEquals(d[2], 9.0)
+        self.assertAlmostEquals(d[0]**2, 6.0)
+        self.assertAlmostEquals(d[1]**2, 8.0)
+        self.assertAlmostEquals(d[2]**2, 9.0)
 
 
 class IndexTest(unittest.TestCase):
