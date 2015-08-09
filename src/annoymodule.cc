@@ -128,31 +128,49 @@ py_an_save(py_annoy *self, PyObject *args) {
 }
 
 
+PyObject*
+get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
+  PyObject* l = PyList_New(0);
+  for (size_t i = 0; i < result.size(); i++)
+    PyList_Append(l, PyInt_FromLong(result[i]));
+  if (!include_distances)
+    return l;
+
+  PyObject* d = PyList_New(0);
+  for (size_t i = 0; i < distances.size(); i++)
+    PyList_Append(d, PyFloat_FromDouble(distances[i]));
+
+  PyObject* t = PyTuple_New(2);
+  PyTuple_SetItem(t, 0, l);
+  PyTuple_SetItem(t, 1, d);
+
+  return t;
+}
+
+
 static PyObject* 
 py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
-  int32_t item, n, search_k=-1;
+  int32_t item, n, search_k=-1, include_distances=0;
   if (!self->ptr) 
     return Py_None;
-  if (!PyArg_ParseTuple(args, "ii|i", &item, &n, &search_k))
+  if (!PyArg_ParseTuple(args, "ii|ii", &item, &n, &search_k, &include_distances))
     return Py_None;
 
-  PyObject* l = PyList_New(0);
   vector<int32_t> result;
-  self->ptr->get_nns_by_item(item, n, search_k, &result, NULL);
-  for (size_t i = 0; i < result.size(); i++) {
-    PyList_Append(l, PyInt_FromLong(result[i]));
-  }
-  return l;
+  vector<float> distances;
+  self->ptr->get_nns_by_item(item, n, search_k, &result, include_distances ? &distances : NULL);
+
+  return get_nns_to_python(result, distances, include_distances);
 }
 
 
 static PyObject* 
 py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
   PyObject* v;
-  int32_t n, search_k=-1;
+  int32_t n, search_k=-1, include_distances=0;
   if (!self->ptr) 
     return Py_None;
-  if (!PyArg_ParseTuple(args, "Oi|i", &v, &n, &search_k))
+  if (!PyArg_ParseTuple(args, "Oi|ii", &v, &n, &search_k, &include_distances))
     return Py_None;
 
   vector<float> w(self->f);
@@ -160,13 +178,12 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
     PyObject *pf = PyList_GetItem(v,z);
     w[z] = PyFloat_AsDouble(pf);
   }
+
   vector<int32_t> result;
-  self->ptr->get_nns_by_vector(&w[0], n, search_k, &result, NULL);
-  PyObject* l = PyList_New(0);
-  for (size_t i = 0; i < result.size(); i++) {
-    PyList_Append(l, PyInt_FromLong(result[i]));
-  }
-  return l;
+  vector<float> distances;
+  self->ptr->get_nns_by_vector(&w[0], n, search_k, &result, include_distances ? &distances : NULL);
+
+  return get_nns_to_python(result, distances, include_distances);
 }
 
 

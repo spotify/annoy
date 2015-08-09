@@ -78,8 +78,8 @@ Full Python API
 * ``a.save(fn)`` saves the index to disk.
 * ``a.load(fn)`` loads (mmaps) an index from disk.
 * ``a.unload(fn)`` unloads.
-* ``a.get_nns_by_item(i, n, search_k=-1)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed.
-* ``a.get_nns_by_vector(v, n, search_k=-1)`` same but query by vector ``v``.
+* ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
+* ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
 * ``a.get_item_vector(i)`` returns the vector for item ``i`` that was previously added.
 * ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``.
 * ``a.get_n_items()`` returns the number of items in the index.

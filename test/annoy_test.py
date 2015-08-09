@@ -246,6 +246,26 @@ class EuclideanIndexTest(unittest.TestCase):
     def test_precision_1000(self):
         self.assertTrue(self.precision(1000) >= 0.98)
 
+    def test_get_nns_with_distances(self):
+        f = 3
+        i = AnnoyIndex(f, 'euclidean')
+        i.add_item(0, [0, 0, 2])
+        i.add_item(1, [0, 1, 1])
+        i.add_item(2, [1, 0, 0])
+        i.build(10)
+
+        l, d = i.get_nns_by_item(0, 3, -1, True)
+        self.assertEquals(l, [0, 1, 2])
+        self.assertAlmostEquals(d[0], 0.0)
+        self.assertAlmostEquals(d[1], 2.0)
+        self.assertAlmostEquals(d[2], 5.0)
+
+        l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
+        self.assertEquals(l, [1, 0, 2])
+        self.assertAlmostEquals(d[0], 6.0)
+        self.assertAlmostEquals(d[1], 8.0)
+        self.assertAlmostEquals(d[2], 9.0)
+
 
 class IndexTest(unittest.TestCase):
     def test_not_found_tree(self):
