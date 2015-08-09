@@ -33,6 +33,6 @@ class AnnoyIndex(Annoy):
         # Wrapper to convert inputs to list
         return super(AnnoyIndex, self).add_item(i, self.check_list(vector))
 
-    def get_nns_by_vector(self, vector, n, search_k=-1):
+    def get_nns_by_vector(self, vector, n, search_k=-1, include_distances=False):
         # Same
-        return super(AnnoyIndex, self).get_nns_by_vector(self.check_list(vector), n, search_k)
+        return super(AnnoyIndex, self).get_nns_by_vector(self.check_list(vector), n, search_k, include_distances)

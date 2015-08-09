@@ -27,7 +27,13 @@ except NameError:
     xrange = range
 
 
-class AngularIndexTest(unittest.TestCase):
+class TestCase(unittest.TestCase):
+    def assertAlmostEquals(self, x, y):
+        # Annoy uses float precision, so we override the default precision
+        super(TestCase, self).assertAlmostEquals(x, y, 4)
+
+
+class AngularIndexTest(TestCase):
     def test_get_nns_by_vector(self):
         f = 3
         i = AnnoyIndex(f)
@@ -164,7 +170,7 @@ class AngularIndexTest(unittest.TestCase):
         self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3, 10), [2, 1, 0])
 
 
-class EuclideanIndexTest(unittest.TestCase):
+class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
         f = 2
         i = AnnoyIndex(f, 'euclidean')
@@ -246,8 +252,28 @@ class EuclideanIndexTest(unittest.TestCase):
     def test_precision_1000(self):
         self.assertTrue(self.precision(1000) >= 0.98)
 
+    def test_get_nns_with_distances(self):
+        f = 3
+        i = AnnoyIndex(f, 'euclidean')
+        i.add_item(0, [0, 0, 2])
+        i.add_item(1, [0, 1, 1])
+        i.add_item(2, [1, 0, 0])
+        i.build(10)
 
-class IndexTest(unittest.TestCase):
+        l, d = i.get_nns_by_item(0, 3, -1, True)
+        self.assertEquals(l, [0, 1, 2])
+        self.assertAlmostEquals(d[0]**2, 0.0)
+        self.assertAlmostEquals(d[1]**2, 2.0)
+        self.assertAlmostEquals(d[2]**2, 5.0)
+
+        l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
+        self.assertEquals(l, [1, 0, 2])
+        self.assertAlmostEquals(d[0]**2, 6.0)
+        self.assertAlmostEquals(d[1]**2, 8.0)
+        self.assertAlmostEquals(d[2]**2, 9.0)
+
+
+class IndexTest(TestCase):
     def test_not_found_tree(self):
         i = AnnoyIndex(10)
         self.assertRaises(IOError, i.load, 'nonexists.tree')
@@ -260,7 +286,7 @@ class IndexTest(unittest.TestCase):
         self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
 
-class TypesTest(unittest.TestCase):
+class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
