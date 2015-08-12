@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __MINGW32__
 #include "mman.h"
@@ -46,20 +48,11 @@
   #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
 #endif
 
-#ifndef NO_PACKED_STRUCTS
-#define PACKED_STRUCTS_EXTRA __attribute__((__packed__))
-// TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
+#ifndef ANNOY_NODE_ATTRIBUTE
+  #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
+  // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
 #endif
 
-// This allows others to supply their own random number generator function
-// which is assumed to be uniformly distributed over over 0 .. RAND_MAX
-inline long int randomDraw() {
-#ifndef __UNIFORM_RAND_OVERRIDE__
-  return rand();
-#else
-  return __UNIFORM_RAND_OVERRIDE__;
-#endif
-}
 
 using std::vector;
 using std::string;
@@ -67,21 +60,16 @@ using std::pair;
 using std::numeric_limits;
 using std::make_pair;
 
-template<typename T>
-struct Randomness {
-  // Just a dummy class to avoid code repetition.
+struct RandRandom {
+  // Default implementation of annoy-specific random number generator that uses rand() from standard library.
   // Owned by the AnnoyIndex, passed around to the distance metrics
   inline int flip() {
-    return randomDraw() % 2;
+    // Draw random 0 or 1
+    return rand() & 1;
   }
-  inline int index(int n) {
-    return randomDraw() % n;
-  }
-  inline void index2(int n, int* i, int* j) {
-    // Draw two random variables so that i != j
-    *i = index(n);
-    *j = index(n-1);
-    *j += (*j >= *i);
+  inline size_t index(size_t n) {
+    // Draw random integer between 0 and n-1 where n is at most the number of data points you have
+    return rand() % n;
   }
 };
 
@@ -101,9 +89,9 @@ inline void normalize(T* v, int f) {
 }
 
 
-template<typename S, typename T>
+template<typename S, typename T, class Random>
 struct Angular {
-  struct PACKED_STRUCTS_EXTRA node {
+  struct ANNOY_NODE_ATTRIBUTE Node {
     /*
      * We store a binary tree where each node has two things
      * - A vector associated with it
@@ -112,9 +100,9 @@ struct Angular {
      * All nodes with n_descendants == 1 are leaf nodes.
      * A memory optimization is that for nodes with 2 <= n_descendants <= K,
      * we skip the vector. Instead we store a list of all descendants. K is
-     * determined by the number of items that fits in the same space.
-     * For nodes with n_descendants == 1 or > K, there is always a
-     * corresponding vector. 
+     * determined by the number of items that fits in the space of the vector.
+     * For nodes with n_descendants == 1 the vector is a data point.
+     * For nodes with n_descendants > K the vector is the normal of the split plane.
      * Note that we can't really do sizeof(node<T>) because we cheat and allocate
      * more memory to be able to fit the vector outside
      */
@@ -136,28 +124,32 @@ struct Angular {
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
-  static inline T margin(const node* n, const T* y, int f) {
+  static inline T margin(const Node* n, const T* y, int f) {
     T dot = 0;
     for (int z = 0; z < f; z++)
       dot += n->v[z] * y[z];
     return dot;
   }
-  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
+  static inline bool side(const Node* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
     else
-      return random->flip();
+      return random.flip();
   }
-  static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
+  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     // Sample two random points from the set of nodes
     // Calculate the hyperplane equidistant from them
-    int i, j;
-    random->index2(nodes.size(), &i, &j);
-    T i_norm = get_norm(nodes[i]->v, f);
-    T j_norm = get_norm(nodes[j]->v, f);
+    size_t count = nodes.size();
+    size_t i = random.index(count);
+    size_t j = random.index(count-1);
+    j += (j >= i); // ensure that i != j
+    T* iv = nodes[i]->v;
+    T* jv = nodes[j]->v;
+    T i_norm = get_norm(iv, f);
+    T j_norm = get_norm(jv, f);
     for (int z = 0; z < f; z++)
-      n->v[z] = nodes[i]->v[z] / i_norm - nodes[j]->v[z] / j_norm;
+      n->v[z] = iv[z] / i_norm - jv[z] / j_norm;
     normalize(n->v, f);
   }
   static inline T normalized_distance(T distance) {
@@ -166,9 +158,9 @@ struct Angular {
   }
 };
 
-template<typename S, typename T>
+template<typename S, typename T, class Random>
 struct Euclidean {
-  struct __attribute__((__packed__)) node {
+  struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
@@ -180,27 +172,31 @@ struct Euclidean {
       d += ((*x) - (*y)) * ((*x) - (*y));
     return d;
   }
-  static inline T margin(const node* n, const T* y, int f) {
+  static inline T margin(const Node* n, const T* y, int f) {
     T dot = n->a;
     for (int z = 0; z < f; z++)
       dot += n->v[z] * y[z];
     return dot;
   }
-  static inline bool side(const node* n, const T* y, int f, Randomness<T>* random) {
+  static inline bool side(const Node* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
     else
-      return random->flip();
+      return random.flip();
   }
-  static inline void create_split(const vector<node*>& nodes, int f, Randomness<T>* random, node* n) {
+  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     // Same as Angular version, but no normalization and has to compute the offset too
-    int i, j;
-    random->index2(nodes.size(), &i, &j);
+    size_t count = nodes.size();
+    size_t i = random.index(count);
+    size_t j = random.index(count-1);
+    j += (j >= i); // ensure that i != j
+    T* iv = nodes[i]->v;
+    T* jv = nodes[j]->v;
     n->a = 0.0;
     for (int z = 0; z < f; z++) {
-      n->v[z] = nodes[i]->v[z] - nodes[j]->v[z];
-      n->a += -n->v[z] * (nodes[i]->v[z] + nodes[j]->v[z]) / 2;
+      n->v[z] = iv[z] - jv[z];
+      n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
     }
   }
   static inline T normalized_distance(T distance) {
@@ -226,7 +222,7 @@ class AnnoyIndexInterface {
   virtual void get_item(S item, vector<T>* v) = 0;
 };
 
-template<typename S, typename T, typename Distance>
+template<typename S, typename T, template<typename, typename, typename> class Distance, class Random>
   class AnnoyIndex : public AnnoyIndexInterface<S, T> {
   /*
    * We use random projection to build a forest of binary trees of all items.
@@ -236,10 +232,13 @@ template<typename S, typename T, typename Distance>
    * in such a way that we at most use 2x as much memory as the vectors take.
    */
 protected:
+  typedef Distance<S, T, Random> D;
+  typedef typename D::Node Node;
+
   int _f;
   size_t _s;
   S _n_items;
-  Randomness<T> _random;
+  Random _random;
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   S _n_nodes;
   S _nodes_size;
@@ -248,10 +247,10 @@ protected:
   bool _loaded;
   bool _verbose;
 public:
+
   AnnoyIndex(int f) : _random() {
     _f = f;
-    _s = sizeof(typename Distance::node) + sizeof(T) * (f - 1); // Size of each node
-    // Note that we need to subtract one because we already allocated it
+    _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
     _n_items = 0;
     _n_nodes = 0;
     _nodes_size = 0;
@@ -259,7 +258,7 @@ public:
     _loaded = false;
     _verbose = false;
 
-    _K = (sizeof(T) * f + sizeof(S) * 2) / sizeof(S);
+    _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
   }
   ~AnnoyIndex() {
     if (_loaded) {
@@ -271,7 +270,7 @@ public:
 
   void add_item(S item, const T* w) {
     _allocate_size(item + 1);
-    typename Distance::node* n = _get(item);
+    Node* n = _get(item);
 
     n->children[0] = 0;
     n->children[1] = 0;
@@ -349,10 +348,10 @@ public:
       return false;
     off_t size = lseek(fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
-    _nodes = (typename Distance::node*)mmap(
+    _nodes = (Node*)mmap(
         0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
 #else
-    _nodes = (typename Distance::node*)mmap(
+    _nodes = (Node*)mmap(
         0, size, PROT_READ, MAP_SHARED, fd, 0);
 #endif
 
@@ -378,11 +377,11 @@ public:
   T get_distance(S i, S j) {
     const T* x = _get(i)->v;
     const T* y = _get(j)->v;
-    return Distance::distance(x, y, _f);
+    return D::distance(x, y, _f);
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
-    const typename Distance::node* m = _get(item);
+    const Node* m = _get(item);
     _get_all_nns(m->v, n, search_k, result, distances);
   }
 
@@ -397,7 +396,7 @@ public:
   }
 
   void get_item(S item, vector<T>* v) {
-    typename Distance::node* m = _get(item);
+    Node* m = _get(item);
     for (int z = 0; z < _f; z++)
       v->push_back(m->v[z]);
   }
@@ -414,8 +413,8 @@ protected:
     }
   }
 
-  inline typename Distance::node* _get(S i) {
-    return (typename Distance::node*)((char *)_nodes + (_s * i)/sizeof(char));
+  inline Node* _get(S i) {
+    return (Node*)((uint8_t *)_nodes + (_s * i));
   }
 
   S _make_tree(const vector<S >& indices) {
@@ -425,7 +424,7 @@ protected:
     if (indices.size() <= (size_t)_K) {
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
-      typename Distance::node* m = _get(item);
+      Node* m = _get(item);
       m->n_descendants = (S)indices.size();
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
@@ -434,7 +433,7 @@ protected:
       return item;
     }
 
-    typename Distance::node* m = (typename Distance::node*)malloc(_s); // TODO: avoid
+    Node* m = (Node*)malloc(_s); // TODO: avoid
 
     vector<S> children_indices[2];
     for (int attempt = 0; attempt < 20; attempt ++) {
@@ -445,28 +444,28 @@ protected:
        * all items evenly, but I think that could violate the guarantees
        * given by just picking a hyperplane at random
        */
-      vector<typename Distance::node*> children;
+      vector<Node*> children;
 
       for (size_t i = 0; i < indices.size(); i++) {
         // TODO: this loop isn't needed for the angular distance, because
         // we can just split by a random vector and it's fine. For Euclidean
         // distance we need it to calculate the offset
         S j = indices[i];
-        typename Distance::node* n = _get(j);
+        Node* n = _get(j);
         if (n)
           children.push_back(n);
       }
 
-      Distance::create_split(children, _f, &_random, m);
+      D::create_split(children, _f, _random, m);
 
       children_indices[0].clear();
       children_indices[1].clear();
 
       for (size_t i = 0; i < indices.size(); i++) {
         S j = indices[i];
-        typename Distance::node* n = _get(j);
+        Node* n = _get(j);
         if (n) {
-          bool side = Distance::side(m, n->v, _f, &_random);
+          bool side = D::side(m, n->v, _f, _random);
           children_indices[side].push_back(j);
         }
       }
@@ -525,15 +524,15 @@ protected:
       const pair<T, S>& top = q.top();
       T d = top.first;
       S i = top.second;
-      const typename Distance::node* nd = _get(top.second);
+      Node* nd = _get(i);
       q.pop();
       if (nd->n_descendants == 1) {
         nns.push_back(i);
       } else if (nd->n_descendants <= _K) {
         const S* dst = nd->children;
-        nns.insert(nns.end(), nd->children, &dst[nd->n_descendants]);
+        nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
-        T margin = Distance::margin(nd, v, _f);
+        T margin = D::margin(nd, v, _f);
         q.push(make_pair(std::min(d, +margin), nd->children[1]));
         q.push(make_pair(std::min(d, -margin), nd->children[0]));
       }
@@ -549,7 +548,7 @@ protected:
       if (j == last)
         continue;
       last = j;
-      nns_dist.push_back(make_pair(Distance::distance(v, _get(j)->v, _f), j));
+      nns_dist.push_back(make_pair(D::distance(v, _get(j)->v, _f), j));
     }
 
     size_t m = nns_dist.size();
@@ -557,7 +556,7 @@ protected:
     std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
     for (size_t i = 0; i < p; i++) {
       if (distances)
-	distances->push_back(Distance::normalized_distance(nns_dist[i].first));
+	distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
   }
