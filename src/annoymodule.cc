@@ -13,6 +13,7 @@
 // the License.
 
 #include "annoylib.h"
+#include "kissrandom.h"
 #include "Python.h"
 #include "structmember.h"
 #include <exception>
@@ -64,10 +65,10 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
     return -1;
   switch(metric[0]) {
   case 'a':
-    self->ptr = new AnnoyIndex<int32_t, float, Angular<int32_t, float> >(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
     break;
   case 'e':
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean<int32_t, float> >(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
     break;
   }
   return 0;
