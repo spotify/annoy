@@ -74,7 +74,15 @@ struct RandRandom {
 };
 
 template<typename T>
-inline T get_norm(T* v, int f) {
+inline T dot(const T* u, const T* v, int f) {
+  T dot = 0;
+  for (int z = 0; z < f; z++)
+    dot += u[z] * v[z];
+  return dot;
+}
+
+template<typename T>
+inline T get_norm(const T* v, int f) {
   T sq_norm = 0;
   for (int z = 0; z < f; z++)
     sq_norm += v[z] * v[z];
@@ -137,7 +145,7 @@ struct Angular {
     else
       return random.flip();
   }
-  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
+  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, const vector<Node*>& path, Node* n) {
     // Sample two random points from the set of nodes
     // Calculate the hyperplane equidistant from them
     size_t count = nodes.size();
@@ -150,6 +158,13 @@ struct Angular {
     T j_norm = get_norm(jv, f);
     for (int z = 0; z < f; z++)
       n->v[z] = iv[z] / i_norm - jv[z] / j_norm;
+
+    // orthogonalize
+    for (int k = 0; k < path.size(); k++) {
+      T proj = dot(path[k]->v, n->v, f) / dot(path[k]->v, path[k]->v, f);
+      for (int z = 0; z < f; z++)
+	n->v[z] -= proj * path[k]->v[z];
+    }
     normalize(n->v, f);
   }
   static inline T normalized_distance(T distance) {
@@ -185,7 +200,7 @@ struct Euclidean {
     else
       return random.flip();
   }
-  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
+  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, const vector<Node*>& path, Node* n) {
     // Same as Angular version, but no normalization and has to compute the offset too
     size_t count = nodes.size();
     size_t i = random.index(count);
@@ -296,7 +311,8 @@ public:
       for (S i = 0; i < _n_items; i++)
         indices.push_back(i);
 
-      _roots.push_back(_make_tree(indices));
+      vector<Node*> path;
+      _roots.push_back(_make_tree(indices, path));
     }
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
@@ -417,7 +433,7 @@ protected:
     return (Node*)((uint8_t *)_nodes + (_s * i));
   }
 
-  S _make_tree(const vector<S >& indices) {
+  S _make_tree(const vector<S >& indices, vector<Node*> path) {
     if (indices.size() == 1)
       return indices[0];
 
@@ -456,7 +472,8 @@ protected:
           children.push_back(n);
       }
 
-      D::create_split(children, _f, _random, m);
+      // printf("create_split with %d\n", path.size());
+      D::create_split(children, _f, _random, path, m);
 
       children_indices[0].clear();
       children_indices[1].clear();
@@ -494,12 +511,14 @@ protected:
       }
     }
 
+    path.push_back(m);
+
     int flip = (children_indices[0].size() > children_indices[1].size());
 
     m->n_descendants = (S)indices.size();
     for (int side = 0; side < 2; side++)
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(children_indices[side^flip]);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], path);
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
