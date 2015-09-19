@@ -193,11 +193,23 @@ struct Euclidean {
     j += (j >= i); // ensure that i != j
     T* iv = nodes[i]->v;
     T* jv = nodes[j]->v;
+
+    /* MEDIAN
+    vector<T> margins(nodes.size(), 0.0);
+    for (int k = 0; k < nodes.size(); k++)
+      for (int z = 0; z < f; z++)
+	margins[k] += (iv[z] - jv[z]) * nodes[k]->v[z];
+    sort(margins.begin(), margins.end());
+    n->a = -(margins[(nodes.size()-1)/2] + margins[nodes.size()/2]) / 2;*/
+
+    // AVG
     n->a = 0.0;
-    for (int z = 0; z < f; z++) {
+    for (int k = 0; k < nodes.size(); k++)
+      for (int z = 0; z < f; z++)
+	n->a += -(iv[z] - jv[z]) * nodes[k]->v[z] / nodes.size();
+
+    for (int z = 0; z < f; z++)
       n->v[z] = iv[z] - jv[z];
-      n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
-    }
   }
   static inline T normalized_distance(T distance) {
     return sqrt(distance);
@@ -469,6 +481,8 @@ protected:
           children_indices[side].push_back(j);
         }
       }
+
+      // printf("split into %d & %d\n", children_indices[0].size(), children_indices[1].size());
 
       if (children_indices[0].size() > 0 && children_indices[1].size() > 0) {
         break;
