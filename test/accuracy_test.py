@@ -66,7 +66,7 @@ class AccuracyTest(unittest.TestCase):
         n, k = 0, 0
 
         for i, line in enumerate(f_correct):
-            js_fast = annoy.get_nns_by_item(i, 11)[1:]
+            js_fast = annoy.get_nns_by_item(i, 11, 10000)[1:]
             js_real = map(int, line.strip().split())
             assert len(js_fast) == 10
             assert len(js_real) == 10
