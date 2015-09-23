@@ -193,11 +193,12 @@ struct Euclidean {
     j += (j >= i); // ensure that i != j
     T* iv = nodes[i]->v;
     T* jv = nodes[j]->v;
-    n->a = 0.0;
-    for (int z = 0; z < f; z++) {
+    for (int z = 0; z < f; z++)
       n->v[z] = iv[z] - jv[z];
+    normalize(n->v, f);
+    n->a = 0.0;
+    for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
-    }
   }
   static inline T normalized_distance(T distance) {
     return sqrt(distance);
