@@ -188,34 +188,49 @@ struct Euclidean {
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     // Same as Angular version, but no normalization and has to compute the offset too
     size_t count = nodes.size();
+
     size_t i = random.index(count);
     size_t j = random.index(count-1);
     j += (j >= i); // ensure that i != j
     vector<T> iv(&nodes[i]->v[0], &nodes[i]->v[f]);
     vector<T> jv(&nodes[j]->v[0], &nodes[j]->v[f]);
-
-    // Do one iteration of k-means based on some random samples
-    int c[2] = {1, 1};
-    for (int l = 0; l < 20; l++) {
-      int k = random.index(count);
-      T di = distance(&iv[0], nodes[k]->v, f),
-	dj = distance(&jv[0], nodes[k]->v, f);
-      if (di < dj) {
-	c[0]++;
-	for (int z = 0; z < f; z++)
-	  iv[z] += nodes[k]->v[z];
-      } else if (dj < di) {
-	c[1]++;
-	for (int z = 0; z < f; z++)
-	  jv[z] += nodes[k]->v[z];
+      
+    for (int iter = 0; iter < 10; iter++) {
+      vector<T> iv_sum(iv), jv_sum(jv);
+      T d_sum = 0;
+      int ic = 1, jc = 1;
+      for (int l = 0; l < 100; l++) {
+	int k = random.index(count);
+	T di = distance(&iv[0], nodes[k]->v, f),
+	  dj = distance(&jv[0], nodes[k]->v, f);
+	if (di < dj) {
+	  d_sum += di;
+	  ic++;
+	  for (int z = 0; z < f; z++)
+	    iv_sum[z] += nodes[k]->v[z];
+	} else if (dj < di) {
+	  d_sum += dj;
+	  jc++;
+	  for (int z = 0; z < f; z++)
+	    jv_sum[z] += nodes[k]->v[z];
+	}
       }
-    }
 
-    n->a = 0.0;
-    for (int z = 0; z < f; z++) {
-      n->v[z] += iv[z] / c[0] - jv[z] / c[1];
-      n->a += -n->v[z] * (iv[z] / c[0] + jv[z] / c[1]) / 2;
+      for (int z = 0; z < f; z++) {
+	iv[z] = iv_sum[z] / ic;
+	jv[z] = jv_sum[z] / jc;
+      }
+
+      if (nodes.size() > 10000)
+	printf("k-means: split in %d & %d (distance %f)\n", ic, jc, d_sum);
     }
+      
+    for (int z = 0; z < f; z++)
+      n->v[z] = iv[z] - jv[z];
+    normalize(n->v, f);
+    n->a = 0.0;
+    for (int z = 0; z < f; z++)
+      n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
   }
   static inline T normalized_distance(T distance) {
     return sqrt(distance);
@@ -493,8 +508,8 @@ protected:
       }
     }
 
-    //if (_verbose && indices.size() > 10000)
-    // showUpdate("Split %lu into %lu & %lu\n", indices.size(), children_indices[0].size(), children_indices[1].size());
+    if (/*_verbose && */indices.size() > 10000)
+      showUpdate("Split %lu into %lu & %lu\n", indices.size(), children_indices[0].size(), children_indices[1].size());
 
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
       // If we didn't find a hyperplane, just randomize sides as a last option
