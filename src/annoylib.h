@@ -93,7 +93,7 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
   size_t count = nodes.size();
 
   T best_d_sum = numeric_limits<T>::infinity();
-  static vector<T> iv(f, 0), jv(f, 0), iv_sum(f, 0), jv_sum(f, 0);
+  vector<T> iv(f, 0), jv(f, 0), iv_sum(f, 0), jv_sum(f, 0);
   
   for (int attempt = 0; attempt < 5; attempt++) {
     size_t i = random.index(count);
