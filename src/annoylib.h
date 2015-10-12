@@ -134,9 +134,6 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
 	jv[z] = jv_sum[z] / jc;
       }
 
-      if (nodes.size() > 10000)
-	printf("k-means: %3d %3d: %6d %6d distance %f\n", attempt, iter, ic, jc, d_sum);
-
       if (d_sum < best_d_sum) {
 	std::copy(&iv[0], &iv[f], &best_iv[0]);
 	std::copy(&jv[0], &jv[f], &best_jv[0]);
@@ -482,50 +479,36 @@ protected:
     Node* m = (Node*)malloc(_s); // TODO: avoid
 
     vector<S> children_indices[2];
-    for (int attempt = 0; attempt < 20; attempt ++) {
-      /*
-       * Create a random hyperplane.
-       * If all points end up on the same time, we try again.
-       * We could in principle *construct* a plane so that we split
-       * all items evenly, but I think that could violate the guarantees
-       * given by just picking a hyperplane at random
-       */
-      vector<Node*> children;
 
-      for (size_t i = 0; i < indices.size(); i++) {
-        // TODO: this loop isn't needed for the angular distance, because
-        // we can just split by a random vector and it's fine. For Euclidean
-        // distance we need it to calculate the offset
-        S j = indices[i];
-        Node* n = _get(j);
-        if (n)
-          children.push_back(n);
-      }
+    // Create a random hyperplane.
+    vector<Node*> children;
 
-      D::create_split(children, _f, _random, m);
+    for (size_t i = 0; i < indices.size(); i++) {
+      // TODO: this loop isn't needed for the angular distance, because
+      // we can just split by a random vector and it's fine. For Euclidean
+      // distance we need it to calculate the offset
+      S j = indices[i];
+      Node* n = _get(j);
+      if (n)
+	children.push_back(n);
+    }
 
-      children_indices[0].clear();
-      children_indices[1].clear();
+    D::create_split(children, _f, _random, m);
 
-      for (size_t i = 0; i < indices.size(); i++) {
-        S j = indices[i];
-        Node* n = _get(j);
-        if (n) {
-          bool side = D::side(m, n->v, _f, _random);
-          children_indices[side].push_back(j);
-        }
-      }
+    children_indices[0].clear();
+    children_indices[1].clear();
 
-      if (children_indices[0].size() > 0 && children_indices[1].size() > 0) {
-        break;
+    for (size_t i = 0; i < indices.size(); i++) {
+      S j = indices[i];
+      Node* n = _get(j);
+      if (n) {
+	bool side = D::side(m, n->v, _f, _random);
+	children_indices[side].push_back(j);
       }
     }
 
-    if (/*_verbose && */indices.size() > 10000)
-      showUpdate("Split %lu into %lu & %lu\n", indices.size(), children_indices[0].size(), children_indices[1].size());
-
+    // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
-      // If we didn't find a hyperplane, just randomize sides as a last option
       if (_verbose && indices.size() > 100000)
         showUpdate("Failed splitting %lu items\n", indices.size());
 
