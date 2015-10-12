@@ -82,31 +82,23 @@ class AccuracyTest(unittest.TestCase):
         self.assertTrue(accuracy > exp_accuracy - 1.0) # should be within 1%
 
     def test_angular_25(self):
-        self._test_index(25, 'angular', 46.80)
+        self._test_index(25, 'angular', 95.63)
 
     def test_euclidean_25(self):
-        self._test_index(25, 'euclidean', 47.34)
+        self._test_index(25, 'euclidean', 94.57)
 
     @attr('slow')
     def test_angular_50(self):
-        self._test_index(50, 'angular', 31.00)
+        self._test_index(50, 'angular', 89.79)
 
     @attr('slow')
     def test_euclidean_50(self):
-        self._test_index(50, 'euclidean', 33.04)
+        self._test_index(50, 'euclidean', 88.55)
 
     @attr('slow')
     def test_angular_100(self):
-        self._test_index(100, 'angular', 24.50)
+        self._test_index(100, 'angular', 84.00)
 
     @attr('slow')
     def test_euclidean_100(self):
-        self._test_index(100, 'euclidean', 25.10)
-
-    @attr('slow')
-    def test_angular_200(self):
-        self._test_index(200, 'angular', 15.18)
-
-    @attr('slow')
-    def test_euclidean_200(self):
-        self._test_index(200, 'euclidean', 17.99)        
+        self._test_index(100, 'euclidean', 81.06)
