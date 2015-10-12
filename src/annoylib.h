@@ -102,24 +102,23 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
     std::copy(&nodes[i]->v[0], &nodes[i]->v[f], &iv[0]);
     std::copy(&nodes[j]->v[0], &nodes[j]->v[f], &jv[0]);
     if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
-    T d_sum = 0;
-    
+
     for (int iter = 0; iter < 5; iter++) {
       std::fill(iv_sum.begin(), iv_sum.end(), 0);
       std::fill(jv_sum.begin(), jv_sum.end(), 0);
       int ic = 0, jc = 0;
+      T d_sum = 0;
       for (S l = 0; l < 100 && l < (S)nodes.size(); l++) {
         size_t k = random.index(count);
         T di = Distance::distance(&iv[0], nodes[k]->v, f),
           dj = Distance::distance(&jv[0], nodes[k]->v, f);
         T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+	d_sum += std::min(di, dj);
         if (di < dj) {
-          d_sum += di;
           ic++;
           for (int z = 0; z < f; z++)
             iv_sum[z] += nodes[k]->v[z] / norm;
         } else if (dj < di) {
-          d_sum += dj;
           jc++;
           for (int z = 0; z < f; z++)
           jv_sum[z] += nodes[k]->v[z] / norm;
@@ -130,6 +129,7 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
         break;
 
       if (d_sum < best_d_sum) {
+        best_d_sum = d_sum;
         std::copy(&iv[0], &iv[f], &best_iv[0]);
         std::copy(&jv[0], &jv[f], &best_jv[0]);
       }
