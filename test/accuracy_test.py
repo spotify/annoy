@@ -49,7 +49,7 @@ class AccuracyTest(unittest.TestCase):
 
             print('finding correct answers')
             f_output = open(output_correct, 'w')
-            for i in xrange(10000):
+            for i in range(10000):
                 js_slow = annoy.get_nns_by_item(i, 11, 10000)[1:]
                 assert len(js_slow) == 10
                 f_output.write(' '.join(map(str, js_slow)) + '\n')
