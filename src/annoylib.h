@@ -108,7 +108,7 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
       std::fill(iv_sum.begin(), iv_sum.end(), 0);
       std::fill(jv_sum.begin(), jv_sum.end(), 0);
       int ic = 0, jc = 0;
-      for (S l = 0; l < 100 && l < nodes.size(); l++) {
+      for (S l = 0; l < 100 && l < (S)nodes.size(); l++) {
         size_t k = random.index(count);
         T di = Distance::distance(&iv[0], nodes[k]->v, f),
           dj = Distance::distance(&jv[0], nodes[k]->v, f);
