@@ -109,34 +109,34 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
       std::fill(jv_sum.begin(), jv_sum.end(), 0);
       int ic = 0, jc = 0;
       for (S l = 0; l < 100 && l < nodes.size(); l++) {
-	size_t k = random.index(count);
-	T di = Distance::distance(&iv[0], nodes[k]->v, f),
-	  dj = Distance::distance(&jv[0], nodes[k]->v, f);
-	T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
-	if (di < dj) {
-	  d_sum += di;
-	  ic++;
-	  for (int z = 0; z < f; z++)
-	    iv_sum[z] += nodes[k]->v[z] / norm;
-	} else if (dj < di) {
-	  d_sum += dj;
-	  jc++;
-	  for (int z = 0; z < f; z++)
-	    jv_sum[z] += nodes[k]->v[z] / norm;
-	}
+        size_t k = random.index(count);
+        T di = Distance::distance(&iv[0], nodes[k]->v, f),
+          dj = Distance::distance(&jv[0], nodes[k]->v, f);
+        T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+        if (di < dj) {
+          d_sum += di;
+          ic++;
+          for (int z = 0; z < f; z++)
+            iv_sum[z] += nodes[k]->v[z] / norm;
+        } else if (dj < di) {
+          d_sum += dj;
+          jc++;
+          for (int z = 0; z < f; z++)
+          jv_sum[z] += nodes[k]->v[z] / norm;
+        }
       }
 
       if (ic == 0 || jc == 0)
-	break;
+        break;
 
       if (d_sum < best_d_sum) {
-	std::copy(&iv[0], &iv[f], &best_iv[0]);
-	std::copy(&jv[0], &jv[f], &best_jv[0]);
+        std::copy(&iv[0], &iv[f], &best_iv[0]);
+        std::copy(&jv[0], &jv[f], &best_jv[0]);
       }
 
       for (int z = 0; z < f; z++) {
-	iv[z] = iv_sum[z] / ic;
-	jv[z] = jv_sum[z] / jc;
+        iv[z] = iv_sum[z] / ic;
+        jv[z] = jv_sum[z] / jc;
       }
     }
   }
@@ -490,7 +490,7 @@ protected:
       S j = indices[i];
       Node* n = _get(j);
       if (n)
-	children.push_back(n);
+        children.push_back(n);
     }
 
     D::create_split(children, _f, _random, m);
@@ -502,8 +502,8 @@ protected:
       S j = indices[i];
       Node* n = _get(j);
       if (n) {
-	bool side = D::side(m, n->v, _f, _random);
-	children_indices[side].push_back(j);
+        bool side = D::side(m, n->v, _f, _random);
+        children_indices[side].push_back(j);
       }
     }
 
@@ -588,7 +588,7 @@ protected:
     std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
     for (size_t i = 0; i < p; i++) {
       if (distances)
-	distances->push_back(D::normalized_distance(nns_dist[i].first));
+        distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
   }
