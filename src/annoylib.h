@@ -113,7 +113,7 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
         T di = Distance::distance(&iv[0], nodes[k]->v, f),
           dj = Distance::distance(&jv[0], nodes[k]->v, f);
         T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
-	d_sum += std::min(di, dj);
+        d_sum += std::min(di, dj);
         if (di < dj) {
           ic++;
           for (int z = 0; z < f; z++)
