@@ -189,48 +189,60 @@ struct Euclidean {
     // Same as Angular version, but no normalization and has to compute the offset too
     size_t count = nodes.size();
 
-    size_t i = random.index(count);
-    size_t j = random.index(count-1);
-    j += (j >= i); // ensure that i != j
-    vector<T> iv(&nodes[i]->v[0], &nodes[i]->v[f]);
-    vector<T> jv(&nodes[j]->v[0], &nodes[j]->v[f]);
-      
-    for (int iter = 0; iter < 10; iter++) {
-      vector<T> iv_sum(iv), jv_sum(jv);
+    T best_d_sum = numeric_limits<T>::infinity();
+
+    vector<T> best_iv(f, 0), best_jv(f, 0);
+
+    for (int attempts = 0; attempts < 5; attempts++) {
+      size_t i = random.index(count);
+      size_t j = random.index(count-1);
+      j += (j >= i); // ensure that i != j
+      vector<T> iv(&nodes[i]->v[0], &nodes[i]->v[f]);
+      vector<T> jv(&nodes[j]->v[0], &nodes[j]->v[f]);
       T d_sum = 0;
-      int ic = 1, jc = 1;
-      for (int l = 0; l < 100; l++) {
-	int k = random.index(count);
-	T di = distance(&iv[0], nodes[k]->v, f),
-	  dj = distance(&jv[0], nodes[k]->v, f);
-	if (di < dj) {
-	  d_sum += di;
-	  ic++;
-	  for (int z = 0; z < f; z++)
-	    iv_sum[z] += nodes[k]->v[z];
-	} else if (dj < di) {
-	  d_sum += dj;
-	  jc++;
-	  for (int z = 0; z < f; z++)
-	    jv_sum[z] += nodes[k]->v[z];
+      
+      for (int iter = 0; iter < 5; iter++) {
+	vector<T> iv_sum(iv), jv_sum(jv);
+	int ic = 1, jc = 1;
+	for (int l = 0; l < 100 && l < nodes.size(); l++) {
+	  int k = random.index(count);
+	  T di = distance(&iv[0], nodes[k]->v, f),
+	    dj = distance(&jv[0], nodes[k]->v, f);
+	  if (di < dj) {
+	    d_sum += di;
+	    ic++;
+	    for (int z = 0; z < f; z++)
+	      iv_sum[z] += nodes[k]->v[z];
+	  } else if (dj < di) {
+	    d_sum += dj;
+	    jc++;
+	    for (int z = 0; z < f; z++)
+	      jv_sum[z] += nodes[k]->v[z];
+	  }
 	}
+	
+	for (int z = 0; z < f; z++) {
+	  iv[z] = iv_sum[z] / ic;
+	  jv[z] = jv_sum[z] / jc;
+	}
+
+	if (nodes.size() > 10000)
+	  printf("k-means: %6d %6d distance %f\n", ic, jc, d_sum);
       }
 
-      for (int z = 0; z < f; z++) {
-	iv[z] = iv_sum[z] / ic;
-	jv[z] = jv_sum[z] / jc;
+      if (d_sum < best_d_sum) {
+	best_d_sum = d_sum;
+	std::copy(&iv[0], &iv[f], &best_iv[0]);
+	std::copy(&jv[0], &jv[f], &best_jv[0]);
       }
-
-      if (nodes.size() > 10000)
-	printf("k-means: split in %d & %d (distance %f)\n", ic, jc, d_sum);
     }
       
     for (int z = 0; z < f; z++)
-      n->v[z] = iv[z] - jv[z];
+      n->v[z] = best_iv[z] - best_jv[z];
     normalize(n->v, f);
     n->a = 0.0;
     for (int z = 0; z < f; z++)
-      n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
+      n->a += -n->v[z] * (best_iv[z] + best_jv[z]) / 2;
   }
   static inline T normalized_distance(T distance) {
     return sqrt(distance);
