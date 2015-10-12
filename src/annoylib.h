@@ -88,7 +88,7 @@ inline void normalize(T* v, int f) {
     v[z] /= norm;
 }
 
-template<typename S, typename T, typename Random, typename Distance>
+template<typename T, typename Random, typename Distance>
 inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Random& random, bool cosine, T* best_iv, T* best_jv) {
   size_t count = nodes.size();
 
@@ -108,7 +108,7 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
       std::fill(jv_sum.begin(), jv_sum.end(), 0);
       int ic = 0, jc = 0;
       T d_sum = 0;
-      for (S l = 0; l < 100 && l < (S)nodes.size(); l++) {
+      for (size_t l = 0; l < 100 && l < nodes.size(); l++) {
         size_t k = random.index(count);
         T di = Distance::distance(&iv[0], nodes[k]->v, f),
           dj = Distance::distance(&jv[0], nodes[k]->v, f);
@@ -193,7 +193,7 @@ struct Angular {
   }
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     static vector<T> best_iv(f, 0), best_jv(f, 0);
-    two_means<S, T, Random, Angular<S, T, Random> >(nodes, f, random, true, &best_iv[0], &best_jv[0]);
+    two_means<T, Random, Angular<S, T, Random> >(nodes, f, random, true, &best_iv[0], &best_jv[0]);
 
     for (int z = 0; z < f; z++)
       n->v[z] = best_iv[z] - best_jv[z];
@@ -233,7 +233,7 @@ struct Euclidean {
   }
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     static vector<T> best_iv(f, 0), best_jv(f, 0);
-    two_means<S, T, Random, Euclidean<S, T, Random> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
+    two_means<T, Random, Euclidean<S, T, Random> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
 
     for (int z = 0; z < f; z++)
       n->v[z] = best_iv[z] - best_jv[z];
