@@ -89,7 +89,7 @@ inline void normalize(T* v, int f) {
 }
 
 template<typename S, typename T, typename Random, typename Distance>
-void two_means(const vector<typename Distance::Node*>& nodes, int f, Random& random, T* best_iv, T* best_jv) {
+inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Random& random, bool cosine, T* best_iv, T* best_jv) {
   size_t count = nodes.size();
 
   T best_d_sum = numeric_limits<T>::infinity();
@@ -101,6 +101,7 @@ void two_means(const vector<typename Distance::Node*>& nodes, int f, Random& ran
     j += (j >= i); // ensure that i != j
     std::copy(&nodes[i]->v[0], &nodes[i]->v[f], &iv[0]);
     std::copy(&nodes[j]->v[0], &nodes[j]->v[f], &jv[0]);
+    if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
     T d_sum = 0;
     
     for (int iter = 0; iter < 5; iter++) {
@@ -111,16 +112,17 @@ void two_means(const vector<typename Distance::Node*>& nodes, int f, Random& ran
 	int k = random.index(count);
 	T di = Distance::distance(&iv[0], nodes[k]->v, f),
 	  dj = Distance::distance(&jv[0], nodes[k]->v, f);
+	T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
 	if (di < dj) {
 	  d_sum += di;
 	  ic++;
 	  for (int z = 0; z < f; z++)
-	    iv_sum[z] += nodes[k]->v[z];
+	    iv_sum[z] += nodes[k]->v[z] / norm;
 	} else if (dj < di) {
 	  d_sum += dj;
 	  jc++;
 	  for (int z = 0; z < f; z++)
-	    jv_sum[z] += nodes[k]->v[z];
+	    jv_sum[z] += nodes[k]->v[z] / norm;
 	}
       }
 
@@ -193,19 +195,11 @@ struct Angular {
       return random.flip();
   }
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
-    // Sample two random points from the set of nodes
-    // Calculate the hyperplane equidistant from them
-    size_t count = nodes.size();
-    size_t i = random.index(count);
-    size_t j = random.index(count-1);
-    j += (j >= i); // ensure that i != j
-    T* iv = nodes[i]->v;
-    T* jv = nodes[j]->v;
-    T i_norm = get_norm(iv, f);
-    T j_norm = get_norm(jv, f);
+    static vector<T> best_iv(f, 0), best_jv(f, 0);
+    two_means<S, T, Random, Angular<S, T, Random> >(nodes, f, random, true, &best_iv[0], &best_jv[0]);
+
     for (int z = 0; z < f; z++)
-      n->v[z] = iv[z] / i_norm - jv[z] / j_norm;
-    normalize(n->v, f);
+      n->v[z] = best_iv[z] - best_jv[z];
   }
   static inline T normalized_distance(T distance) {
     // Used when requesting distances from Python layer
@@ -242,7 +236,7 @@ struct Euclidean {
   }
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     static vector<T> best_iv(f, 0), best_jv(f, 0);
-    two_means<S, T, Random, Euclidean<S, T, Random> >(nodes, f, random, &best_iv[0], &best_jv[0]);
+    two_means<S, T, Random, Euclidean<S, T, Random> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
 
     for (int z = 0; z < f; z++)
       n->v[z] = best_iv[z] - best_jv[z];
