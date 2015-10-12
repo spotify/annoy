@@ -38,17 +38,19 @@ class AccuracyTest(unittest.TestCase):
                 print('downloading', url, '->', input)
                 urlretrieve(url, input)
 
-            print('building index', distance, f)
+            print('adding items', distance, f)
             annoy = AnnoyIndex(f, distance)
             for i, line in enumerate(gzip.open(input, 'rb')):
                 v = [float(x) for x in line.strip().split()[1:]]
                 annoy.add_item(i, v);
-                
+
+            print('building index')
             annoy.build(10)
 
+            print('finding correct answers')
             f_output = open(output_correct, 'w')
             for i in xrange(10000):
-                js_slow = annoy.get_nns_by_item(i, 11, 100000)[1:]
+                js_slow = annoy.get_nns_by_item(i, 11, 10000)[1:]
                 assert len(js_slow) == 10
                 f_output.write(' '.join(map(str, js_slow)) + '\n')
             f_output.close()
@@ -65,7 +67,7 @@ class AccuracyTest(unittest.TestCase):
         n, k = 0, 0
 
         for i, line in enumerate(f_correct):
-            js_fast = annoy.get_nns_by_item(i, 11, 10000)[1:]
+            js_fast = annoy.get_nns_by_item(i, 11, 1000)[1:]
             js_real = map(int, line.strip().split())
             assert len(js_fast) == 10
             assert len(js_real) == 10
