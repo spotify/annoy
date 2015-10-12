@@ -129,14 +129,14 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
       if (ic == 0 || jc == 0)
 	break;
 
-      for (int z = 0; z < f; z++) {
-	iv[z] = iv_sum[z] / ic;
-	jv[z] = jv_sum[z] / jc;
-      }
-
       if (d_sum < best_d_sum) {
 	std::copy(&iv[0], &iv[f], &best_iv[0]);
 	std::copy(&jv[0], &jv[f], &best_jv[0]);
+      }
+
+      for (int z = 0; z < f; z++) {
+	iv[z] = iv_sum[z] / ic;
+	jv[z] = jv_sum[z] / jc;
       }
     }
   }
