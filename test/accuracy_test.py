@@ -41,6 +41,7 @@ class AccuracyTest(unittest.TestCase):
 
             print('adding items', distance, f)
             annoy = AnnoyIndex(f, distance)
+            annoy.verbose(True)
             for i, line in enumerate(gzip.open(input, 'rb')):
                 v = [float(x) for x in line.strip().split()[1:]]
                 annoy.add_item(i, v);
