@@ -88,6 +88,61 @@ inline void normalize(T* v, int f) {
     v[z] /= norm;
 }
 
+template<typename S, typename T, typename Random, typename Distance>
+void two_means(const vector<typename Distance::Node*>& nodes, int f, Random& random, T* best_iv, T* best_jv) {
+  size_t count = nodes.size();
+
+  T best_d_sum = numeric_limits<T>::infinity();
+  static vector<T> iv(f, 0), jv(f, 0), iv_sum(f, 0), jv_sum(f, 0);
+  
+  for (int attempt = 0; attempt < 5; attempt++) {
+    size_t i = random.index(count);
+    size_t j = random.index(count-1);
+    j += (j >= i); // ensure that i != j
+    std::copy(&nodes[i]->v[0], &nodes[i]->v[f], &iv[0]);
+    std::copy(&nodes[j]->v[0], &nodes[j]->v[f], &jv[0]);
+    T d_sum = 0;
+    
+    for (int iter = 0; iter < 5; iter++) {
+      std::fill(iv_sum.begin(), iv_sum.end(), 0);
+      std::fill(jv_sum.begin(), jv_sum.end(), 0);
+      int ic = 0, jc = 0;
+      for (int l = 0; l < 100 && l < nodes.size(); l++) {
+	int k = random.index(count);
+	T di = Distance::distance(&iv[0], nodes[k]->v, f),
+	  dj = Distance::distance(&jv[0], nodes[k]->v, f);
+	if (di < dj) {
+	  d_sum += di;
+	  ic++;
+	  for (int z = 0; z < f; z++)
+	    iv_sum[z] += nodes[k]->v[z];
+	} else if (dj < di) {
+	  d_sum += dj;
+	  jc++;
+	  for (int z = 0; z < f; z++)
+	    jv_sum[z] += nodes[k]->v[z];
+	}
+      }
+
+      if (ic == 0 || jc == 0)
+	break;
+
+      for (int z = 0; z < f; z++) {
+	iv[z] = iv_sum[z] / ic;
+	jv[z] = jv_sum[z] / jc;
+      }
+
+      if (nodes.size() > 10000)
+	printf("k-means: %3d %3d: %6d %6d distance %f\n", attempt, iter, ic, jc, d_sum);
+
+      if (d_sum < best_d_sum) {
+	std::copy(&iv[0], &iv[f], &best_iv[0]);
+	std::copy(&jv[0], &jv[f], &best_jv[0]);
+      }
+    }
+  }
+}
+
 
 template<typename S, typename T, class Random>
 struct Angular {
@@ -186,59 +241,9 @@ struct Euclidean {
       return random.flip();
   }
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
-    // Same as Angular version, but no normalization and has to compute the offset too
-    size_t count = nodes.size();
+    static vector<T> best_iv(f, 0), best_jv(f, 0);
+    two_means<S, T, Random, Euclidean<S, T, Random> >(nodes, f, random, &best_iv[0], &best_jv[0]);
 
-    T best_d_sum = numeric_limits<T>::infinity();
-
-    vector<T> best_iv(f, 0), best_jv(f, 0);
-
-    for (int attempt = 0; attempt < 5; attempt++) {
-      size_t i = random.index(count);
-      size_t j = random.index(count-1);
-      j += (j >= i); // ensure that i != j
-      vector<T> iv(&nodes[i]->v[0], &nodes[i]->v[f]);
-      vector<T> jv(&nodes[j]->v[0], &nodes[j]->v[f]);
-      T d_sum = 0;
-      
-      for (int iter = 0; iter < 5; iter++) {
-	vector<T> iv_sum(f, 0), jv_sum(f, 0);
-	int ic = 0, jc = 0;
-	for (int l = 0; l < 100 && l < nodes.size(); l++) {
-	  int k = random.index(count);
-	  T di = distance(&iv[0], nodes[k]->v, f),
-	    dj = distance(&jv[0], nodes[k]->v, f);
-	  if (di < dj) {
-	    d_sum += di;
-	    ic++;
-	    for (int z = 0; z < f; z++)
-	      iv_sum[z] += nodes[k]->v[z];
-	  } else if (dj < di) {
-	    d_sum += dj;
-	    jc++;
-	    for (int z = 0; z < f; z++)
-	      jv_sum[z] += nodes[k]->v[z];
-	  }
-	}
-
-	if (ic == 0 || jc == 0)
-	  break;
-
-	for (int z = 0; z < f; z++) {
-	  iv[z] = iv_sum[z] / ic;
-	  jv[z] = jv_sum[z] / jc;
-	}
-
-	if (nodes.size() > 10000)
-	  printf("k-means: %3d %3d: %6d %6d distance %f\n", attempt, iter, ic, jc, d_sum);
-
-	if (d_sum < best_d_sum) {
-	  std::copy(&iv[0], &iv[f], &best_iv[0]);
-	  std::copy(&jv[0], &jv[f], &best_jv[0]);
-	}
-      }
-    }
-      
     for (int z = 0; z < f; z++)
       n->v[z] = best_iv[z] - best_jv[z];
     normalize(n->v, f);
