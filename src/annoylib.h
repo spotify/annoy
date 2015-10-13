@@ -93,9 +93,9 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
   size_t count = nodes.size();
 
   T best_d_sum = numeric_limits<T>::infinity();
-  vector<T> iv(f, 0), jv(f, 0), iv_sum(f, 0), jv_sum(f, 0);
+  vector<T> iv(f, 0), jv(f, 0);
   
-  for (int attempt = 0; attempt < 5; attempt++) {
+  for (int attempt = 0; attempt < 1; attempt++) {
     size_t i = random.index(count);
     size_t j = random.index(count-1);
     j += (j >= i); // ensure that i != j
@@ -103,41 +103,29 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
     std::copy(&nodes[j]->v[0], &nodes[j]->v[f], &jv[0]);
     if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
 
-    for (int iter = 0; iter < 5; iter++) {
-      std::fill(iv_sum.begin(), iv_sum.end(), 0);
-      std::fill(jv_sum.begin(), jv_sum.end(), 0);
-      int ic = 0, jc = 0;
-      T d_sum = 0;
-      for (size_t l = 0; l < 100 && l < nodes.size(); l++) {
-        size_t k = random.index(count);
-        T di = Distance::distance(&iv[0], nodes[k]->v, f),
-          dj = Distance::distance(&jv[0], nodes[k]->v, f);
-        T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
-        d_sum += std::min(di, dj);
-        if (di < dj) {
-          ic++;
-          for (int z = 0; z < f; z++)
-            iv_sum[z] += nodes[k]->v[z] / norm;
-        } else if (dj < di) {
-          jc++;
-          for (int z = 0; z < f; z++)
-          jv_sum[z] += nodes[k]->v[z] / norm;
-        }
+    int ic = 1, jc = 1;
+    T d_sum = 0;
+    for (size_t l = 0; l < 200; l++) {
+      size_t k = random.index(count);
+      T di = Distance::distance(&iv[0], nodes[k]->v, f),
+	dj = Distance::distance(&jv[0], nodes[k]->v, f);
+      T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+      d_sum += std::min(di, dj);
+      if (di < dj) {
+	for (int z = 0; z < f; z++)
+	  iv[z] = (iv[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+	ic++;
+      } else if (dj < di) {
+	for (int z = 0; z < f; z++)
+          jv[z] = (jv[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+	jc++;
       }
+    }
 
-      if (ic == 0 || jc == 0)
-        break;
-
-      if (d_sum < best_d_sum) {
-        best_d_sum = d_sum;
-        std::copy(&iv[0], &iv[f], &best_iv[0]);
-        std::copy(&jv[0], &jv[f], &best_jv[0]);
-      }
-
-      for (int z = 0; z < f; z++) {
-        iv[z] = iv_sum[z] / ic;
-        jv[z] = jv_sum[z] / jc;
-      }
+    if (d_sum < best_d_sum) {
+      best_d_sum = d_sum;
+      std::copy(&iv[0], &iv[f], &best_iv[0]);
+      std::copy(&jv[0], &jv[f], &best_jv[0]);
     }
   }
 }
