@@ -102,8 +102,8 @@ inline void two_means(const vector<typename Distance::Node*>& nodes, int f, Rand
   int ic = 1, jc = 1;
   for (size_t l = 0; l < 200; l++) {
     size_t k = random.index(count);
-    T di = Distance::distance(&iv[0], nodes[k]->v, f),
-      dj = Distance::distance(&jv[0], nodes[k]->v, f);
+    T di = ic * Distance::distance(&iv[0], nodes[k]->v, f),
+      dj = jc * Distance::distance(&jv[0], nodes[k]->v, f);
     T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
     if (di < dj) {
       for (int z = 0; z < f; z++)
