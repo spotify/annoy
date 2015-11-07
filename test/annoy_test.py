@@ -308,6 +308,28 @@ class IndexTest(TestCase):
         t.save("t.ann")
         t.save("t.ann")
 
+    def test_load_save(self):
+        # Issue #61
+        i = AnnoyIndex(10)
+        i.load('test/test.tree')
+        u = i.get_item_vector(99)
+        i.save('x.tree')
+        v = i.get_item_vector(99)
+        self.assertEquals(u, v)
+        j = AnnoyIndex(10)
+        j.load('test/test.tree')
+        w = i.get_item_vector(99)
+        self.assertEquals(u, w)
+
+    def test_save_without_build(self):
+        # Issue #61
+        i = AnnoyIndex(10)
+        i.add_item(1000, [random.gauss(0, 1) for z in xrange(10)])
+        i.save('x.tree')
+        j = AnnoyIndex(10)
+        j.load('x.tree')
+        j.build(10)
+
 
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):

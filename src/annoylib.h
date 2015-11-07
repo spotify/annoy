@@ -276,6 +276,11 @@ public:
   }
 
   void build(int q) {
+    if (_loaded) {
+      // TODO: throw exception
+      showUpdate("You can't build a loaded index\n");
+      return;
+    }
     _n_nodes = _n_items;
     while (1) {
       if (q == -1 && _n_nodes >= _n_items * 2)
