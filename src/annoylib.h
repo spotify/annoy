@@ -212,7 +212,6 @@ class AnnoyIndexInterface {
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
   virtual bool save(const char* filename) = 0;
-  virtual void reinitialize() = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename) = 0;
   virtual T get_distance(S i, S j) = 0;
@@ -247,26 +246,18 @@ protected:
   S _K;
   bool _loaded;
   bool _verbose;
+  int _fd;
 public:
 
   AnnoyIndex(int f) : _random() {
     _f = f;
     _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
-    _n_items = 0;
-    _n_nodes = 0;
-    _nodes_size = 0;
-    _nodes = NULL;
-    _loaded = false;
     _verbose = false;
-
     _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
+    reinitialize(); // Reset everything
   }
   ~AnnoyIndex() {
-    if (_loaded) {
-      unload();
-    } else if(_nodes) {
-      free(_nodes);
-    }
+    unload();
   }
 
   void add_item(S item, const T* w) {
@@ -328,6 +319,7 @@ public:
   }
 
   void reinitialize() {
+    _fd = 0;
     _nodes = NULL;
     _loaded = false;
     _n_items = 0;
@@ -337,23 +329,30 @@ public:
   }
 
   void unload() {
-    off_t size = _n_nodes * _s;
-    munmap(_nodes, size);
+    if (_fd) {
+      // we have mmapped data
+      close(_fd);
+      off_t size = _n_nodes * _s;
+      munmap(_nodes, size);
+    } else if (_nodes) {
+      // We have heap allocated data
+      free(_nodes);
+    }
     reinitialize();
     if (_verbose) showUpdate("unloaded\n");
   }
 
   bool load(const char* filename) {
-    int fd = open(filename, O_RDONLY, (mode_t)0400);
-    if (fd == -1)
+    _fd = open(filename, O_RDONLY, (mode_t)0400);
+    if (_fd == -1)
       return false;
-    off_t size = lseek(fd, 0, SEEK_END);
+    off_t size = lseek(_fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
+        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
     _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED, fd, 0);
+        0, size, PROT_READ, MAP_SHARED, _fd, 0);
 #endif
 
     _n_nodes = (S)(size / _s);

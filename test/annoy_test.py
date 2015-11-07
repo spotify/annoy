@@ -285,6 +285,22 @@ class IndexTest(TestCase):
         # This might change in the future if we change the search algorithm, but in that case let's update the test
         self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
+    def test_load_unload(self):
+        i = AnnoyIndex(10)
+        for x in xrange(100000):
+            i.load('test/test.tree')
+            i.unload()
+
+    def test_construct_load_destruct(self):
+        for x in xrange(100000):
+            i = AnnoyIndex(10)
+            i.load('test/test.tree')
+
+    def test_construct_destruct(self):
+        for x in xrange(100000):
+            i = AnnoyIndex(10)
+            i.add_item(1000, [random.gauss(0, 1) for z in xrange(10)])
+
 
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
