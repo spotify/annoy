@@ -306,15 +306,9 @@ public:
       return false;
 
     fwrite(_nodes, _s, _n_nodes, f);
-
     fclose(f);
 
-    free(_nodes);
-    _n_items = 0;
-    _n_nodes = 0;
-    _nodes_size = 0;
-    _nodes = NULL;
-    _roots.clear();
+    unload();
     return load(filename);
   }
 

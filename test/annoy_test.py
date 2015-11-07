@@ -286,6 +286,7 @@ class IndexTest(TestCase):
         self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
     def test_load_unload(self):
+        # Issue #108
         i = AnnoyIndex(10)
         for x in xrange(100000):
             i.load('test/test.tree')
@@ -300,6 +301,12 @@ class IndexTest(TestCase):
         for x in xrange(100000):
             i = AnnoyIndex(10)
             i.add_item(1000, [random.gauss(0, 1) for z in xrange(10)])
+
+    def test_save_twice(self):
+        # Issue #100
+        t = AnnoyIndex(10)
+        t.save("t.ann")
+        t.save("t.ann")
 
 
 class TypesTest(TestCase):
