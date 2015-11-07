@@ -33,7 +33,8 @@ class AccuracyTest(unittest.TestCase):
         if not os.path.exists(output):
             if not os.path.exists(input):
                 # Download GloVe pretrained vectors: http://nlp.stanford.edu/projects/glove/
-                url = 'http://www-nlp.stanford.edu/data/glove.twitter.27B.%dd.txt.gz' % f
+                # Hosting them on my own S3 bucket since the original files changed format
+                url = 'https://s3-us-west-1.amazonaws.com/annoy-vectors/glove.twitter.27B.%dd.txt.gz' % f
                 print('downloading', url, '->', input)
                 urlretrieve(url, input)
 
