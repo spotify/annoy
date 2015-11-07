@@ -291,10 +291,15 @@ class IndexTest(TestCase):
             i.load('test/test.tree')
             i.unload()
 
-    def test_construct_destruct(self):
+    def test_construct_load_destruct(self):
         for x in xrange(100000):
             i = AnnoyIndex(10)
             i.load('test/test.tree')
+
+    def test_construct_destruct(self):
+        for x in xrange(100000):
+            i = AnnoyIndex(10)
+            i.add_item(1000, [random.gauss(0, 1) for z in xrange(10)])
 
 
 class TypesTest(TestCase):
