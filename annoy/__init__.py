@@ -36,3 +36,7 @@ class AnnoyIndex(Annoy):
     def get_nns_by_vector(self, vector, n, search_k=-1, include_distances=False):
         # Same
         return super(AnnoyIndex, self).get_nns_by_vector(self.check_list(vector), n, search_k, include_distances)
+
+    def get_nns_by_item(self, i, n, search_k=-1, include_distances=False):
+        # Wrapper to support named arguments
+        return super(AnnoyIndex, self).get_nns_by_item(i, n, search_k, include_distances)

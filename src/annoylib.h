@@ -154,7 +154,9 @@ struct Angular {
   }
   static inline T normalized_distance(T distance) {
     // Used when requesting distances from Python layer
-    return sqrt(distance);
+    // Turns out sometimes the squared distance is -0.0
+    // so we have to make sure it's a positive number.
+    return sqrt(std::max(distance, T(0)));
   }
 };
 
@@ -201,7 +203,7 @@ struct Euclidean {
       n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
   }
   static inline T normalized_distance(T distance) {
-    return sqrt(distance);
+    return sqrt(std::max(distance, T(0)));
   }
 };
 
