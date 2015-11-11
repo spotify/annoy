@@ -296,6 +296,18 @@ class EuclideanIndexTest(TestCase):
         self.assertAlmostEquals(d[1]**2, 8.0)
         self.assertAlmostEquals(d[2]**2, 9.0)
 
+    def test_include_dists(self):
+        f = 40
+        i = AnnoyIndex(f)
+        v = numpy.random.normal(size=f)
+        i.add_item(0, v)
+        i.add_item(1, -v)
+        i.build(10)
+
+        indices, dists = i.get_nns_by_item(0, 2, 10, True)
+        self.assertEqual(indices, [0, 1])
+        self.assertAlmostEquals(dists[0], 0.0)
+
 
 class IndexTest(TestCase):
     def test_not_found_tree(self):
