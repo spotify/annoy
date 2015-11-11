@@ -30,7 +30,7 @@ except NameError:
 class TestCase(unittest.TestCase):
     def assertAlmostEquals(self, x, y):
         # Annoy uses float precision, so we override the default precision
-        super(TestCase, self).assertAlmostEquals(x, y, 4)
+        super(TestCase, self).assertAlmostEquals(x, y, 3)
 
 
 class AngularIndexTest(TestCase):
