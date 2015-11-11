@@ -30,7 +30,7 @@ except NameError:
 class TestCase(unittest.TestCase):
     def assertAlmostEquals(self, x, y):
         # Annoy uses float precision, so we override the default precision
-        super(TestCase, self).assertAlmostEquals(x, y, 4)
+        super(TestCase, self).assertAlmostEquals(x, y, 3)
 
 
 class AngularIndexTest(TestCase):
@@ -169,6 +169,30 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(0, 3, 10), [0, 1, 2])
         self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3, 10), [2, 1, 0])
 
+    def test_include_dists(self):
+        # Double checking issue 112
+        f = 40
+        i = AnnoyIndex(f)
+        v = numpy.random.normal(size=f)
+        i.add_item(0, v)
+        i.add_item(1, -v)
+        i.build(10)
+
+        indices, dists = i.get_nns_by_item(0, 2, 10, True)
+        self.assertEqual(indices, [0, 1])
+        self.assertAlmostEquals(dists[0], 0.0)
+        self.assertAlmostEquals(dists[1], 2.0)
+
+    def test_include_dists_check_ranges(self):
+        f = 3
+        i = AnnoyIndex(f)
+        for j in xrange(100000):
+            i.add_item(j, numpy.random.normal(size=f))
+        i.build(10)
+        indices, dists = i.get_nns_by_item(0, 100000, include_distances=True)
+        self.assertTrue(max(dists) < 2.0)
+        self.assertAlmostEquals(min(dists), 0.0)
+
 
 class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
@@ -271,6 +295,18 @@ class EuclideanIndexTest(TestCase):
         self.assertAlmostEquals(d[0]**2, 6.0)
         self.assertAlmostEquals(d[1]**2, 8.0)
         self.assertAlmostEquals(d[2]**2, 9.0)
+
+    def test_include_dists(self):
+        f = 40
+        i = AnnoyIndex(f)
+        v = numpy.random.normal(size=f)
+        i.add_item(0, v)
+        i.add_item(1, -v)
+        i.build(10)
+
+        indices, dists = i.get_nns_by_item(0, 2, 10, True)
+        self.assertEqual(indices, [0, 1])
+        self.assertAlmostEquals(dists[0], 0.0)
 
 
 class IndexTest(TestCase):
