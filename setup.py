@@ -36,13 +36,13 @@ with codecs.open('README.rst', encoding='utf-8') as fobj:
 
 
 setup(name='annoy',
-      version='1.6.0',
+      version='1.6.1',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
-            depends=['src/annoylib.h'],
+            depends=['src/annoylib.h', 'src/kissrandom.h'],
             extra_compile_args=['-O3', '-march=native', '-ffast-math'],
         )
       ],
