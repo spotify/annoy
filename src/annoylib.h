@@ -39,6 +39,8 @@
 #include <algorithm>
 #include <queue>
 #include <limits>
+#include "protobuf/annoy.pb.h"
+#include "lmdbforest.h"
 
 // This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
@@ -187,6 +189,57 @@ struct Euclidean {
     else
       return random.flip();
   }
+  
+  static inline void split(const tree_node& tn, const vector<data_info>& nodes,
+                           tree_node& new_node,  tree_node& left_node, tree_node& right_node,
+                           Random& random, int f) {
+    // Same as Angular version, but no normalization and has to compute the offset too
+    size_t count = tn.items_size();
+    size_t i = random.index(count);
+    size_t j = random.index(count-1);
+    j += (j >= i); // ensure that i != j
+  
+    data_info iv = nodes[i];
+    data_info jv = nodes[j];
+  
+    
+    T t = 0.0;
+    
+    for (int z = 0; z < f; z++) {
+      T d = iv.data(z) - jv.data(z);
+      new_node.add_v(d);
+      t += - d * (iv.data(z) + jv.data(z)) / 2;
+    }
+    new_node.set_t(t);
+    new_node.set_leaf(false);
+    new_node.set_left(left_node.index());
+    new_node.set_right(right_node.index());
+    left_node.set_leaf(true);
+    right_node.set_leaf(true);
+    
+    //distribute the items into left and right children
+    for (int w = 0; w < count; w ++ ) {
+      data_info di = nodes[w];
+      T dot = t;
+      for (int z = 0; z < f; z ++ ) {
+        dot += new_node.v(z) * di.data(z);
+      }
+      if (dot == 0) {
+        dot = random.flip();
+      }
+      if (dot < 0) {
+        left_node.add_items(tn.items(w));
+      } else {
+        right_node.add_items(tn.items(w));
+      }
+    }
+    
+    return;
+    
+    
+  }
+    
+    
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     // Same as Angular version, but no normalization and has to compute the offset too
     size_t count = nodes.size();

@@ -1,0 +1,21 @@
+message data_info {
+  repeated float data = 1 [packed=true];
+  optional uint32 id = 2;
+  optional uint32 category = 3;
+
+}
+
+message plane_split {
+
+
+}
+
+message tree_node {
+  required uint32 index = 1;
+  required bool leaf = 2;
+  optional uint32 left = 3;
+  optional uint32 right = 4 ;
+  repeated uint32 items = 5;
+  repeated float v = 6 [packed=true];
+  optional float t = 7;
+}
