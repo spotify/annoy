@@ -89,8 +89,8 @@ inline void normalize(T* v, int f) {
 }
 
 
-template<typename S, typename T, class Random>
 struct Angular {
+  template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     /*
      * We store a binary tree where each node has two things
@@ -110,6 +110,7 @@ struct Angular {
     S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
+  template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
@@ -124,20 +125,23 @@ struct Angular {
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
-  static inline T margin(const Node* n, const T* y, int f) {
+  template<typename S, typename T>
+  static inline T margin(const Node<S, T>* n, const T* y, int f) {
     T dot = 0;
     for (int z = 0; z < f; z++)
       dot += n->v[z] * y[z];
     return dot;
   }
-  static inline bool side(const Node* n, const T* y, int f, Random& random) {
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
     else
       return random.flip();
   }
-  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
+  template<typename S, typename T, typename Random>
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
     // Sample two random points from the set of nodes
     // Calculate the hyperplane equidistant from them
     size_t count = nodes.size();
@@ -152,6 +156,7 @@ struct Angular {
       n->v[z] = iv[z] / i_norm - jv[z] / j_norm;
     normalize(n->v, f);
   }
+  template<typename T>
   static inline T normalized_distance(T distance) {
     // Used when requesting distances from Python layer
     // Turns out sometimes the squared distance is -0.0
@@ -160,34 +165,38 @@ struct Angular {
   }
 };
 
-template<typename S, typename T, class Random>
 struct Euclidean {
+  template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
     T v[1];
   };
+  template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
     T d = 0.0;
     for (int i = 0; i < f; i++, x++, y++)
       d += ((*x) - (*y)) * ((*x) - (*y));
     return d;
   }
-  static inline T margin(const Node* n, const T* y, int f) {
+  template<typename S, typename T>
+  static inline T margin(const Node<S, T>* n, const T* y, int f) {
     T dot = n->a;
     for (int z = 0; z < f; z++)
       dot += n->v[z] * y[z];
     return dot;
   }
-  static inline bool side(const Node* n, const T* y, int f, Random& random) {
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
     else
       return random.flip();
   }
-  static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
+  template<typename S, typename T, typename Random>
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
     // Same as Angular version, but no normalization and has to compute the offset too
     size_t count = nodes.size();
     size_t i = random.index(count);
@@ -202,6 +211,7 @@ struct Euclidean {
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (iv[z] + jv[z]) / 2;
   }
+  template<typename T>
   static inline T normalized_distance(T distance) {
     return sqrt(std::max(distance, T(0)));
   }
@@ -224,7 +234,7 @@ class AnnoyIndexInterface {
   virtual void get_item(S item, vector<T>* v) = 0;
 };
 
-template<typename S, typename T, template<typename, typename, typename> class Distance, class Random>
+template<typename S, typename T, typename Distance, typename Random>
   class AnnoyIndex : public AnnoyIndexInterface<S, T> {
   /*
    * We use random projection to build a forest of binary trees of all items.
@@ -233,10 +243,11 @@ template<typename S, typename T, template<typename, typename, typename> class Di
    * We create a tree like this q times. The default q is determined automatically
    * in such a way that we at most use 2x as much memory as the vectors take.
    */
-protected:
-  typedef Distance<S, T, Random> D;
-  typedef typename D::Node Node;
+public:
+  typedef Distance D;
+  typedef typename D::template Node<S, T> Node;
 
+protected:
   int _f;
   size_t _s;
   S _n_items;
