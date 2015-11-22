@@ -110,14 +110,9 @@ More info
 
 * `Dirk Eddelbuettel <http://dirk.eddelbuettel.com/>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
 * `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
-
-For some interesting stats, check out Radim Řehůřek's great blog posts comparing Annoy to a couple of other similar Python libraries:
-
-* `Part 1: Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__
-* `Part 2: Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__
-* `Part 3: Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
-
-Also check out `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ which is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
+* `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
+* Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries. `Part 1: Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__ `Part 2: Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__ `Part 3: Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
+* `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
 
 .. figure:: https://raw.github.com/erikbern/ann-benchmarks/master/results/glove.png
    :alt: ANN benchmarks
