@@ -2,24 +2,7 @@
 # Thanks @ogrisel!
 
 environment:
-  global:
-    # SDK v7.0 MSVC Express 2008's SetEnv.cmd script will fail if the
-    # /E:ON and /V:ON options are not enabled in the batch script intepreter
-    # See: http://stackoverflow.com/a/13751649/163740
-    CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\appveyor\\run_with_env.cmd"
-
   matrix:
-
-    # Python 2.7.10 is the latest version and is not pre-installed.
-
-    - PYTHON: "C:\\Python27.10"
-      PYTHON_VERSION: "2.7.10"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Python27.10-x64"
-      PYTHON_VERSION: "2.7.10"
-      PYTHON_ARCH: "64"
-
     # Pre-installed Python versions, which Appveyor may upgrade to
     # a later point release.
     # See: http://www.appveyor.com/docs/installed-software#python
@@ -46,38 +29,6 @@ environment:
 
     - PYTHON: "C:\\Python34-x64"
       PYTHON_VERSION: "3.4.x" # currently 3.4.3
-      PYTHON_ARCH: "64"
-
-    # Python versions not pre-installed
-
-    # Python 2.6.6 is the latest Python 2.6 with a Windows installer
-    # See: https://github.com/ogrisel/python-appveyor-demo/issues/10
-
-    - PYTHON: "C:\\Python266"
-      PYTHON_VERSION: "2.6.6"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Python266-x64"
-      PYTHON_VERSION: "2.6.6"
-      PYTHON_ARCH: "64"
-
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.0"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Python35-x64"
-      PYTHON_VERSION: "3.5.0"
-      PYTHON_ARCH: "64"
-
-    # Major and minor releases (i.e x.0.0 and x.y.0) prior to 3.3.0 use
-    # a different naming scheme.
-
-    - PYTHON: "C:\\Python270"
-      PYTHON_VERSION: "2.7.0"
-      PYTHON_ARCH: "32"
-
-    - PYTHON: "C:\\Python270-x64"
-      PYTHON_VERSION: "2.7.0"
       PYTHON_ARCH: "64"
 
 install:
@@ -108,21 +59,21 @@ install:
   # compiled extensions and are not provided as pre-built wheel packages,
   # pip will build them from source using the MSVC compiler matching the
   # target Python version and architecture
-  - "%CMD_IN_ENV% pip install -r requirements.txt"
+  - "pip install -r requirements.txt"
 
 build_script:
   # Build the compiled extension
-  - "%CMD_IN_ENV% python setup.py build"
+  - "python setup.py build"
 
 test_script:
   # Run the project tests
-  - "%CMD_IN_ENV% python setup.py nosetests"
+  - "python setup.py nosetests"
 
 after_test:
   # If tests are successful, create binary packages for the project.
-  - "%CMD_IN_ENV% python setup.py bdist_wheel"
-  - "%CMD_IN_ENV% python setup.py bdist_wininst"
-  - "%CMD_IN_ENV% python setup.py bdist_msi"
+  - "python setup.py bdist_wheel"
+  - "python setup.py bdist_wininst"
+  - "python setup.py bdist_msi"
   - ps: "ls dist"
 
 artifacts:
