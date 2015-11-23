@@ -52,9 +52,11 @@ typedef unsigned __int64 uint64_t;
   #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
 #endif
 
+#ifdef __GNUC__
 #ifndef ANNOY_NODE_ATTRIBUTE
   #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
   // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
+#endif
 #endif
 
 
