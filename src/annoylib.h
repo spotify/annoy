@@ -18,13 +18,17 @@
 #include <stdio.h>
 #include <string>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef _MSC_VER
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #ifdef __MINGW32__
 #include "mman.h"
