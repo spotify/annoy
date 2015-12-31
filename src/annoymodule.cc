@@ -96,9 +96,9 @@ py_an_load(py_annoy *self, PyObject *args) {
   char* filename;
   bool res = false;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "s", &filename))
-    return Py_None;
+    Py_RETURN_NONE;
 
   res = self->ptr->load(filename);
 
@@ -115,9 +115,9 @@ py_an_save(py_annoy *self, PyObject *args) {
   char *filename;
   bool res = false;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "s", &filename))
-    return Py_None;
+    Py_RETURN_NONE;
 
   res = self->ptr->save(filename);
 
@@ -131,15 +131,15 @@ py_an_save(py_annoy *self, PyObject *args) {
 
 PyObject*
 get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
-  PyObject* l = PyList_New(0);
+  PyObject* l = PyList_New(result.size());
   for (size_t i = 0; i < result.size(); i++)
-    PyList_Append(l, PyInt_FromLong(result[i]));
+    PyList_SetItem(l, i, PyInt_FromLong(result[i]));
   if (!include_distances)
     return l;
 
-  PyObject* d = PyList_New(0);
+  PyObject* d = PyList_New(distances.size());
   for (size_t i = 0; i < distances.size(); i++)
-    PyList_Append(d, PyFloat_FromDouble(distances[i]));
+    PyList_SetItem(d, i, PyFloat_FromDouble(distances[i]));
 
   PyObject* t = PyTuple_New(2);
   PyTuple_SetItem(t, 0, l);
@@ -153,9 +153,9 @@ static PyObject*
 py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
   int32_t item, n, search_k=-1, include_distances=0;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "ii|ii", &item, &n, &search_k, &include_distances))
-    return Py_None;
+    Py_RETURN_NONE;
 
   vector<int32_t> result;
   vector<float> distances;
@@ -170,9 +170,9 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
   PyObject* v;
   int32_t n, search_k=-1, include_distances=0;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "Oi|ii", &v, &n, &search_k, &include_distances))
-    return Py_None;
+    Py_RETURN_NONE;
 
   vector<float> w(self->f);
   for (int z = 0; z < PyList_Size(v) && z < self->f; z++) {
@@ -192,15 +192,15 @@ static PyObject*
 py_an_get_item_vector(py_annoy *self, PyObject *args) {
   int32_t item;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "i", &item))
-    return Py_None;
+    Py_RETURN_NONE;
 
   vector<float> v;
   self->ptr->get_item(item, &v);
-  PyObject* l = PyList_New(0);
+  PyObject* l = PyList_New(self->f);
   for (int z = 0; z < self->f; z++) {
-    PyList_Append(l, PyFloat_FromDouble(v[z]));
+    PyList_SetItem(l, z, PyFloat_FromDouble(v[z]));
   }
 
   return l;
@@ -209,17 +209,17 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
 
 static PyObject* 
 py_an_add_item(py_annoy *self, PyObject *args) {
-  vector<float> w;
-
   PyObject* l;
   int32_t item;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "iO", &item, &l))
-    return Py_None;
-  for (int z = 0; z < PyList_Size(l); z++) {
+    Py_RETURN_NONE;
+
+  vector<float> w(self->f, 0.0);
+  for (int z = 0; z < self->f; z++) {
     PyObject *pf = PyList_GetItem(l,z);
-    w.push_back(PyFloat_AsDouble(pf));
+    w[z] = PyFloat_AsDouble(pf);
   }
   self->ptr->add_item(item, &w[0]);
 
@@ -231,9 +231,9 @@ static PyObject *
 py_an_build(py_annoy *self, PyObject *args) {
   int q;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "i", &q))
-    return Py_None;
+    Py_RETURN_NONE;
 
   self->ptr->build(q);
 
@@ -244,7 +244,7 @@ py_an_build(py_annoy *self, PyObject *args) {
 static PyObject *
 py_an_unload(py_annoy *self, PyObject *args) {
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
 
   self->ptr->unload();
 
@@ -257,9 +257,9 @@ py_an_get_distance(py_annoy *self, PyObject *args) {
   int32_t i,j;
   double d=0;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "ii", &i, &j))
-    return Py_None;
+    Py_RETURN_NONE;
 
   d = self->ptr->get_distance(i,j);
 
@@ -272,13 +272,13 @@ py_an_get_n_items(py_annoy *self, PyObject *args) {
   int32_t n=0;
   bool is_n=false;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
 
   n = self->ptr->get_n_items();
   is_n = true;
 
   if (is_n) return PyInt_FromLong(n);
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 
@@ -286,9 +286,9 @@ static PyObject *
 py_an_verbose(py_annoy *self, PyObject *args) {
   int verbose;
   if (!self->ptr) 
-    return Py_None;
+    Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "i", &verbose))
-    return Py_None;
+    Py_RETURN_NONE;
 
   self->ptr->verbose((bool)verbose);
 
