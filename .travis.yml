@@ -1,13 +1,16 @@
 language: python
 
-python:
-  - "2.7"
-  - "2.6"
-  - "3.3"
-  - "3.4"
+env:
+  matrix:
+    - TOXENV=py26
+    - TOXENV=py27
+    - TOXENV=py33
+    - TOXENV=py34
+    - TOXENV=go
 
 install:
-  - pip install numpy
-  - pip install .
+  - pip install tox
 
-script: python setup.py nosetests
+script:
+  - tox
+
