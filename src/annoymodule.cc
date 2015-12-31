@@ -196,8 +196,8 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   if (!PyArg_ParseTuple(args, "i", &item))
     Py_RETURN_NONE;
 
-  vector<float> v;
-  self->ptr->get_item(item, &v);
+  vector<float> v(self->f);
+  self->ptr->get_item(item, &v[0]);
   PyObject* l = PyList_New(self->f);
   for (int z = 0; z < self->f; z++) {
     PyList_SetItem(l, z, PyFloat_FromDouble(v[z]));
