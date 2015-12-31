@@ -394,3 +394,14 @@ class TypesTest(TestCase):
         self.assertRaises(IndexError, i.add_item, 2, [])
 
         i.build(n_trees)
+
+
+class MemoryLeakTest(TestCase):
+    def test_get_item_vector(self):
+        f = 10
+        i = AnnoyIndex(f, 'euclidean')
+        i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
+        for j in xrange(100):
+            print j, '...'
+            for k in xrange(1000 * 1000):
+                i.get_item_vector(0)
