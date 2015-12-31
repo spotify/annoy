@@ -209,17 +209,17 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
 
 static PyObject* 
 py_an_add_item(py_annoy *self, PyObject *args) {
-  vector<float> w;
-
   PyObject* l;
   int32_t item;
   if (!self->ptr) 
     Py_RETURN_NONE;
   if (!PyArg_ParseTuple(args, "iO", &item, &l))
     Py_RETURN_NONE;
-  for (int z = 0; z < PyList_Size(l); z++) {
+
+  vector<float> w(self->f, 0.0);
+  for (int z = 0; z < self->f; z++) {
     PyObject *pf = PyList_GetItem(l,z);
-    w.push_back(PyFloat_AsDouble(pf));
+    w[z] = PyFloat_AsDouble(pf);
   }
   self->ptr->add_item(item, &w[0]);
 
