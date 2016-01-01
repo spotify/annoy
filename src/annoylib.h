@@ -231,7 +231,7 @@ class AnnoyIndexInterface {
   virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
   virtual S get_n_items() = 0;
   virtual void verbose(bool v) = 0;
-  virtual void get_item(S item, vector<T>* v) = 0;
+  virtual void get_item(S item, T* v) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random>
@@ -407,10 +407,9 @@ public:
     _verbose = v;
   }
 
-  void get_item(S item, vector<T>* v) {
+  void get_item(S item, T* v) {
     Node* m = _get(item);
-    for (int z = 0; z < _f; z++)
-      v->push_back(m->v[z]);
+    std::copy(&m->v[0], &m->v[_f], v);
   }
 
 protected:
@@ -441,7 +440,7 @@ protected:
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
-      copy(indices.begin(), indices.end(), m->children);
+      std::copy(indices.begin(), indices.end(), m->children);
       return item;
     }
 

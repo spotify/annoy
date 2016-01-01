@@ -48,7 +48,7 @@ class AnnoyIndex {
   void verbose(bool v) {
     ptr->verbose(v);
   };
-  void getItem(int item, vector<float>* v) {
+  void getItem(int item, float* v) {
     ptr->get_item(item, v);
   };
 };
