@@ -77,7 +77,7 @@ Full Python API
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
 * ``a.save(fn)`` saves the index to disk.
 * ``a.load(fn)`` loads (mmaps) an index from disk.
-* ``a.unload(fn)`` unloads.
+* ``a.unload()`` unloads.
 * ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
 * ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
 * ``a.get_item_vector(i)`` returns the vector for item ``i`` that was previously added.
