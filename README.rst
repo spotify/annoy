@@ -56,7 +56,7 @@ Python code example
   t = AnnoyIndex(f)  # Length of item vector that will be indexed
   for i in xrange(1000):
       v = [random.gauss(0, 1) for z in xrange(f)]
-          t.add_item(i, v)
+      t.add_item(i, v)
 
   t.build(10) # 10 trees
   t.save('test.ann')
