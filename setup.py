@@ -34,6 +34,11 @@ readme_note = """\
 with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
+if os.environ.get('TRAVIS') == 'true':
+    # Resolving some annoying issue
+    travis_extra_compile_args = ['-mno-avx']
+else:
+    travis_extra_compile_args = []
 
 setup(name='annoy',
       version='1.7.0',
@@ -43,7 +48,7 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=['-O3', '-march=native', '-ffast-math'],
+            extra_compile_args=['-O3', '-march=native', '-ffast-math'] + travis_extra_compile_args,
         )
       ],
       long_description=long_description,
