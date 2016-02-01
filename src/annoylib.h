@@ -418,7 +418,7 @@ protected:
       const double reallocation_factor = 1.3;
       S new_nodes_size = std::max(n,
 				  (S)((_nodes_size + 1) * reallocation_factor));
-      showUpdate("Reallocating to %d nodes\n", new_nodes_size);
+      if (_verbose) showUpdate("Reallocating to %d nodes\n", new_nodes_size);
       _nodes = realloc(_nodes, _s * new_nodes_size);
       memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
       _nodes_size = new_nodes_size;
