@@ -468,27 +468,17 @@ protected:
       return item;
     }
 
-    Node* m = (Node*)malloc(_s); // TODO: avoid
-
-    vector<S> children_indices[2];
-
-    // Create a random hyperplane.
     vector<Node*> children;
-
     for (size_t i = 0; i < indices.size(); i++) {
-      // TODO: this loop isn't needed for the angular distance, because
-      // we can just split by a random vector and it's fine. For Euclidean
-      // distance we need it to calculate the offset
       S j = indices[i];
       Node* n = _get(j);
       if (n)
         children.push_back(n);
     }
 
+    vector<S> children_indices[2];
+    Node* m = (Node*)malloc(_s); // TODO: avoid
     D::create_split(children, _f, _random, m);
-
-    children_indices[0].clear();
-    children_indices[1].clear();
 
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
