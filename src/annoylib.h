@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <queue>
 #include <limits>
+#include <eigen3/Eigen/Dense>
 
 // This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
@@ -202,17 +203,13 @@ struct Euclidean {
   };
   template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
-    T d = 0.0;
-    for (int i = 0; i < f; i++, x++, y++)
-      d += ((*x) - (*y)) * ((*x) - (*y));
-    return d;
+    Eigen::Map<const Eigen::VectorXf, Eigen::Aligned> p(x, f, 1), q(y, f, 1);
+    return (p - q).squaredNorm();
   }
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    T dot = n->a;
-    for (int z = 0; z < f; z++)
-      dot += n->v[z] * y[z];
-    return dot;
+    Eigen::Map<const Eigen::VectorXf, Eigen::Aligned> p((float *)n->v, f, 1), q(y, f, 1);
+    return n->a + p.dot(q);
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
