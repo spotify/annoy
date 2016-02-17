@@ -403,6 +403,9 @@ public:
         break;
       }
     }
+    // hacky fix: since the last root precedes the copy of all roots, delete it
+    if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
+      _roots.pop_back();
     _loaded = true;
     _n_items = m;
     if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
