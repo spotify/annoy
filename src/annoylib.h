@@ -178,7 +178,7 @@ struct Angular {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-    static vector<T> best_iv(f, 0), best_jv(f, 0);
+    vector<T> best_iv(f, 0), best_jv(f, 0); // TODO: avoid allocation
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, &best_iv[0], &best_jv[0]);
     for (int z = 0; z < f; z++)
       n->v[z] = best_iv[z] - best_jv[z];
@@ -223,8 +223,8 @@ struct Euclidean {
       return random.flip();
   }
   template<typename S, typename T, typename Random>
-    static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-    static vector<T> best_iv(f, 0), best_jv(f, 0);
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
+    vector<T> best_iv(f, 0), best_jv(f, 0);
     two_means<T, Random, Euclidean, Node<S, T> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
 
     for (int z = 0; z < f; z++)
