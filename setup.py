@@ -63,6 +63,7 @@ setup(name='annoy',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3.3',
           'Programming Language :: Python :: 3.4',
+          'Programming Language :: Python :: 3.5',
       ],
       keywords='nns, approximate nearest neighbor search',
       setup_requires=['nose>=1.0']
