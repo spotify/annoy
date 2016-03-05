@@ -182,6 +182,7 @@ struct Angular {
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, &best_iv[0], &best_jv[0]);
     for (int z = 0; z < f; z++)
       n->v[z] = best_iv[z] - best_jv[z];
+    normalize(n->v, f);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
