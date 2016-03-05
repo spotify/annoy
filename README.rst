@@ -110,6 +110,7 @@ More info
 
 * `Dirk Eddelbuettel <http://dirk.eddelbuettel.com/>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
 * `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
+* There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by Taneli Leppä.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
 * Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
