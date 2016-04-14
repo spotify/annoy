@@ -37,7 +37,7 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* Euclidean distance or cosine similarity (using the distance of the normalized vectors)
+* Euclidean distance or cosine distance (where cosine distance uses Euclidean distance of normalized vectors which equals 2-2*cosine similarity)
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
