@@ -343,7 +343,7 @@ public:
   }
 
   bool save(const char* filename) {
-    FILE *f = fopen(filename, "w");
+    FILE *f = fopen(filename, "wb");
     if (f == NULL)
       return false;
 
