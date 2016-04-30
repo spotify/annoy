@@ -296,6 +296,10 @@ public:
     unload();
   }
 
+  int get_f() const {
+    return _f;
+  }
+
   void add_item(S item, const T* w) {
     _allocate_size(item + 1);
     Node* n = _get(item);
