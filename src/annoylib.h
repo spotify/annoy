@@ -272,7 +272,7 @@ public:
   typedef typename D::template Node<S, T> Node;
 
 protected:
-  int _f;
+  const int _f;
   size_t _s;
   S _n_items;
   Random _random;
@@ -286,8 +286,7 @@ protected:
   int _fd;
 public:
 
-  AnnoyIndex(int f) : _random() {
-    _f = f;
+  AnnoyIndex(int f) : _f(f), _random() {
     _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
     _verbose = false;
     _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
