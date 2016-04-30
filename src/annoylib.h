@@ -301,6 +301,11 @@ public:
   }
 
   void add_item(S item, const T* w) {
+    add_item_impl(item, w);
+  }
+
+  template<typename W>
+  void add_item_impl(S item, const W& w) {
     _allocate_size(item + 1);
     Node* n = _get(item);
 
