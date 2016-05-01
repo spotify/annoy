@@ -498,6 +498,7 @@ end)
 
 describe("types test", function()
 
+    local n_points = 1000
     local n_trees = 10
 
     -- tests "numpy" and "tuple" are not applicable to Lua
@@ -513,6 +514,29 @@ describe("types test", function()
             i:add_item(2, {})
         end)
         i:build(n_trees)
+    end)
+
+    it("range_errors", function()
+        local f = 10
+        local i = AnnoyIndex(f, 'euclidean')
+        for j = 0, n_points - 1 do
+            i:add_item(j, randomVector(f, 0, 1))
+        end
+        assert.has_error(function()
+            i:add_item(-1, randomVector(f))
+        end)
+        i:build(n_trees)
+        for _, bad_index in ipairs({-1000, -1, n_points, n_points + 1000}) do
+            assert.has_error(function()
+                i:get_distance(0, bad_index)
+            end)
+            assert.has_error(function()
+                i:get_nns_by_item(bad_index, 1)
+            end)
+            assert.has_error(function()
+                i:get_item_vector(bad_index)
+            end)
+        end
     end)
 
 end)
