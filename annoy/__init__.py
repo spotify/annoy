@@ -31,6 +31,14 @@ class AnnoyIndex(Annoy):
             raise IndexError('Vector must be of length %d' % self.f)
         return vector
 
+    def check_item(self, item, building=False):
+        if item < 0:
+            raise IndexError('Item index can not be negative: %d' % item)
+        if not building and item >= self.get_n_items():
+            raise IndexError('Item index %d is out of range: [0, %d)' %
+                (item, self.get_n_items()))
+        return item
+
     def add_item(self, i, vector):
         """
         Adds item `i` (any nonnegative integer) with vector `v`.
@@ -38,7 +46,7 @@ class AnnoyIndex(Annoy):
         Note that it will allocate memory for `max(i)+1` items.
         """
         # Wrapper to convert inputs to list
-        return super(AnnoyIndex, self).add_item(i, self.check_list(vector))
+        return super(AnnoyIndex, self).add_item(self.check_item(i, building=True), self.check_list(vector))
 
     def get_nns_by_vector(self, vector, n, search_k=-1, include_distances=False):
         """
@@ -68,7 +76,7 @@ class AnnoyIndex(Annoy):
         The second list contains the corresponding distances.
         """
         # Wrapper to support named arguments
-        return super(AnnoyIndex, self).get_nns_by_item(i, n, search_k, include_distances)
+        return super(AnnoyIndex, self).get_nns_by_item(self.check_item(i), n, search_k, include_distances)
 
     def build(self, n_trees):
         """
@@ -101,13 +109,13 @@ class AnnoyIndex(Annoy):
         """
         Returns the vector for item `i` that was previously added.
         """
-        return super(AnnoyIndex, self).get_item_vector(i)
+        return super(AnnoyIndex, self).get_item_vector(self.check_item(i))
 
     def get_distance(self, i, j):
         """
         Returns the distance between items `i` and `j`.
         """
-        return super(AnnoyIndex, self).get_distance(i, j)
+        return super(AnnoyIndex, self).get_distance(self.check_item(i), self.check_item(j))
 
     def get_n_items(self):
         """
