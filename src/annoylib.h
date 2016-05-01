@@ -191,6 +191,9 @@ struct Angular {
     // so we have to make sure it's a positive number.
     return sqrt(std::max(distance, T(0)));
   }
+  static const char* name() {
+    return "angular";
+  }
 };
 
 struct Euclidean {
@@ -238,6 +241,9 @@ struct Euclidean {
   template<typename T>
   static inline T normalized_distance(T distance) {
     return sqrt(std::max(distance, T(0)));
+  }
+  static const char* name() {
+    return "euclidean";
   }
 };
 
