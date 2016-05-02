@@ -395,6 +395,17 @@ class TypesTest(TestCase):
 
         i.build(n_trees)
 
+    def test_range_errors(self, n_points=1000, n_trees=10):
+        f = 10
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(n_points):
+            i.add_item(j, [random.gauss(0, 1) for x in xrange(f)])
+        self.assertRaises(IndexError, i.add_item, -1, [random.gauss(0, 1) for x in xrange(f)])
+        i.build(n_trees)
+        for bad_index in [-1000, -1, n_points, n_points + 1000]:
+            self.assertRaises(IndexError, i.get_distance, 0, bad_index)
+            self.assertRaises(IndexError, i.get_nns_by_item, bad_index, 1)
+            self.assertRaises(IndexError, i.get_item_vector, bad_index)
 
 class MemoryLeakTest(TestCase):
     def test_get_item_vector(self):
