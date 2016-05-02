@@ -191,6 +191,9 @@ struct Angular {
     // so we have to make sure it's a positive number.
     return sqrt(std::max(distance, T(0)));
   }
+  static const char* name() {
+    return "angular";
+  }
 };
 
 struct Euclidean {
@@ -239,6 +242,9 @@ struct Euclidean {
   static inline T normalized_distance(T distance) {
     return sqrt(std::max(distance, T(0)));
   }
+  static const char* name() {
+    return "euclidean";
+  }
 };
 
 template<typename S, typename T>
@@ -272,7 +278,7 @@ public:
   typedef typename D::template Node<S, T> Node;
 
 protected:
-  int _f;
+  const int _f;
   size_t _s;
   S _n_items;
   Random _random;
@@ -286,8 +292,7 @@ protected:
   int _fd;
 public:
 
-  AnnoyIndex(int f) : _random() {
-    _f = f;
+  AnnoyIndex(int f) : _f(f), _random() {
     _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
     _verbose = false;
     _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
@@ -297,7 +302,16 @@ public:
     unload();
   }
 
+  int get_f() const {
+    return _f;
+  }
+
   void add_item(S item, const T* w) {
+    add_item_impl(item, w);
+  }
+
+  template<typename W>
+  void add_item_impl(S item, const W& w) {
     _allocate_size(item + 1);
     Node* n = _get(item);
 

@@ -8,6 +8,11 @@ env:
     - TOXENV=py34
     - TOXENV=py35
     - TOXENV=go
+    - TOXENV=lua LUA="lua 5.1"
+    - TOXENV=lua LUA="lua 5.2"
+    - TOXENV=lua LUA="lua 5.3"
+    - TOXENV=lua LUA="luajit 2.0"
+    - TOXENV=lua LUA="luajit 2.1"
 
 install:
   - pip install tox

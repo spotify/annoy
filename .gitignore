@@ -1,8 +1,14 @@
 *.egg-info/
 *.egg/
 *.so
+*.o
 build/
 dist/
 MANIFEST
 *.py[cod]
 *.idea
+
+# testing
+blah.ann
+t.ann
+x.tree
