@@ -110,6 +110,7 @@ More info
 
 * `Dirk Eddelbuettel <http://dirk.eddelbuettel.com/>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
 * `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
+* Pishen Tsai provides a `Scala wrapper of Annoy <https://github.com/pishen/annoy4s>`__ which uses JNA to call the C++ library of Annoy.
 * There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by Taneli Leppä.
 * Boris Nagaev wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
