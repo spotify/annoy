@@ -8,9 +8,6 @@ Annoy
 .. image:: https://img.shields.io/travis/spotify/annoy/master.svg?style=flat
     :target: https://travis-ci.org/spotify/annoy
 
-.. image:: https://img.shields.io/pypi/dm/annoy.svg?style=flat
-   :target: https://pypi.python.org/pypi/annoy
-
 .. image:: https://img.shields.io/pypi/v/annoy.svg?style=flat
    :target: https://pypi.python.org/pypi/annoy
 
