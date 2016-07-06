@@ -81,7 +81,9 @@ Full Python API
 * ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``.
 * ``a.get_n_items()`` returns the number of items in the index.
 
-Note that there's no bounds checking performed on the values so be careful.
+Notes:
+* there's no bounds checking performed on the values so be careful.
+* annoy uses euclidean distance of normalized vectors for its angular distance, which for two vectors u,v is equal to 2(1-cos(u,v))
 
 The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
 
