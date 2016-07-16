@@ -159,7 +159,10 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
 
   vector<int32_t> result;
   vector<float> distances;
+
+  Py_BEGIN_ALLOW_THREADS;
   self->ptr->get_nns_by_item(item, n, search_k, &result, include_distances ? &distances : NULL);
+  Py_END_ALLOW_THREADS;
 
   return get_nns_to_python(result, distances, include_distances);
 }
@@ -182,7 +185,10 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args) {
 
   vector<int32_t> result;
   vector<float> distances;
+
+  Py_BEGIN_ALLOW_THREADS;
   self->ptr->get_nns_by_vector(&w[0], n, search_k, &result, include_distances ? &distances : NULL);
+  Py_END_ALLOW_THREADS;
 
   return get_nns_to_python(result, distances, include_distances);
 }

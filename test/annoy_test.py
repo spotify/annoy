@@ -18,6 +18,7 @@
 import unittest
 import random
 import numpy
+import multiprocessing.pool
 from annoy import AnnoyIndex
 
 try:
@@ -407,6 +408,7 @@ class TypesTest(TestCase):
             self.assertRaises(IndexError, i.get_nns_by_item, bad_index, 1)
             self.assertRaises(IndexError, i.get_item_vector, bad_index)
 
+
 class MemoryLeakTest(TestCase):
     def test_get_item_vector(self):
         f = 10
@@ -424,3 +426,17 @@ class MemoryLeakTest(TestCase):
         i.build(10)
         for j in xrange(100):
             self.assertEquals(i.get_nns_by_item(0, 999999999), [0])
+
+
+class ThreadingTest(TestCase):
+    def test_threads(self):
+        n, f = 10000, 10
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(n):
+            i.add_item(j, numpy.random.normal(size=f))
+        i.build(10)
+
+        pool = multiprocessing.pool.ThreadPool()
+        def query_f(j):
+            i.get_nns_by_item(1, 1000)
+        pool.map(query_f, range(n))
