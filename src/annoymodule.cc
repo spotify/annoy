@@ -241,7 +241,9 @@ py_an_build(py_annoy *self, PyObject *args) {
   if (!PyArg_ParseTuple(args, "i", &q))
     Py_RETURN_NONE;
 
+  Py_BEGIN_ALLOW_THREADS;
   self->ptr->build(q);
+  Py_END_ALLOW_THREADS;
 
   Py_RETURN_TRUE;
 }
