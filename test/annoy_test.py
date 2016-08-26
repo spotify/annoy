@@ -29,9 +29,9 @@ except NameError:
 
 
 class TestCase(unittest.TestCase):
-    def assertAlmostEquals(self, x, y):
+    def assertAlmostEqual(self, x, y):
         # Annoy uses float precision, so we override the default precision
-        super(TestCase, self).assertAlmostEquals(x, y, 3)
+        super(TestCase, self).assertAlmostEqual(x, y, 3)
 
 
 class AngularIndexTest(TestCase):
@@ -65,7 +65,7 @@ class AngularIndexTest(TestCase):
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 2 * (1.0 - 2 ** -0.5))
+        self.assertAlmostEqual(i.get_distance(0, 1), (2 * (1.0 - 2 ** -0.5))**0.5)
 
     def test_dist_2(self):
         f = 2
@@ -81,7 +81,7 @@ class AngularIndexTest(TestCase):
         i.add_item(0, [97, 0])
         i.add_item(1, [42, 42])
 
-        dist = (1 - 2 ** -0.5) ** 2 + (2 ** -0.5) ** 2
+        dist = ((1 - 2 ** -0.5) ** 2 + (2 ** -0.5) ** 2)**0.5
 
         self.assertAlmostEqual(i.get_distance(0, 1), dist)
 
@@ -91,7 +91,7 @@ class AngularIndexTest(TestCase):
         i.add_item(0, [1, 0])
         i.add_item(1, [0, 0])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 2.0)
+        self.assertAlmostEqual(i.get_distance(0, 1), 2.0**0.5)
 
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
@@ -181,8 +181,8 @@ class AngularIndexTest(TestCase):
 
         indices, dists = i.get_nns_by_item(0, 2, 10, True)
         self.assertEqual(indices, [0, 1])
-        self.assertAlmostEquals(dists[0], 0.0)
-        self.assertAlmostEquals(dists[1], 2.0)
+        self.assertAlmostEqual(dists[0], 0.0)
+        self.assertAlmostEqual(dists[1], 2.0)
 
     def test_include_dists_check_ranges(self):
         f = 3
@@ -192,7 +192,7 @@ class AngularIndexTest(TestCase):
         i.build(10)
         indices, dists = i.get_nns_by_item(0, 100000, include_distances=True)
         self.assertTrue(max(dists) < 2.0)
-        self.assertAlmostEquals(min(dists), 0.0)
+        self.assertAlmostEqual(min(dists), 0.0)
 
 
 class EuclideanIndexTest(TestCase):
@@ -224,8 +224,10 @@ class EuclideanIndexTest(TestCase):
         i = AnnoyIndex(f, 'euclidean')
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
+        i.add_item(2, [0, 0])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 1.0)
+        self.assertAlmostEqual(i.get_distance(0, 1), 1.0**0.5)
+        self.assertAlmostEqual(i.get_distance(1, 2), 2.0**0.5)
 
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
@@ -286,16 +288,16 @@ class EuclideanIndexTest(TestCase):
         i.build(10)
 
         l, d = i.get_nns_by_item(0, 3, -1, True)
-        self.assertEquals(l, [0, 1, 2])
-        self.assertAlmostEquals(d[0]**2, 0.0)
-        self.assertAlmostEquals(d[1]**2, 2.0)
-        self.assertAlmostEquals(d[2]**2, 5.0)
+        self.assertEqual(l, [0, 1, 2])
+        self.assertAlmostEqual(d[0]**2, 0.0)
+        self.assertAlmostEqual(d[1]**2, 2.0)
+        self.assertAlmostEqual(d[2]**2, 5.0)
 
         l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
-        self.assertEquals(l, [1, 0, 2])
-        self.assertAlmostEquals(d[0]**2, 6.0)
-        self.assertAlmostEquals(d[1]**2, 8.0)
-        self.assertAlmostEquals(d[2]**2, 9.0)
+        self.assertEqual(l, [1, 0, 2])
+        self.assertAlmostEqual(d[0]**2, 6.0)
+        self.assertAlmostEqual(d[1]**2, 8.0)
+        self.assertAlmostEqual(d[2]**2, 9.0)
 
     def test_include_dists(self):
         f = 40
@@ -307,7 +309,7 @@ class EuclideanIndexTest(TestCase):
 
         indices, dists = i.get_nns_by_item(0, 2, 10, True)
         self.assertEqual(indices, [0, 1])
-        self.assertAlmostEquals(dists[0], 0.0)
+        self.assertAlmostEqual(dists[0], 0.0)
 
 
 class IndexTest(TestCase):
@@ -320,7 +322,7 @@ class IndexTest(TestCase):
         i.load('test/test.tree')
 
         # This might change in the future if we change the search algorithm, but in that case let's update the test
-        self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
+        self.assertEqual(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
     def test_load_unload(self):
         # Issue #108
@@ -352,11 +354,11 @@ class IndexTest(TestCase):
         u = i.get_item_vector(99)
         i.save('x.tree')
         v = i.get_item_vector(99)
-        self.assertEquals(u, v)
+        self.assertEqual(u, v)
         j = AnnoyIndex(10)
         j.load('test/test.tree')
         w = i.get_item_vector(99)
-        self.assertEquals(u, w)
+        self.assertEqual(u, w)
 
     def test_save_without_build(self):
         # Issue #61
@@ -425,7 +427,7 @@ class MemoryLeakTest(TestCase):
         i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
         i.build(10)
         for j in xrange(100):
-            self.assertEquals(i.get_nns_by_item(0, 999999999), [0])
+            self.assertEqual(i.get_nns_by_item(0, 999999999), [0])
 
 
 class ThreadingTest(TestCase):

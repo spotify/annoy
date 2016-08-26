@@ -34,7 +34,7 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* Euclidean distance or cosine distance (where cosine distance uses Euclidean distance of normalized vectors which equals 2-2*cosine similarity)
+* Euclidean distance or cosine distance, where cosine distance uses Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
@@ -83,8 +83,8 @@ Full Python API
 
 Notes:
 
-* there's no bounds checking performed on the values so be careful.
-* annoy uses euclidean distance of normalized vectors for its angular distance, which for two vectors u,v is equal to ``2(1-cos(u,v))``
+* There's no bounds checking performed on the values so be careful.
+* Annoy uses Euclidean distance of normalized vectors for its angular distance, which for two vectors u,v is equal to ``sqrt(2(1-cos(u,v)))``
 
 
 The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
