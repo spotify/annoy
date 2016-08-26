@@ -1,5 +1,9 @@
 import unittest
 
+def execfile(fn):
+    with open(fn) as f:
+        exec(f.read())
+
 def simple_test():
     execfile('examples/simple_test.py')
 
