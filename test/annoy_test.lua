@@ -171,7 +171,7 @@ describe("angular annoy test", function()
         local i = AnnoyIndex(f)
         i:add_item(0, {0, 1})
         i:add_item(1, {1, 1})
-        assert.equal(round(2 * (1.0 - 2 ^ -0.5)), round(i:get_distance(0, 1)))
+        assert.equal(round((2 * (1.0 - 2 ^ -0.5)) ^ 0.5), round(i:get_distance(0, 1)))
     end)
 
     it("dist_2", function()
@@ -187,7 +187,7 @@ describe("angular annoy test", function()
         local i = AnnoyIndex(f)
         i:add_item(0, {97, 0})
         i:add_item(1, {42, 42})
-        local dist = (1 - 2 ^ -0.5) ^ 2 + (2 ^ -0.5) ^ 2
+        local dist = ((1 - 2 ^ -0.5) ^ 2 + (2 ^ -0.5) ^ 2) ^ 0.5
         assert.equal(round(dist), round(i:get_distance(0, 1)))
     end)
 
@@ -196,7 +196,7 @@ describe("angular annoy test", function()
         local i = AnnoyIndex(f)
         i:add_item(0, {1, 0})
         i:add_item(1, {0, 0})
-        assert.equal(round(2.0), round(i:get_distance(0, 1)))
+        assert.equal(round(2.0 ^ 0.5), round(i:get_distance(0, 1)))
     end)
 
     it("large_index", function()
