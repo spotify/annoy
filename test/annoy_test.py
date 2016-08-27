@@ -20,7 +20,9 @@ import random
 import numpy
 import multiprocessing.pool
 from annoy import AnnoyIndex
-from scipy.spatial.distance import cosine, euclidean
+# Travis craps out on Scipy sadly
+# from scipy.spatial.distance import cosine, euclidean
+
 
 try:
     xrange
@@ -209,9 +211,9 @@ class AngularIndexTest(TestCase):
                 v = i.get_item_vector(b)
                 u_norm = numpy.array(u) * numpy.dot(u, u)**-0.5
                 v_norm = numpy.array(v) * numpy.dot(v, v)**-0.5
-                cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
+                # cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
                 self.assertAlmostEqual(dist, numpy.dot(u_norm - v_norm, u_norm - v_norm) ** 0.5)
-                self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
+                # self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
                 self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u_norm, v_norm)])**0.5)
 
 
@@ -343,7 +345,7 @@ class EuclideanIndexTest(TestCase):
                 self.assertAlmostEqual(dist, i.get_distance(a, b))
                 u = numpy.array(i.get_item_vector(a))
                 v = numpy.array(i.get_item_vector(b))
-                self.assertAlmostEqual(dist, euclidean(u, v))
+                # self.assertAlmostEqual(dist, euclidean(u, v))
                 self.assertAlmostEqual(dist, numpy.dot(u - v, u - v) ** 0.5)
                 self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u, v)])**0.5)
 
