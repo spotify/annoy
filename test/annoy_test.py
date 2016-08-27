@@ -20,6 +20,7 @@ import random
 import numpy
 import multiprocessing.pool
 from annoy import AnnoyIndex
+from scipy.spatial.distance import cosine, euclidean
 
 try:
     xrange
@@ -194,6 +195,25 @@ class AngularIndexTest(TestCase):
         self.assertTrue(max(dists) < 2.0)
         self.assertAlmostEqual(min(dists), 0.0)
 
+    def test_distance_consistency(self):
+        n, f = 1000, 3
+        i = AnnoyIndex(f)
+        for j in xrange(n):
+            i.add_item(j, numpy.random.normal(size=f))
+        i.build(10)
+        for a in random.sample(range(n), 100):
+            indices, dists = i.get_nns_by_item(a, 100, include_distances=True)
+            for b, dist in zip(indices, dists):
+                self.assertAlmostEqual(dist, i.get_distance(a, b))
+                u = i.get_item_vector(a)
+                v = i.get_item_vector(b)
+                u_norm = numpy.array(u) * numpy.dot(u, u)**-0.5
+                v_norm = numpy.array(v) * numpy.dot(v, v)**-0.5
+                cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
+                self.assertAlmostEqual(dist, numpy.dot(u_norm - v_norm, u_norm - v_norm) ** 0.5)
+                self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
+                self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u_norm, v_norm)])**0.5)
+
 
 class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
@@ -301,7 +321,7 @@ class EuclideanIndexTest(TestCase):
 
     def test_include_dists(self):
         f = 40
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'euclidean')
         v = numpy.random.normal(size=f)
         i.add_item(0, v)
         i.add_item(1, -v)
@@ -310,6 +330,22 @@ class EuclideanIndexTest(TestCase):
         indices, dists = i.get_nns_by_item(0, 2, 10, True)
         self.assertEqual(indices, [0, 1])
         self.assertAlmostEqual(dists[0], 0.0)
+
+    def test_distance_consistency(self):
+        n, f = 1000, 3
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(n):
+            i.add_item(j, numpy.random.normal(size=f))
+        i.build(10)
+        for a in random.sample(range(n), 100):
+            indices, dists = i.get_nns_by_item(a, 100, include_distances=True)
+            for b, dist in zip(indices, dists):
+                self.assertAlmostEqual(dist, i.get_distance(a, b))
+                u = numpy.array(i.get_item_vector(a))
+                v = numpy.array(i.get_item_vector(b))
+                self.assertAlmostEqual(dist, euclidean(u, v))
+                self.assertAlmostEqual(dist, numpy.dot(u - v, u - v) ** 0.5)
+                self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u, v)])**0.5)
 
 
 class IndexTest(TestCase):
