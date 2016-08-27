@@ -34,7 +34,7 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* Euclidean distance or cosine distance (where cosine distance uses Euclidean distance of normalized vectors which equals 2-2*cosine similarity)
+* Euclidean distance or cosine distance, where cosine distance uses Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
@@ -78,13 +78,13 @@ Full Python API
 * ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
 * ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
 * ``a.get_item_vector(i)`` returns the vector for item ``i`` that was previously added.
-* ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``.
+* ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``. NOTE: this used to returned the *squared* distance, but has been changed as of Aug 2016.
 * ``a.get_n_items()`` returns the number of items in the index.
 
 Notes:
 
-* there's no bounds checking performed on the values so be careful.
-* annoy uses euclidean distance of normalized vectors for its angular distance, which for two vectors u,v is equal to ``2(1-cos(u,v))``
+* There's no bounds checking performed on the values so be careful.
+* Annoy uses Euclidean distance of normalized vectors for its angular distance, which for two vectors u,v is equal to ``sqrt(2(1-cos(u,v)))``
 
 
 The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.

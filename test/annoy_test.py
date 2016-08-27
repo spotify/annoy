@@ -20,6 +20,9 @@ import random
 import numpy
 import multiprocessing.pool
 from annoy import AnnoyIndex
+# Travis craps out on Scipy sadly
+# from scipy.spatial.distance import cosine, euclidean
+
 
 try:
     xrange
@@ -29,9 +32,9 @@ except NameError:
 
 
 class TestCase(unittest.TestCase):
-    def assertAlmostEquals(self, x, y):
+    def assertAlmostEqual(self, x, y):
         # Annoy uses float precision, so we override the default precision
-        super(TestCase, self).assertAlmostEquals(x, y, 3)
+        super(TestCase, self).assertAlmostEqual(x, y, 3)
 
 
 class AngularIndexTest(TestCase):
@@ -65,7 +68,7 @@ class AngularIndexTest(TestCase):
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 2 * (1.0 - 2 ** -0.5))
+        self.assertAlmostEqual(i.get_distance(0, 1), (2 * (1.0 - 2 ** -0.5))**0.5)
 
     def test_dist_2(self):
         f = 2
@@ -81,7 +84,7 @@ class AngularIndexTest(TestCase):
         i.add_item(0, [97, 0])
         i.add_item(1, [42, 42])
 
-        dist = (1 - 2 ** -0.5) ** 2 + (2 ** -0.5) ** 2
+        dist = ((1 - 2 ** -0.5) ** 2 + (2 ** -0.5) ** 2)**0.5
 
         self.assertAlmostEqual(i.get_distance(0, 1), dist)
 
@@ -91,7 +94,7 @@ class AngularIndexTest(TestCase):
         i.add_item(0, [1, 0])
         i.add_item(1, [0, 0])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 2.0)
+        self.assertAlmostEqual(i.get_distance(0, 1), 2.0**0.5)
 
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
@@ -181,8 +184,8 @@ class AngularIndexTest(TestCase):
 
         indices, dists = i.get_nns_by_item(0, 2, 10, True)
         self.assertEqual(indices, [0, 1])
-        self.assertAlmostEquals(dists[0], 0.0)
-        self.assertAlmostEquals(dists[1], 2.0)
+        self.assertAlmostEqual(dists[0], 0.0)
+        self.assertAlmostEqual(dists[1], 2.0)
 
     def test_include_dists_check_ranges(self):
         f = 3
@@ -192,7 +195,26 @@ class AngularIndexTest(TestCase):
         i.build(10)
         indices, dists = i.get_nns_by_item(0, 100000, include_distances=True)
         self.assertTrue(max(dists) < 2.0)
-        self.assertAlmostEquals(min(dists), 0.0)
+        self.assertAlmostEqual(min(dists), 0.0)
+
+    def test_distance_consistency(self):
+        n, f = 1000, 3
+        i = AnnoyIndex(f)
+        for j in xrange(n):
+            i.add_item(j, numpy.random.normal(size=f))
+        i.build(10)
+        for a in random.sample(range(n), 100):
+            indices, dists = i.get_nns_by_item(a, 100, include_distances=True)
+            for b, dist in zip(indices, dists):
+                self.assertAlmostEqual(dist, i.get_distance(a, b))
+                u = i.get_item_vector(a)
+                v = i.get_item_vector(b)
+                u_norm = numpy.array(u) * numpy.dot(u, u)**-0.5
+                v_norm = numpy.array(v) * numpy.dot(v, v)**-0.5
+                # cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
+                self.assertAlmostEqual(dist, numpy.dot(u_norm - v_norm, u_norm - v_norm) ** 0.5)
+                # self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
+                self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u_norm, v_norm)])**0.5)
 
 
 class EuclideanIndexTest(TestCase):
@@ -224,8 +246,10 @@ class EuclideanIndexTest(TestCase):
         i = AnnoyIndex(f, 'euclidean')
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
+        i.add_item(2, [0, 0])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), 1.0)
+        self.assertAlmostEqual(i.get_distance(0, 1), 1.0**0.5)
+        self.assertAlmostEqual(i.get_distance(1, 2), 2.0**0.5)
 
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
@@ -286,20 +310,20 @@ class EuclideanIndexTest(TestCase):
         i.build(10)
 
         l, d = i.get_nns_by_item(0, 3, -1, True)
-        self.assertEquals(l, [0, 1, 2])
-        self.assertAlmostEquals(d[0]**2, 0.0)
-        self.assertAlmostEquals(d[1]**2, 2.0)
-        self.assertAlmostEquals(d[2]**2, 5.0)
+        self.assertEqual(l, [0, 1, 2])
+        self.assertAlmostEqual(d[0]**2, 0.0)
+        self.assertAlmostEqual(d[1]**2, 2.0)
+        self.assertAlmostEqual(d[2]**2, 5.0)
 
         l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
-        self.assertEquals(l, [1, 0, 2])
-        self.assertAlmostEquals(d[0]**2, 6.0)
-        self.assertAlmostEquals(d[1]**2, 8.0)
-        self.assertAlmostEquals(d[2]**2, 9.0)
+        self.assertEqual(l, [1, 0, 2])
+        self.assertAlmostEqual(d[0]**2, 6.0)
+        self.assertAlmostEqual(d[1]**2, 8.0)
+        self.assertAlmostEqual(d[2]**2, 9.0)
 
     def test_include_dists(self):
         f = 40
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'euclidean')
         v = numpy.random.normal(size=f)
         i.add_item(0, v)
         i.add_item(1, -v)
@@ -307,7 +331,23 @@ class EuclideanIndexTest(TestCase):
 
         indices, dists = i.get_nns_by_item(0, 2, 10, True)
         self.assertEqual(indices, [0, 1])
-        self.assertAlmostEquals(dists[0], 0.0)
+        self.assertAlmostEqual(dists[0], 0.0)
+
+    def test_distance_consistency(self):
+        n, f = 1000, 3
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(n):
+            i.add_item(j, numpy.random.normal(size=f))
+        i.build(10)
+        for a in random.sample(range(n), 100):
+            indices, dists = i.get_nns_by_item(a, 100, include_distances=True)
+            for b, dist in zip(indices, dists):
+                self.assertAlmostEqual(dist, i.get_distance(a, b))
+                u = numpy.array(i.get_item_vector(a))
+                v = numpy.array(i.get_item_vector(b))
+                # self.assertAlmostEqual(dist, euclidean(u, v))
+                self.assertAlmostEqual(dist, numpy.dot(u - v, u - v) ** 0.5)
+                self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u, v)])**0.5)
 
 
 class IndexTest(TestCase):
@@ -320,7 +360,7 @@ class IndexTest(TestCase):
         i.load('test/test.tree')
 
         # This might change in the future if we change the search algorithm, but in that case let's update the test
-        self.assertEquals(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
+        self.assertEqual(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
     def test_load_unload(self):
         # Issue #108
@@ -352,11 +392,11 @@ class IndexTest(TestCase):
         u = i.get_item_vector(99)
         i.save('x.tree')
         v = i.get_item_vector(99)
-        self.assertEquals(u, v)
+        self.assertEqual(u, v)
         j = AnnoyIndex(10)
         j.load('test/test.tree')
         w = i.get_item_vector(99)
-        self.assertEquals(u, w)
+        self.assertEqual(u, w)
 
     def test_save_without_build(self):
         # Issue #61
@@ -425,7 +465,7 @@ class MemoryLeakTest(TestCase):
         i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
         i.build(10)
         for j in xrange(100):
-            self.assertEquals(i.get_nns_by_item(0, 999999999), [0])
+            self.assertEqual(i.get_nns_by_item(0, 999999999), [0])
 
 
 class ThreadingTest(TestCase):

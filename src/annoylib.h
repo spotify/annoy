@@ -430,7 +430,7 @@ public:
   T get_distance(S i, S j) {
     const T* x = _get(i)->v;
     const T* y = _get(j)->v;
-    return D::distance(x, y, _f);
+    return D::normalized_distance(D::distance(x, y, _f));
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
