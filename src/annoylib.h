@@ -558,7 +558,7 @@ protected:
       S i = top.second;
       Node* nd = _get(i);
       q.pop();
-      if (nd->n_descendants == 1) {
+      if (nd->n_descendants == 1 && i < _n_items) {
         nns.push_back(i);
       } else if (nd->n_descendants <= _K) {
         const S* dst = nd->children;

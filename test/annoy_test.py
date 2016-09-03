@@ -216,6 +216,26 @@ class AngularIndexTest(TestCase):
                 # self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
                 self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u_norm, v_norm)])**0.5)
 
+    def test_only_one_item(self):
+        # reported to annoy-user by Kireet Reddy
+        idx = AnnoyIndex(100)
+        idx.add_item(0, numpy.random.randn(100))
+        idx.build(n_trees=10)
+        idx.save('foo.idx')
+        idx = AnnoyIndex(100)
+        idx.load('foo.idx')
+        self.assertEquals(idx.get_n_items(), 1)
+        self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [0])
+
+    def test_no_items(self):
+        idx = AnnoyIndex(100)
+        idx.build(n_trees=10)
+        idx.save('foo.idx')
+        idx = AnnoyIndex(100)
+        idx.load('foo.idx')
+        self.assertEquals(idx.get_n_items(), 0)
+        self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
+
 
 class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
