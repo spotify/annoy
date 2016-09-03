@@ -227,6 +227,15 @@ class AngularIndexTest(TestCase):
         self.assertEquals(idx.get_n_items(), 1)
         self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [0])
 
+    def test_no_items(self):
+        idx = AnnoyIndex(100)
+        idx.build(n_trees=10)
+        idx.save('foo.idx')
+        idx = AnnoyIndex(100)
+        idx.load('foo.idx')
+        self.assertEquals(idx.get_n_items(), 0)
+        self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
+
 
 class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
