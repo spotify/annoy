@@ -70,6 +70,21 @@
   }
 %}
 
+
+%typemap(gotype) (const char *) "string"
+
+%typemap(in) (const char *)
+%{
+  $1 = (char *)malloc((((_gostring_)$input).n + 1) * sizeof(char));
+  strcpy($1, ((_gostring_)$input).p);
+%}
+
+%typemap(freearg) (const char *)
+%{
+  free($1);
+%}
+
+
 /* Let's just grab the original header file here */
 %include "annoygomodule.h"
 

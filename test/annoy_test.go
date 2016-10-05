@@ -12,10 +12,11 @@
 # the License.
 */
 
-package main
+package annoyindex_test
 
 import (
        "annoyindex"
+       "os"
        "testing"
        "math"
        "math/rand"
@@ -37,6 +38,34 @@ func RoundPlus(f float64, places int) (float64) {
 }
 
 func (suite *AnnoyTestSuite) SetupTest() {
+}
+
+func (suite *AnnoyTestSuite) TestFileHandling() {
+     index := annoyindex.NewAnnoyIndexAngular(3)
+     index.AddItem(0, []float32{0, 0, 1})
+     index.AddItem(1, []float32{0, 1, 0})
+     index.AddItem(2, []float32{1, 0, 0})
+     index.Build(10)
+
+     index.Save("go_test.ann")
+
+     info, err := os.Stat("go_test.ann")
+     if err != nil {
+        assert.Fail(suite.T(), "Failed to create file, file not found")
+     }
+     if info.Size() == 0 {
+        assert.Fail(suite.T(), "Failed to create file, file size zero")
+     }
+
+     annoyindex.DeleteAnnoyIndexAngular(index)
+
+     index = annoyindex.NewAnnoyIndexAngular(3)
+     if ret := index.Load("go_test.ann"); ret == false {
+        assert.Fail(suite.T(), "Failed to load file")
+     }
+     annoyindex.DeleteAnnoyIndexAngular(index)
+
+     os.Remove("go_test.ann")
 }
 
 func (suite *AnnoyTestSuite) TestGetNnsByVector() {
@@ -82,7 +111,7 @@ func (suite *AnnoyTestSuite) TestGetDistance() {
      index.AddItem(1, []float32{1, 1})
      index.Build(10)
 
-     assert.Equal(suite.T(), RoundPlus(2 * (1.0 - math.Pow(2, -0.5)), 3), RoundPlus(float64(index.GetDistance(0, 1)), 3))
+     assert.Equal(suite.T(), RoundPlus(math.Pow(2 * (1.0 - math.Pow(2, -0.5)), 0.5), 3), RoundPlus(float64(index.GetDistance(0, 1)), 3))
 
      annoyindex.DeleteAnnoyIndexAngular(index)
 }
