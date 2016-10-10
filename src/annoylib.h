@@ -253,6 +253,7 @@ class AnnoyIndexInterface {
   virtual ~AnnoyIndexInterface() {};
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
+  virtual void unbuild() = 0;
   virtual bool save(const char* filename) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename) = 0;
@@ -354,6 +355,16 @@ public:
     _n_nodes += _roots.size();
 
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
+  }
+  
+  void unbuild() {
+    if (_loaded) {
+      showUpdate("You can't unbuild a loaded index\n");
+      return;
+    }
+
+    _roots.clear();
+    _n_nodes = _n_items;
   }
 
   bool save(const char* filename) {
