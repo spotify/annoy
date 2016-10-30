@@ -86,6 +86,14 @@ class AnnoyIndex(Annoy):
         no more items can be added.
         """
         return super(AnnoyIndex, self).build(n_trees)
+    
+    def unbuild(self):
+        """
+        Unbuilds the tree in order to allows adding new items.
+        build() has to be called again afterwards in order to
+        run queries
+        """
+        return super(AnnoyIndex, self).unbuild()
 
     def save(self, fn):
         """

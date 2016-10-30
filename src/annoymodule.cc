@@ -250,6 +250,19 @@ py_an_build(py_annoy *self, PyObject *args) {
 
 
 static PyObject *
+py_an_unbuild(py_annoy *self, PyObject *args) {
+  if (!self->ptr) 
+    Py_RETURN_NONE;
+  
+  Py_BEGIN_ALLOW_THREADS;
+  self->ptr->unbuild();
+  Py_END_ALLOW_THREADS;
+
+  Py_RETURN_TRUE;
+}
+
+
+static PyObject *
 py_an_unload(py_annoy *self, PyObject *args) {
   if (!self->ptr) 
     Py_RETURN_NONE;
@@ -305,6 +318,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS, ""},
   {"build",(PyCFunction)py_an_build, METH_VARARGS, ""},
+  {"unbuild",(PyCFunction)py_an_unbuild, METH_VARARGS, ""},
   {"unload",(PyCFunction)py_an_unload, METH_VARARGS, ""},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
   {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, ""},

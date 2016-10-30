@@ -426,7 +426,11 @@ class IndexTest(TestCase):
         j = AnnoyIndex(10)
         j.load('x.tree')
         j.build(10)
-
+        
+    def test_unbuild_with_loaded_tree(self):
+        i = AnnoyIndex(10)
+        i.load('test/test.tree')
+        i.unbuild()
 
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
@@ -486,6 +490,19 @@ class MemoryLeakTest(TestCase):
         i.build(10)
         for j in xrange(100):
             self.assertEqual(i.get_nns_by_item(0, 999999999), [0])
+            
+    def test_build_unbuid(self):
+        f = 10
+        i = AnnoyIndex(f, 'euclidean')
+        for j in xrange(1000):
+            i.add_item(j, [random.gauss(0, 1) for x in xrange(f)])
+        i.build(10)
+        
+        for j in xrange(100):
+            i.unbuild()
+            i.build(10)
+            
+        self.assertEqual(i.get_n_items(), 1000)
 
 
 class ThreadingTest(TestCase):
