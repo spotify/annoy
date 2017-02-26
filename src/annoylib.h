@@ -596,7 +596,7 @@ protected:
 
     size_t m = nns_dist.size();
     size_t p = n < m ? n : m; // Return this many items
-    std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
+    std::partial_sort(nns_dist.begin(), nns_dist.begin() + p, nns_dist.end());
     for (size_t i = 0; i < p; i++) {
       if (distances)
         distances->push_back(D::normalized_distance(nns_dist[i].first));
