@@ -130,3 +130,9 @@ class AnnoyIndex(Annoy):
         Returns the number of items in the index.
         """
         return super(AnnoyIndex, self).get_n_items()
+
+    def set_seed(self, seed):
+        """
+        Sets the seed of Annoy's random number generator.
+        """
+        return super(AnnoyIndex, self).set_seed(seed)
