@@ -71,6 +71,15 @@ struct RandRandom {
     // Draw random integer between 0 and n-1 where n is at most the number of data points you have
     return rand() % n;
   }
+  inline void set_seed(int seed) {
+    srand(seed);
+  }
+};
+
+struct SeededRandRandom: RandRandom {
+  SeededRandRandom(uint32_t seed = 123456789) {
+    srand(seed);
+  }
 };
 
 template<typename T>
@@ -263,6 +272,7 @@ class AnnoyIndexInterface {
   virtual S get_n_items() = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) = 0;
+  virtual void set_seed(int q) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random>
@@ -462,6 +472,10 @@ public:
   void get_item(S item, T* v) {
     Node* m = _get(item);
     std::copy(&m->v[0], &m->v[_f], v);
+  }
+
+  void set_seed(int seed) {
+    _random.set_seed(seed);
   }
 
 protected:

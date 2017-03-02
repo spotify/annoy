@@ -47,6 +47,9 @@ struct Kiss32Random {
     // Draw random integer between 0 and n-1 where n is at most the number of data points you have
     return kiss() % n;
   }
+  inline void set_seed(uint32_t seed) {
+    x = seed;
+  }
 };
 
 // 64 bit KISS. Use this if you have more than about 2^24 data points ("big data" ;) )
@@ -88,6 +91,9 @@ struct Kiss64Random {
   inline size_t index(size_t n) {
     // Draw random integer between 0 and n-1 where n is at most the number of data points you have
     return kiss() % n;
+  }
+  inline void set_seed(uint32_t seed) {
+    x = seed;
   }
 };
 
