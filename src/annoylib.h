@@ -63,6 +63,11 @@ using std::make_pair;
 struct RandRandom {
   // Default implementation of annoy-specific random number generator that uses rand() from standard library.
   // Owned by the AnnoyIndex, passed around to the distance metrics
+  
+  RandRandom(uint32_t seed = 123456789) {
+    srand(seed);
+  }
+
   inline int flip() {
     // Draw random 0 or 1
     return rand() & 1;
@@ -263,7 +268,6 @@ class AnnoyIndexInterface {
   virtual S get_n_items() = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) = 0;
-  virtual void set_seed(int q) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random>
@@ -326,10 +330,6 @@ public:
 
     if (item >= _n_items)
       _n_items = item + 1;
-  }
-
-  void set_seed(int seed) {
-    srand(seed);
   }
 
   void build(int q) {
