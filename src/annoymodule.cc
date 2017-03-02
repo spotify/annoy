@@ -310,6 +310,19 @@ py_an_verbose(py_annoy *self, PyObject *args) {
 }
 
 
+static PyObject *
+py_an_set_seed(py_annoy *self, PyObject *args) {
+  int q;
+  if (!self->ptr)
+    Py_RETURN_NONE;
+  if (!PyArg_ParseTuple(args, "i", &q))
+    Py_RETURN_NONE;
+
+  self->ptr->set_seed(q);
+
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef AnnoyMethods[] = {
   {"load",	(PyCFunction)py_an_load, METH_VARARGS, ""},
   {"save",	(PyCFunction)py_an_save, METH_VARARGS, ""},
@@ -323,6 +336,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
   {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, ""},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},
+  {"set_seed",(PyCFunction)py_an_set_seed, METH_VARARGS, ""},
   {NULL, NULL, 0, NULL}		 /* Sentinel */
 };
 

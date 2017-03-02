@@ -432,6 +432,12 @@ class IndexTest(TestCase):
         i.load('test/test.tree')
         i.unbuild()
 
+    def test_seed(self):
+        i = AnnoyIndex(10)
+        i.load('test/test.tree')
+        i.set_seed(42)
+
+
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
         f = 10
