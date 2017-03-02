@@ -63,11 +63,6 @@ using std::make_pair;
 struct RandRandom {
   // Default implementation of annoy-specific random number generator that uses rand() from standard library.
   // Owned by the AnnoyIndex, passed around to the distance metrics
-  
-  RandRandom(uint32_t seed = 123456789) {
-    srand(seed);
-  }
-
   inline int flip() {
     // Draw random 0 or 1
     return rand() & 1;
@@ -75,6 +70,12 @@ struct RandRandom {
   inline size_t index(size_t n) {
     // Draw random integer between 0 and n-1 where n is at most the number of data points you have
     return rand() % n;
+  }
+};
+
+struct SeededRandRandom: RandRandom {
+  SeededRandRandom(uint32_t seed = 123456789) {
+    srand(seed);
   }
 };
 
