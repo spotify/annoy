@@ -527,7 +527,6 @@ class ThreadingTest(TestCase):
 
 class SeedTest(TestCase):
     def test_seeding(self):
-        print('seeding')
         f = 10
         X = numpy.random.rand(1000, f)
         Y = numpy.random.rand(50, f)
