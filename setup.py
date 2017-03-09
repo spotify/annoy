@@ -41,7 +41,7 @@ else:
     travis_extra_compile_args = []
 
 setup(name='annoy',
-      version='1.8.2',
+      version='1.8.3',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
