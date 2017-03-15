@@ -105,6 +105,28 @@ func (suite *AnnoyTestSuite) TestGetNnsByItem() {
      annoyindex.DeleteAnnoyIndexAngular(index)
 }
 
+func (suite *AnnoyTestSuite) TestGetItem() {
+     index := annoyindex.NewAnnoyIndexAngular(3)
+     index.AddItem(0, []float32{2, 1, 0})
+     index.AddItem(1, []float32{1, 2, 0})
+     index.AddItem(2, []float32{0, 0, 1})
+     index.Build(10)
+
+     var result []float32
+
+     index.GetItem(0, &result)
+     assert.Equal(suite.T(), []float32{2, 1, 0}, result)
+
+     index.GetItem(1, &result)
+     assert.Equal(suite.T(), []float32{1, 2, 0}, result)
+
+     index.GetItem(2, &result)
+     assert.Equal(suite.T(), []float32{0, 0, 1}, result)
+
+     annoyindex.DeleteAnnoyIndexAngular(index)
+}
+
+
 func (suite *AnnoyTestSuite) TestGetDistance() {
      index := annoyindex.NewAnnoyIndexAngular(2)
      index.AddItem(0, []float32{0, 1})

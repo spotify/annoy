@@ -4,8 +4,11 @@ Install
 To install, you'll need Swig (tested with Swig 3.0.6 on OS X), and then just::
 
   swig -go -intgosize 64 -cgo -c++ src/annoygomodule.i
-  cp src/annoygomodule_wrap.cxx src/annoyindex.go src/annoygomodule.h src/annoylib.h src/kissrandom.h $GOPATH/src/annoyindex
+  mkdir -p $GOPATH/src/annoyindex
+  cp src/annoygomodule_wrap.cxx src/annoyindex.go src/annoygomodule.h src/annoylib.h src/kissrandom.h test/annoy_test.go $GOPATH/src/annoyindex
   cd $GOPATH/src/annoyindex
+  go get -t ...
+  go test
   go build
 
 Background
