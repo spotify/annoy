@@ -7,6 +7,8 @@ class AnnoyIndex {
  protected:
   ::AnnoyIndexInterface<int32_t, float> *ptr;
 
+  int f;
+
  public:
   ~AnnoyIndex() {
     delete ptr;
@@ -48,8 +50,9 @@ class AnnoyIndex {
   void verbose(bool v) {
     ptr->verbose(v);
   };
-  void getItem(int item, float* v) {
-    ptr->get_item(item, v);
+  void getItem(int item, vector<float> *v) {
+    v->resize(this->f);
+    ptr->get_item(item, &v->front());
   };
 };
 
@@ -58,6 +61,7 @@ class AnnoyIndexAngular : public AnnoyIndex
  public:
   AnnoyIndexAngular(int f) {
     ptr = new ::AnnoyIndex<int32_t, float, ::Angular, ::Kiss64Random>(f);
+    this->f = f;
   }
 };
 
@@ -65,6 +69,7 @@ class AnnoyIndexEuclidean : public AnnoyIndex {
  public:
   AnnoyIndexEuclidean(int f) {
     ptr = new ::AnnoyIndex<int32_t, float, ::Euclidean, ::Kiss64Random>(f);
+    this->f = f;
   }
 };
 
