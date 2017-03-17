@@ -12,6 +12,10 @@ env:
     - TOXENV=lua LUA="luajit 2.0"
     - TOXENV=lua LUA="luajit 2.1"
 
+os:
+  - linux
+  - osx
+
 install:
   - pip install tox
 
