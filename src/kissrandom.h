@@ -1,7 +1,14 @@
 #ifndef KISSRANDOM_H
 #define KISSRANDOM_H
 
+#ifdef _WIN32
+typedef __int32 int32_t;
+typedef unsigned __int32 uint32_t;
+typedef __int64 int64_t;
+typedef unsigned __int64 uint64_t;
+#else
 #include <stdint.h>
+#endif
 
 // KISS = "keep it simple, stupid", but high quality random number generator
 // http://www0.cs.ucl.ac.uk/staff/d.jones/GoodPracticeRNG.pdf -> "Use a good RNG and build it into your code"

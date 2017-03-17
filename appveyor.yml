@@ -1,0 +1,82 @@
+# This is taken from https://github.com/ogrisel/python-appveyor-demo/blob/master/appveyor.yml
+# Thanks @ogrisel!
+
+environment:
+  matrix:
+    # Pre-installed Python versions, which Appveyor may upgrade to
+    # a later point release.
+    # See: http://www.appveyor.com/docs/installed-software#python
+
+    - PYTHON: "C:\\Python27"
+      PYTHON_VERSION: "2.7.x" # currently 2.7.9
+      PYTHON_ARCH: "32"
+
+    - PYTHON: "C:\\Python27-x64"
+      PYTHON_VERSION: "2.7.x" # currently 2.7.9
+      PYTHON_ARCH: "64"
+
+    - PYTHON: "C:\\Python33"
+      PYTHON_VERSION: "3.3.x" # currently 3.3.5
+      PYTHON_ARCH: "32"
+
+    - PYTHON: "C:\\Python33-x64"
+      PYTHON_VERSION: "3.3.x" # currently 3.3.5
+      PYTHON_ARCH: "64"
+
+    - PYTHON: "C:\\Python34"
+      PYTHON_VERSION: "3.4.x" # currently 3.4.3
+      PYTHON_ARCH: "32"
+
+    - PYTHON: "C:\\Python34-x64"
+      PYTHON_VERSION: "3.4.x" # currently 3.4.3
+      PYTHON_ARCH: "64"
+
+install:
+  - ECHO "Filesystem root:"
+  - ps: "ls \"C:/\""
+
+  - ECHO "Installed SDKs:"
+  - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
+
+  - ECHO "Local directory"
+  - ps: "ls"
+
+  # Install Python (from the official .msi of http://python.org) and pip when
+  # not already installed.
+  - ps: if (-not(Test-Path($env:PYTHON))) { & appveyor\install.ps1 }
+
+  # Prepend newly installed Python to the PATH of this build (this cannot be
+  # done from inside the powershell script as it would require to restart
+  # the parent CMD process).
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+
+  # Check that we have the expected version and architecture for Python
+  - "python --version"
+  - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
+
+  # Upgrade to the latest version of pip to avoid it displaying warnings
+  # about it being out of date.
+  - "pip install --disable-pip-version-check --user --upgrade pip"
+
+build_script:
+  # Build the compiled extension
+  - "python setup.py build"
+
+test_script:
+  # Run the project tests
+  - "python setup.py nosetests"
+
+after_test:
+  # If tests are successful, create binary packages for the project.
+  - "python setup.py bdist_wheel"
+  - "python setup.py bdist_wininst"
+  - "python setup.py bdist_msi"
+  - ps: "ls dist"
+
+artifacts:
+  # Archive the generated packages in the ci.appveyor.com build report.
+  - path: dist\*
+
+#on_success:
+#  - TODO: upload the content of dist/*.whl to a public wheelhouse
+#

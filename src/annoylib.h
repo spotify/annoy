@@ -18,18 +18,22 @@
 #include <stdio.h>
 #include <string>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stddef.h>
-#include <stdint.h>
 
-#ifdef __MINGW32__
+#ifdef _WIN32
+#include <io.h>
+typedef __int32 int32_t;
+typedef unsigned __int32 uint32_t;
+typedef __int64 int64_t;
+typedef unsigned __int64 uint64_t;
 #include "mman.h"
 #include <windows.h>
 #else
+#include <unistd.h>
+#include <stdint.h>
 #include <sys/mman.h>
 #endif
 
@@ -48,9 +52,11 @@
   #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
 #endif
 
+#ifdef __GNUC__
 #ifndef ANNOY_NODE_ATTRIBUTE
   #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
   // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
+#endif
 #endif
 
 
