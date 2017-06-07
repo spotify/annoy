@@ -40,6 +40,12 @@ if os.environ.get('TRAVIS') == 'true':
 else:
     travis_extra_compile_args = []
 
+# Not all CPUs have march as a tuning parameter
+import platform
+cputune = ['-march=native',]
+if platform.machine() == "ppc64le":
+    cputune = ['-mcpu=native',]
+
 setup(name='annoy',
       version='1.8.3',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
@@ -48,7 +54,7 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=['-O3', '-march=native', '-ffast-math'] + travis_extra_compile_args,
+            extra_compile_args=['-O3', '-ffast-math'] + cputune + travis_extra_compile_args,
         )
       ],
       long_description=long_description,
