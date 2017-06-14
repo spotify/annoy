@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include "../src/kissrandom.h"
 #include "../src/annoylib.h"
 #include <chrono>
 #include <algorithm>
@@ -24,7 +25,7 @@ int precision(int f=40, int n=1000000){
 
 	//******************************************************
 	//Building the tree
-	AnnoyIndex<int, double, Angular, RandRandom> t = AnnoyIndex<int, double, Angular, RandRandom>(f);
+	AnnoyIndex<int, double, Angular, Kiss32Random> t = AnnoyIndex<int, double, Angular, Kiss32Random>(f);
 
 	std::cout << "Building index ... be patient !!" << std::endl;
 	std::cout << "\"Trees that are slow to grow bear the best fruit\" (Moliere)" << std::endl;
