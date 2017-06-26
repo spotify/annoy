@@ -275,6 +275,9 @@ static int lua_an_make(lua_State* L) {
   } else if (strcmp(metric, "euclidean") == 0) {
     LuaAnnoy<Euclidean>::createNew(L, f);
     return 1;
+  } else if (strcmp(metric, "manhattan") == 0) {
+    LuaAnnoy<Manhattan>::createNew(L, f);
+    return 1;
   } else {
     return luaL_error(L, "Unknown metric: %s", metric);
   }
