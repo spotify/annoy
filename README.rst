@@ -34,7 +34,7 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* Euclidean distance or cosine distance, where cosine distance uses Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
+* Euclidean distance, Manhattan distance or cosine distance, where cosine distance uses Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
@@ -69,7 +69,7 @@ Right now it only accepts integers as identifiers for items. Note that it will a
 Full Python API
 ---------------
 
-* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be either ``"angular"`` or ``"euclidean"``.
+* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"`` or ``"manhattan"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
 * ``a.save(fn)`` saves the index to disk.

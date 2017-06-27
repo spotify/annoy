@@ -70,6 +70,9 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
   case 'e':
     self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
     break;
+  case 'm':
+    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
+    break;
   }
   return 0;
 }

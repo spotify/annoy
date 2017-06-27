@@ -90,6 +90,7 @@
 
 %feature("notabstract") GoAnnoyIndexAngular;
 %feature("notabstract") GoAnnoyIndexEuclidean;
+%feature("notabstract") GoAnnoyIndexManhattan;
 
 
 
