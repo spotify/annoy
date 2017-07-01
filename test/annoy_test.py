@@ -568,6 +568,9 @@ class IndexTest(TestCase):
         i.load('test/test.tree')
         i.set_seed(42)
 
+    def test_unknown_distance(self):
+        self.assertRaises(Exception, AnnoyIndex, 10, 'banana')
+
 
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
