@@ -46,11 +46,23 @@ typedef struct {
 static PyObject *
 py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   py_annoy *self;
-
   self = (py_annoy *)type->tp_alloc(type, 0);
-  if (self != NULL) {
-    self->f = 0;
-    self->ptr = NULL;
+  if (self == NULL) {
+    return NULL;
+  }
+  const char *metric = NULL;
+
+  if (!PyArg_ParseTuple(args, "i|s", &self->f, &metric))
+    return NULL;
+  if (!metric || !strcmp(metric, "angular")) {
+   self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
+  } else if (!strcmp(metric, "euclidean")) {
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
+  } else if (!strcmp(metric, "manhattan")) {
+    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
+  } else {
+    PyErr_SetString(PyExc_ValueError, "No such metric");
+    return NULL;
   }
 
   return (PyObject *)self;
@@ -59,21 +71,9 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static int 
 py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
-  const char *metric;
-
-  if (!PyArg_ParseTuple(args, "is", &self->f, &metric))
-    return -1;
-  switch(metric[0]) {
-  case 'a':
-    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
-    break;
-  case 'e':
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
-    break;
-  case 'm':
-    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
-    break;
-  }
+  // Seems to be needed for Python 3
+  const char *metric = NULL;
+  PyArg_ParseTuple(args, "i|s", &self->f, &metric);
   return 0;
 }
 
