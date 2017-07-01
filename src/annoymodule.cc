@@ -71,6 +71,9 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static int 
 py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
+  // Seems to be needed for Python 3
+  const char *metric = NULL;
+  PyArg_ParseTuple(args, "i|s", &self->f, &metric);
   return 0;
 }
 
