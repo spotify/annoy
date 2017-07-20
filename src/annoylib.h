@@ -16,14 +16,7 @@
 #ifndef ANNOYLIB_H
 #define ANNOYLIB_H
 
-#ifdef _MSC_VER
-#define NOMINMAX
-#include <windows.h>
-#include <io.h>
-//https://stackoverflow.com/questions/592448/c-how-to-set-file-permissions-cross-platform
-typedef int mode_t;
-static const mode_t S_IXUSR = 0x00400000;
-#endif
+
 #include <stdio.h>
 #include <string>
 #include <sys/stat.h>
@@ -36,13 +29,11 @@ static const mode_t S_IXUSR = 0x00400000;
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#ifndef __MINGW32__
+#ifdef _MSC_VER
+#define NOMINMAX
+#include <windows.h>
 #include "mman.h"
-#else
-#include <mman.h>
 #endif
-
 #include <string.h>
 #include <math.h>
 #include <vector>
@@ -443,7 +434,7 @@ public:
   }
 
   bool load(const char* filename) {
-    _fd = open(filename, O_RDONLY, (mode_t)0400);
+    _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1)
       return false;
     off_t size = lseek(_fd, 0, SEEK_END);
