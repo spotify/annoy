@@ -12,13 +12,24 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
+
 #ifndef ANNOYLIB_H
 #define ANNOYLIB_H
 
+#ifdef _MSC_VER
+#define NOMINMAX
+#include <windows.h>
+#include <io.h>
+//https://stackoverflow.com/questions/592448/c-how-to-set-file-permissions-cross-platform
+typedef int mode_t;
+static const mode_t S_IXUSR = 0x00400000;
+#endif
 #include <stdio.h>
 #include <string>
 #include <sys/stat.h>
+#ifdef __MINGW32__
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -26,11 +37,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __MINGW32__
+#ifndef __MINGW32__
 #include "mman.h"
-#include <windows.h>
 #else
-#include <sys/mman.h>
+#include <mman.h>
 #endif
 
 #include <string.h>
@@ -48,9 +58,17 @@
   #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
 #endif
 
+
+
+
+
 #ifndef ANNOY_NODE_ATTRIBUTE
-  #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
-  // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
+    #ifdef __MINGW32__
+        #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
+        // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
+    #else
+        #define ANNOY_NODE_ATTRIBUTE
+    #endif
 #endif
 
 
