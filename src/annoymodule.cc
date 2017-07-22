@@ -44,7 +44,7 @@ typedef struct {
 
 
 static PyObject *
-py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
   py_annoy *self;
   self = (py_annoy *)type->tp_alloc(type, 0);
   if (self == NULL) {
@@ -52,7 +52,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   }
   const char *metric = NULL;
 
-  if (!PyArg_ParseTuple(args, "i|s", &self->f, &metric))
+  static char * kwlist[] = {"f", "metric", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", kwlist, &self->f, &metric))
     return NULL;
   if (!metric || !strcmp(metric, "angular")) {
    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
