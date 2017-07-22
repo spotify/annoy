@@ -571,6 +571,12 @@ class IndexTest(TestCase):
     def test_unknown_distance(self):
         self.assertRaises(Exception, AnnoyIndex, 10, 'banana')
 
+    def test_metric_kwarg(self):
+        # Issue 211
+        i = AnnoyIndex(2, metric='euclidean')
+        i.add_item(0, [1, 0])
+        i.add_item(1, [9, 0])
+        self.assertAlmostEqual(i.get_distance(0, 1), 8)
 
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
