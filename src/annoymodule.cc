@@ -70,7 +70,7 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
 
 
 static int 
-py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
+py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
   // Seems to be needed for Python 3
   const char *metric = NULL;
   PyArg_ParseTuple(args, "i|s", &self->f, &metric);
@@ -95,12 +95,13 @@ static PyMemberDef py_annoy_members[] = {
 
 
 static PyObject *
-py_an_load(py_annoy *self, PyObject *args) {
+py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char* filename;
   bool res = false;
   if (!self->ptr) 
     Py_RETURN_NONE;
-  if (!PyArg_ParseTuple(args, "s", &filename))
+  static char * kwlist[] = {"fn", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &filename))
     Py_RETURN_NONE;
 
   res = self->ptr->load(filename);
@@ -114,12 +115,13 @@ py_an_load(py_annoy *self, PyObject *args) {
 
 
 static PyObject *
-py_an_save(py_annoy *self, PyObject *args) {
+py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename;
   bool res = false;
   if (!self->ptr) 
     Py_RETURN_NONE;
-  if (!PyArg_ParseTuple(args, "s", &filename))
+  static char * kwlist[] = {"fn", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &filename))
     Py_RETURN_NONE;
 
   res = self->ptr->save(filename);
@@ -237,11 +239,12 @@ py_an_add_item(py_annoy *self, PyObject *args) {
 
 
 static PyObject *
-py_an_build(py_annoy *self, PyObject *args) {
+py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int q;
   if (!self->ptr) 
     Py_RETURN_NONE;
-  if (!PyArg_ParseTuple(args, "i", &q))
+  static char * kwlist[] = {"n_trees", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", kwlist, &q))
     Py_RETURN_NONE;
 
   Py_BEGIN_ALLOW_THREADS;
@@ -328,19 +331,19 @@ py_an_set_seed(py_annoy *self, PyObject *args) {
 
 
 static PyMethodDef AnnoyMethods[] = {
-  {"load",	(PyCFunction)py_an_load, METH_VARARGS, ""},
-  {"save",	(PyCFunction)py_an_save, METH_VARARGS, ""},
+  {"load",	(PyCFunction)py_an_load, METH_VARARGS | METH_KEYWORDS, "Loads (mmaps) an index from disk."},
+  {"save",	(PyCFunction)py_an_save, METH_VARARGS | METH_KEYWORDS, "Saves the index to disk."},
   {"get_nns_by_item",(PyCFunction)py_an_get_nns_by_item, METH_VARARGS, ""},
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS, ""},
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS, ""},
-  {"build",(PyCFunction)py_an_build, METH_VARARGS, ""},
-  {"unbuild",(PyCFunction)py_an_unbuild, METH_VARARGS, ""},
-  {"unload",(PyCFunction)py_an_unload, METH_VARARGS, ""},
+  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
+  {"unbuild",(PyCFunction)py_an_unbuild, METH_VARARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
+  {"unload",(PyCFunction)py_an_unload, METH_VARARGS, "Unloads an index from disk."},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
-  {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, ""},
+  {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, "Returns the number of items in the index."},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},
-  {"set_seed",(PyCFunction)py_an_set_seed, METH_VARARGS, ""},
+  {"set_seed",(PyCFunction)py_an_set_seed, METH_VARARGS, "Sets the seed of Annoy's random number generator."},
   {NULL, NULL, 0, NULL}		 /* Sentinel */
 };
 
