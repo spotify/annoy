@@ -15,15 +15,6 @@
 from .annoylib import *
 
 class AnnoyIndex(Annoy):
-    def __init__(self, f, metric='angular'):
-        """
-        Initializes an AnnoyIndex that stores vectors of `f` dimensions.
-
-        :param metric: 'angular' or 'euclidean'
-        """
-        self.f = f
-        super(AnnoyIndex, self).__init__(f, metric)
-
     def check_list(self, vector):
         if type(vector) != list:
             vector = list(vector)

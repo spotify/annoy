@@ -45,8 +45,7 @@ typedef struct {
 
 static PyObject *
 py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
-  py_annoy *self;
-  self = (py_annoy *)type->tp_alloc(type, 0);
+  py_annoy *self = (py_annoy *)type->tp_alloc(type, 0);
   if (self == NULL) {
     return NULL;
   }
@@ -89,7 +88,7 @@ py_an_dealloc(py_annoy* self) {
 
 
 static PyMemberDef py_annoy_members[] = {
-  {(char*)"_f", T_INT, offsetof(py_annoy, f), 0,
+  {(char*)"f", T_INT, offsetof(py_annoy, f), 0,
    (char*)""},
   {NULL}	/* Sentinel */
 };
