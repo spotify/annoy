@@ -15,15 +15,8 @@
 from .annoylib import *
 
 class AnnoyIndex(Annoy):
-    def __init__(self, f, metric='angular'):
-        """
-        Initializes an AnnoyIndex that stores vectors of `f` dimensions.
-
-        :param metric: 'angular' or 'euclidean'
-        """
-        self.f = f
-        super(AnnoyIndex, self).__init__(f, metric)
-
+    # This class is a dummy wrapper around the underlying C++ class.
+    # The plan is to remove it soon.
     def check_list(self, vector):
         if type(vector) != list:
             vector = list(vector)
@@ -78,41 +71,6 @@ class AnnoyIndex(Annoy):
         # Wrapper to support named arguments
         return super(AnnoyIndex, self).get_nns_by_item(self.check_item(i), n, search_k, include_distances)
 
-    def build(self, n_trees):
-        """
-        Builds a forest of `n_trees` trees.
-
-        More trees give higher precision when querying. After calling `build`,
-        no more items can be added.
-        """
-        return super(AnnoyIndex, self).build(n_trees)
-    
-    def unbuild(self):
-        """
-        Unbuilds the tree in order to allows adding new items.
-        build() has to be called again afterwards in order to
-        run queries
-        """
-        return super(AnnoyIndex, self).unbuild()
-
-    def save(self, fn):
-        """
-        Saves the index to disk.
-        """
-        return super(AnnoyIndex, self).save(fn)
-
-    def load(self, fn):
-        """
-        Loads (mmaps) an index from disk.
-        """
-        return super(AnnoyIndex, self).load(fn)
-
-    def unload(self):
-        """
-        Unloads an index from disk.
-        """
-        return super(AnnoyIndex, self).unload()
-
     def get_item_vector(self, i):
         """
         Returns the vector for item `i` that was previously added.
@@ -124,15 +82,3 @@ class AnnoyIndex(Annoy):
         Returns the distance between items `i` and `j`.
         """
         return super(AnnoyIndex, self).get_distance(self.check_item(i), self.check_item(j))
-
-    def get_n_items(self):
-        """
-        Returns the number of items in the index.
-        """
-        return super(AnnoyIndex, self).get_n_items()
-
-    def set_seed(self, seed):
-        """
-        Sets the seed of Annoy's random number generator.
-        """
-        return super(AnnoyIndex, self).set_seed(seed)
