@@ -88,6 +88,9 @@ class AccuracyTest(unittest.TestCase):
     def test_euclidean_25(self):
         self._test_index(25, 'euclidean', 87.47)
 
+    def test_manhattan_25(self):
+        self._test_index(25, 'manhattan', 85.00)
+
     @attr('slow')
     def test_angular_50(self):
         self._test_index(50, 'angular', 71.67)
@@ -97,9 +100,17 @@ class AccuracyTest(unittest.TestCase):
         self._test_index(50, 'euclidean', 70.28)
 
     @attr('slow')
+    def test_manhattan_50(self):
+        self._test_index(50, 'manhattan', 70.28)
+
+    @attr('slow')
     def test_angular_100(self):
         self._test_index(100, 'angular', 53.05)
 
     @attr('slow')
     def test_euclidean_100(self):
         self._test_index(100, 'euclidean', 56.16)
+
+    @attr('slow')
+    def test_manhattan_100(self):
+        self._test_index(100, 'manhattan', 56.16)
