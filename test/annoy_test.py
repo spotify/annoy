@@ -236,6 +236,14 @@ class AngularIndexTest(TestCase):
         self.assertEquals(idx.get_n_items(), 0)
         self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
 
+    def test_single_vector(self):
+        # https://github.com/spotify/annoy/issues/194
+        a = AnnoyIndex(3)
+        a.add_item(0, [1, 0, 0])
+        a.build(10)
+        a.save('1.ann')
+        self.assertEquals(a.get_nns_by_vector([1, 0, 0], 3, include_distances=True), ([0], [0.0]))
+
 
 class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
