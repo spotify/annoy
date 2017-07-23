@@ -54,7 +54,7 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=['-O3', '-ffast-math'] + cputune + travis_extra_compile_args,
+            extra_compile_args=['-O3', '-ffast-math', '-fno-associative-math'] + cputune + travis_extra_compile_args,
         )
       ],
       long_description=long_description,
