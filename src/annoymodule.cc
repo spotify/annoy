@@ -256,7 +256,7 @@ py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 
 static PyObject *
-py_an_unbuild(py_annoy *self, PyObject *args) {
+py_an_unbuild(py_annoy *self) {
   if (!self->ptr) 
     Py_RETURN_NONE;
   
@@ -269,7 +269,7 @@ py_an_unbuild(py_annoy *self, PyObject *args) {
 
 
 static PyObject *
-py_an_unload(py_annoy *self, PyObject *args) {
+py_an_unload(py_annoy *self) {
   if (!self->ptr) 
     Py_RETURN_NONE;
 
@@ -293,7 +293,7 @@ py_an_get_distance(py_annoy *self, PyObject *args) {
 
 
 static PyObject *
-py_an_get_n_items(py_annoy *self, PyObject *args) {
+py_an_get_n_items(py_annoy *self) {
   if (!self->ptr) 
     Py_RETURN_NONE;
 
@@ -338,10 +338,10 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS, ""},
   {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
-  {"unbuild",(PyCFunction)py_an_unbuild, METH_VARARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
-  {"unload",(PyCFunction)py_an_unload, METH_VARARGS, "Unloads an index from disk."},
+  {"unbuild",(PyCFunction)py_an_unbuild, METH_NOARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
+  {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
-  {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, "Returns the number of items in the index."},
+  {"get_n_items",(PyCFunction)py_an_get_n_items, METH_NOARGS, "Returns the number of items in the index."},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},
   {"set_seed",(PyCFunction)py_an_set_seed, METH_VARARGS, "Sets the seed of Annoy's random number generator."},
   {NULL, NULL, 0, NULL}		 /* Sentinel */
