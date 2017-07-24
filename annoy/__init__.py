@@ -17,21 +17,13 @@ from .annoylib import *
 class AnnoyIndex(Annoy):
     # This class is a dummy wrapper around the underlying C++ class.
     # The plan is to remove it soon.
-    def check_item(self, item, building=False):
-        if item < 0:
-            raise IndexError('Item index can not be negative: %d' % item)
-        if not building and item >= self.get_n_items():
-            raise IndexError('Item index %d is out of range: [0, %d)' %
-                (item, self.get_n_items()))
-        return item
-
     def add_item(self, i, vector):
         """
         Adds item `i` (any nonnegative integer) with vector `v`.
 
         Note that it will allocate memory for `max(i)+1` items.
         """
-        return super(AnnoyIndex, self).add_item(self.check_item(i, building=True), vector)
+        return super(AnnoyIndex, self).add_item(i, vector)
 
     def get_nns_by_item(self, i, n, search_k=-1, include_distances=False):
         """
@@ -46,16 +38,16 @@ class AnnoyIndex(Annoy):
         The second list contains the corresponding distances.
         """
         # Wrapper to support named arguments
-        return super(AnnoyIndex, self).get_nns_by_item(self.check_item(i), n, search_k, include_distances)
+        return super(AnnoyIndex, self).get_nns_by_item(i, n, search_k, include_distances)
 
     def get_item_vector(self, i):
         """
         Returns the vector for item `i` that was previously added.
         """
-        return super(AnnoyIndex, self).get_item_vector(self.check_item(i))
+        return super(AnnoyIndex, self).get_item_vector(i)
 
     def get_distance(self, i, j):
         """
         Returns the distance between items `i` and `j`.
         """
-        return super(AnnoyIndex, self).get_distance(self.check_item(i), self.check_item(j))
+        return super(AnnoyIndex, self).get_distance(i, j)

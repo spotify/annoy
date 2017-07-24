@@ -154,6 +154,18 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
 }
 
 
+bool check_constraints(py_annoy *self, int32_t item, bool building) {
+  if (item < 0) {
+    PyErr_SetString(PyExc_IndexError, "Item index can not be negative");
+    return false;
+  } else if (!building && item >= self->ptr->get_n_items()) {
+    PyErr_SetString(PyExc_IndexError, "Item index larger than the largest item index");
+    return false;
+  } else {
+    return true;
+  }
+}
+
 static PyObject* 
 py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
   int32_t item, n, search_k=-1, include_distances=0;
@@ -161,6 +173,10 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
     return NULL;
   if (!PyArg_ParseTuple(args, "ii|ii", &item, &n, &search_k, &include_distances))
     return NULL;
+
+  if (!check_constraints(self, item, false)) {
+    return NULL;
+  }
 
   vector<int32_t> result;
   vector<float> distances;
@@ -223,6 +239,10 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   if (!PyArg_ParseTuple(args, "i", &item))
     return NULL;
 
+  if (!check_constraints(self, item, false)) {
+    return NULL;
+  }
+
   vector<float> v(self->f);
   self->ptr->get_item(item, &v[0]);
   PyObject* l = PyList_New(self->f);
@@ -243,6 +263,10 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   static char const * kwlist[] = {"i", "vector", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO", (char**)kwlist, &item, &v))
     return NULL;
+
+  if (!check_constraints(self, item, true)) {
+    return NULL;
+  }
 
   vector<float> w(self->f);
   if (!convert_list_to_vector(v, self->f, &w)) {
@@ -302,6 +326,10 @@ py_an_get_distance(py_annoy *self, PyObject *args) {
     return NULL;
   if (!PyArg_ParseTuple(args, "ii", &i, &j))
     return NULL;
+
+  if (!check_constraints(self, i, false) || !check_constraints(self, j, false)) {
+    return NULL;
+  }
 
   double d = self->ptr->get_distance(i,j);
   return PyFloat_FromDouble(d);
