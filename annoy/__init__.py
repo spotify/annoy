@@ -12,9 +12,5 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from .annoylib import *
-
-class AnnoyIndex(Annoy):
-    # This class is a dummy wrapper around the underlying C++ class.
-    # The plan is to remove it soon.
-    pass
+# This module is a dummy wrapper around the underlying C++ module.
+from .annoylib import Annoy as AnnoyIndex
