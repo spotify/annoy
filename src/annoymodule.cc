@@ -51,8 +51,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
   }
   const char *metric = NULL;
 
-  static char * kwlist[] = {"f", "metric", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", kwlist, &self->f, &metric))
+  static char const * kwlist[] = {"f", "metric", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", (char**)kwlist, &self->f, &metric))
     return NULL;
   if (!metric || !strcmp(metric, "angular")) {
    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
@@ -100,8 +100,8 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   bool res = false;
   if (!self->ptr) 
     return NULL;
-  static char * kwlist[] = {"fn", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &filename))
+  static char const * kwlist[] = {"fn", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
     return NULL;
 
   res = self->ptr->load(filename);
@@ -120,8 +120,8 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   bool res = false;
   if (!self->ptr) 
     return NULL;
-  static char * kwlist[] = {"fn", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &filename))
+  static char const * kwlist[] = {"fn", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
     return NULL;
 
   res = self->ptr->save(filename);
@@ -195,8 +195,8 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!self->ptr) 
     return NULL;
 
-  static char * kwlist[] = {"vector", "n", "search_k", "include_distances", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|ii", kwlist, &v, &n, &search_k, &include_distances))
+  static char const * kwlist[] = {"vector", "n", "search_k", "include_distances", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|ii", (char**)kwlist, &v, &n, &search_k, &include_distances))
     return NULL;
 
   vector<float> w(self->f);
@@ -240,8 +240,8 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   int32_t item;
   if (!self->ptr) 
     return NULL;
-  static char * kwlist[] = {"i", "vector", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO", kwlist, &item, &v))
+  static char const * kwlist[] = {"i", "vector", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO", (char**)kwlist, &item, &v))
     return NULL;
 
   vector<float> w(self->f);
@@ -259,8 +259,8 @@ py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int q;
   if (!self->ptr) 
     return NULL;
-  static char * kwlist[] = {"n_trees", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", kwlist, &q))
+  static char const * kwlist[] = {"n_trees", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q))
     return NULL;
 
   Py_BEGIN_ALLOW_THREADS;
