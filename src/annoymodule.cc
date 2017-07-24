@@ -167,11 +167,13 @@ bool check_constraints(py_annoy *self, int32_t item, bool building) {
 }
 
 static PyObject* 
-py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
+py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int32_t item, n, search_k=-1, include_distances=0;
   if (!self->ptr) 
     return NULL;
-  if (!PyArg_ParseTuple(args, "ii|ii", &item, &n, &search_k, &include_distances))
+
+  static char const * kwlist[] = {"i", "n", "search_k", "include_distances", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ii|ii", (char**)kwlist, &item, &n, &search_k, &include_distances))
     return NULL;
 
   if (!check_constraints(self, item, false)) {
@@ -377,14 +379,14 @@ py_an_set_seed(py_annoy *self, PyObject *args) {
 static PyMethodDef AnnoyMethods[] = {
   {"load",	(PyCFunction)py_an_load, METH_VARARGS | METH_KEYWORDS, "Loads (mmaps) an index from disk."},
   {"save",	(PyCFunction)py_an_save, METH_VARARGS | METH_KEYWORDS, "Saves the index to disk."},
-  {"get_nns_by_item",(PyCFunction)py_an_get_nns_by_item, METH_VARARGS, ""},
+  {"get_nns_by_item",(PyCFunction)py_an_get_nns_by_item, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to item `i`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to vector `vector`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
-  {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
-  {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS | METH_KEYWORDS, ""},
+  {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
+  {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS | METH_KEYWORDS, "Adds item `i` (any nonnegative integer) with vector `v`.\n\nNote that it will allocate memory for `max(i)+1` items."},
   {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
   {"unbuild",(PyCFunction)py_an_unbuild, METH_NOARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
   {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},
-  {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
+  {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, "Returns the distance between items `i` and `j`."},
   {"get_n_items",(PyCFunction)py_an_get_n_items, METH_NOARGS, "Returns the number of items in the index."},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},
   {"set_seed",(PyCFunction)py_an_set_seed, METH_VARARGS, "Sets the seed of Annoy's random number generator."},
