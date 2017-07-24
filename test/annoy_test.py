@@ -602,7 +602,7 @@ class TypesTest(TestCase):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
         for j in xrange(n_points):
-            i.add_item(j, (random.gauss(0, 1) for x in xrange(f)))
+            i.add_item(j, tuple(random.gauss(0, 1) for x in xrange(f)))
 
         i.build(n_trees)
 

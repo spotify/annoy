@@ -176,7 +176,7 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args) {
 bool
 convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
   if (PyObject_Size(v) != f) {
-    PyErr_SetString(PyExc_ValueError, "Vector has wrong length");
+    PyErr_SetString(PyExc_IndexError, "Vector has wrong length");
     return false;
   }
   for (int z = 0; z < f; z++) {
