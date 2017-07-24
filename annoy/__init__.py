@@ -17,13 +17,6 @@ from .annoylib import *
 class AnnoyIndex(Annoy):
     # This class is a dummy wrapper around the underlying C++ class.
     # The plan is to remove it soon.
-    def check_list(self, vector):
-        if type(vector) != list:
-            vector = list(vector)
-        if len(vector) != self.f:
-            raise IndexError('Vector must be of length %d' % self.f)
-        return vector
-
     def check_item(self, item, building=False):
         if item < 0:
             raise IndexError('Item index can not be negative: %d' % item)
@@ -38,23 +31,7 @@ class AnnoyIndex(Annoy):
 
         Note that it will allocate memory for `max(i)+1` items.
         """
-        # Wrapper to convert inputs to list
-        return super(AnnoyIndex, self).add_item(self.check_item(i, building=True), self.check_list(vector))
-
-    def get_nns_by_vector(self, vector, n, search_k=-1, include_distances=False):
-        """
-        Returns the `n` closest items to vector `vector`.
-
-        :param search_k: the query will inspect up to `search_k` nodes.
-        `search_k` gives you a run-time tradeoff between better accuracy and speed.
-        `search_k` defaults to `n_trees * n` if not provided.
-
-        :param include_distances: If `True`, this function will return a
-        2 element tuple of lists. The first list contains the `n` closest items.
-        The second list contains the corresponding distances.
-        """
-        # Same
-        return super(AnnoyIndex, self).get_nns_by_vector(self.check_list(vector), n, search_k, include_distances)
+        return super(AnnoyIndex, self).add_item(self.check_item(i, building=True), vector)
 
     def get_nns_by_item(self, i, n, search_k=-1, include_distances=False):
         """
