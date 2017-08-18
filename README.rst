@@ -115,6 +115,7 @@ More info
 * There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by Taneli Leppä.
 * Boris Nagaev wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
 * During part of Spotify Hack Week 2016 (and a bit afterward), Jim Kang wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
+* Min-Seok Kim built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
 * Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
