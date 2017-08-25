@@ -200,8 +200,9 @@ convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
   for (int z = 0; z < f; z++) {
     PyObject *key = PyInt_FromLong(z);
     PyObject *pf = PyObject_GetItem(v, key);
-    Py_DECREF(key);
     (*w)[z] = PyFloat_AsDouble(pf);
+    Py_DECREF(key);
+    Py_DECREF(pf);
   }
   return true;
 }
