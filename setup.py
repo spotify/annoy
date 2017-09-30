@@ -47,7 +47,7 @@ if platform.machine() == "ppc64le":
     cputune = ['-mcpu=native',]
 
 setup(name='annoy',
-      version='1.9.4',
+      version='1.9.5',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
