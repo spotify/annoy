@@ -4,7 +4,7 @@ env:
   matrix:
     - TOXENV=py27
     - TOXENV=py34
-    - TOXENV=py35
+    - TOXENV=py36
     - TOXENV=go
     - TOXENV=lua LUA="lua 5.1"
     - TOXENV=lua LUA="lua 5.2"
