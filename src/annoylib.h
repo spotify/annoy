@@ -178,8 +178,107 @@ struct Angular {
     // so we have to make sure it's a positive number.
     return sqrt(std::max(distance, T(0)));
   }
+  template<typename T>
+  static inline T pq_distance(T distance, T margin, int child_nr) {
+    if (child_nr == 0)
+      margin = -margin;
+    return std::min(distance, margin);
+  }
+  template<typename T>
+  static inline T pq_initial_value() {
+    return numeric_limits<T>::infinity();
+  }
+  static inline int chunkcount(int f) {
+    return f;
+  }
   static const char* name() {
     return "angular";
+  }
+};
+
+struct Hamming {
+
+  template<typename S, typename T = int64_t>
+  struct ANNOY_NODE_ATTRIBUTE Node {
+    S n_descendants;
+    S children[2];
+    T v[1];
+  };
+
+  static inline size_t chunksize() {
+    return 64;
+  }
+  static const size_t max_iterations = 20;
+
+  template<typename T = int64_t>
+  static inline T pq_distance(T distance, T margin, int child_nr) {
+    return distance - (margin != child_nr);
+  }
+
+  template<typename T = int64_t>
+  static inline T pq_initial_value() {
+    return 0;
+  }
+  template<typename T = int64_t>
+  static inline T distance(const T* x, const T* y, int f) {
+    size_t dist = 0;
+    for (size_t i = 0; i < chunkcount(f); i++)
+    {
+      dist += __builtin_popcountll(x[i] ^ y[i]);
+    }
+    return dist;
+  }
+  template<typename S, typename T = int64_t>
+  static inline bool margin(const Node<S, T>* n, const T* y, int f) {
+    T chunk = n->v[0] / chunksize();
+    return (y[chunk] & (static_cast<T>(1) << (chunksize() - 1 - (n->v[0] % chunksize())))) != 0;
+  }
+  template<typename S, typename T = int64_t, typename Random>
+  static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
+    return margin(n, y, f);
+  }
+	static inline int chunkcount(int f) {
+		return f / chunksize() + 1;
+	}
+	template<typename S, typename T = int64_t, typename Random>
+	static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
+		size_t cur_split = 0, cur_size = 0;
+		int i = 0;
+		for (; i < max_iterations; i++) {
+			n->v[0] = random.index(f);
+			cur_size = 0;
+			for (auto& nd: nodes) {
+				if (margin(n, nd->v, f)) {
+					cur_size++;
+				}
+			}
+			if (cur_size > 0 && cur_size < nodes.size()) {
+				break;
+			}
+		}
+		// brute-force search for splitting coordinate
+		if (i == max_iterations) {
+			int j = 0;
+			for (; j < f; j++) {
+				n->v[0] = j;
+				cur_size = 0;
+				for (auto& nd: nodes) {
+					if (margin(n, nd->v, f)) {
+						cur_size++;
+					}
+				}
+				if (cur_size > 0 && cur_size < nodes.size()) {
+					break;
+				}
+			}
+		}
+	}
+  template<typename T = int64_t>
+  static inline T normalized_distance(T distance) {
+    return distance;
+  }
+  static const char* name() {
+    return "hamming";
   }
 };
 
@@ -205,6 +304,19 @@ struct Minkowski {
       return (dot > 0);
     else
       return random.flip();
+  }
+  template<typename T>
+  static inline T pq_distance(T distance, T margin, int child_nr) {
+    if (child_nr == 0)
+      margin = -margin;
+    return std::min(distance, margin);
+  }
+  template<typename T>
+  static inline T pq_initial_value() {
+    return numeric_limits<T>::infinity();
+  }
+  static inline int chunkcount(int f) {
+    return f;
   }
 };
 
@@ -315,7 +427,7 @@ protected:
 public:
 
   AnnoyIndex(int f) : _f(f), _random() {
-    _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
+    _s = offsetof(Node, v) + D::chunkcount(f) * sizeof(T); // Size of each node
     _verbose = false;
     _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
     reinitialize(); // Reset everything
@@ -341,7 +453,7 @@ public:
     n->children[1] = 0;
     n->n_descendants = 1;
 
-    for (int z = 0; z < _f; z++)
+    for (int z = 0; z < D::chunkcount(_f); z++)
       n->v[z] = w[z];
 
     if (item >= _n_items)
@@ -484,7 +596,7 @@ public:
 
   void get_item(S item, T* v) {
     Node* m = _get(item);
-    std::copy(&m->v[0], &m->v[_f], v);
+    std::copy(&m->v[0], &m->v[D::chunkcount(_f)], v);
   }
 
   void set_seed(int seed) {
@@ -554,7 +666,7 @@ protected:
       children_indices[1].clear();
 
       // Set the vector to 0.0
-      for (int z = 0; z < _f; z++)
+      for (int z = 0; z < D::chunkcount(_f); z++)
         m->v[z] = 0.0;
 
       for (size_t i = 0; i < indices.size(); i++) {
@@ -586,7 +698,7 @@ protected:
       search_k = n * _roots.size(); // slightly arbitrary default value
 
     for (size_t i = 0; i < _roots.size(); i++) {
-      q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
+      q.push(make_pair(Distance::pq_initial_value(), _roots[i]));
     }
 
     vector<S> nns;
@@ -603,8 +715,8 @@ protected:
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
         T margin = D::margin(nd, v, _f);
-        q.push(make_pair(std::min(d, +margin), nd->children[1]));
-        q.push(make_pair(std::min(d, -margin), nd->children[0]));
+        q.push(make_pair(D::pq_distance(d, margin, 1), nd->children[1]));
+        q.push(make_pair(D::pq_distance(d, margin, 0), nd->children[0]));
       }
     }
 
