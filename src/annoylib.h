@@ -699,7 +699,7 @@ protected:
       search_k = n * _roots.size(); // slightly arbitrary default value
 
     for (size_t i = 0; i < _roots.size(); i++) {
-      q.push(make_pair(Distance::pq_initial_value(), _roots[i]));
+      q.push(make_pair(Distance::template pq_initial_value<T>(), _roots[i]));
     }
 
     vector<S> nns;
