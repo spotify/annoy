@@ -237,42 +237,43 @@ struct Hamming {
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     return margin(n, y, f);
   }
-	static inline int chunkcount(int f) {
-		return f / chunksize() + 1;
-	}
-	template<typename S, typename T = int64_t, typename Random>
-	static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-		size_t cur_split = 0, cur_size = 0;
-		int i = 0;
-		for (; i < max_iterations; i++) {
-			n->v[0] = random.index(f);
-			cur_size = 0;
-			for (auto& nd: nodes) {
-				if (margin(n, nd->v, f)) {
-					cur_size++;
-				}
-			}
-			if (cur_size > 0 && cur_size < nodes.size()) {
-				break;
-			}
-		}
-		// brute-force search for splitting coordinate
-		if (i == max_iterations) {
-			int j = 0;
-			for (; j < f; j++) {
-				n->v[0] = j;
-				cur_size = 0;
-				for (auto& nd: nodes) {
-					if (margin(n, nd->v, f)) {
-						cur_size++;
-					}
-				}
-				if (cur_size > 0 && cur_size < nodes.size()) {
-					break;
-				}
-			}
-		}
-	}
+  static inline int chunkcount(int f) {
+    return f / chunksize() + 1;
+  }
+  template<typename S, typename T = int64_t, typename Random>
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
+    size_t cur_split = 0, cur_size = 0;
+    int i = 0;
+    for (; i < max_iterations; i++) {
+      // choose random position to split at
+      n->v[0] = random.index(f);
+      cur_size = 0;
+      for (auto& nd: nodes) {
+        if (margin(n, nd->v, f)) {
+          cur_size++;
+        }
+      }
+      if (cur_size > 0 && cur_size < nodes.size()) {
+        break;
+      }
+    }
+    // brute-force search for splitting coordinate
+    if (i == max_iterations) {
+      int j = 0;
+      for (; j < f; j++) {
+        n->v[0] = j;
+        cur_size = 0;
+        for (auto& nd: nodes) {
+          if (margin(n, nd->v, f)) {
+            cur_size++;
+          }
+        }
+        if (cur_size > 0 && cur_size < nodes.size()) {
+          break;
+        }
+      }
+    }
+  }
   template<typename T = int64_t>
   static inline T normalized_distance(T distance) {
     return distance;
