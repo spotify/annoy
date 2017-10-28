@@ -60,7 +60,7 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=compile_args + cputune + travis_extra_compile_args,
+            extra_compile_args=compile_args + cputune + travis_extra_compile_args
         )
       ],
       long_description=long_description,

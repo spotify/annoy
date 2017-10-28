@@ -4,6 +4,9 @@
 *.o
 build/
 dist/
+.vscode/
+*.pdb
+
 MANIFEST
 *.py[cod]
 *.idea
@@ -12,3 +15,5 @@ MANIFEST
 blah.ann
 t.ann
 x.tree
+test.tree
+foo.idx

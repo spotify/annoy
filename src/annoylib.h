@@ -16,11 +16,10 @@
 #ifndef ANNOYLIB_H
 #define ANNOYLIB_H
 
-
 #include <stdio.h>
 #include <string>
 #include <sys/stat.h>
-#ifdef __MINGW32__
+#ifndef _MSC_VER
 #include <unistd.h>
 #endif
 #include <stdio.h>
@@ -29,11 +28,15 @@
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
+
 #ifdef _MSC_VER
 #define NOMINMAX
-#include <windows.h>
 #include "mman.h"
+#include <windows.h>
+#else
+#include <sys/mman.h>
 #endif
+
 #include <string.h>
 #include <math.h>
 #include <vector>
@@ -54,7 +57,7 @@
 
 
 #ifndef ANNOY_NODE_ATTRIBUTE
-    #ifdef __MINGW32__
+    #ifndef _MSC_VER
         #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
         // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
     #else

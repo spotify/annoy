@@ -43,7 +43,7 @@ class AccuracyTest(unittest.TestCase):
             annoy = AnnoyIndex(f, distance)
             for i, line in enumerate(gzip.open(input, 'rb')):
                 v = [float(x) for x in line.strip().split()[1:]]
-                annoy.add_item(i, v);
+                annoy.add_item(i, v)
 
             print('building index')
             annoy.build(10)
