@@ -375,8 +375,10 @@ public:
       if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
       vector<S> indices;
-      for (S i = 0; i < _n_items; i++)
-        indices.push_back(i);
+      for (S i = 0; i < _n_items; i++) {
+	if (_get(i)->n_descendants >= 1) // Issue #223
+	  indices.push_back(i);
+      }
 
       _roots.push_back(_make_tree(indices));
     }

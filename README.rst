@@ -78,7 +78,7 @@ Full Python API
 * ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
 * ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
 * ``a.get_item_vector(i)`` returns the vector for item ``i`` that was previously added.
-* ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``. NOTE: this used to returned the *squared* distance, but has been changed as of Aug 2016.
+* ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``. NOTE: this used to return the *squared* distance, but has been changed as of Aug 2016.
 * ``a.get_n_items()`` returns the number of items in the index.
 
 Notes:
@@ -115,6 +115,7 @@ More info
 * There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by Taneli Leppä.
 * Boris Nagaev wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
 * During part of Spotify Hack Week 2016 (and a bit afterward), Jim Kang wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
+* Min-Seok Kim built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
 * Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:

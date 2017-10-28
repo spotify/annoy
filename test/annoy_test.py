@@ -236,6 +236,14 @@ class AngularIndexTest(TestCase):
         self.assertEquals(idx.get_n_items(), 0)
         self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
 
+    def test_single_vector(self):
+        # https://github.com/spotify/annoy/issues/194
+        a = AnnoyIndex(3)
+        a.add_item(0, [1, 0, 0])
+        a.build(10)
+        a.save('1.ann')
+        self.assertEquals(a.get_nns_by_vector([1, 0, 0], 3, include_distances=True), ([0], [0.0]))
+
 
 class EuclideanIndexTest(TestCase):
     def test_get_nns_by_vector(self):
@@ -571,6 +579,14 @@ class IndexTest(TestCase):
     def test_unknown_distance(self):
         self.assertRaises(Exception, AnnoyIndex, 10, 'banana')
 
+    def test_metric_kwarg(self):
+        # Issue 211
+        i = AnnoyIndex(2, metric='euclidean')
+        i.add_item(0, [1, 0])
+        i.add_item(1, [9, 0])
+        self.assertAlmostEqual(i.get_distance(0, 1), 8)
+        self.assertEquals(i.f, 2)
+
 
 class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
@@ -587,7 +603,7 @@ class TypesTest(TestCase):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
         for j in xrange(n_points):
-            i.add_item(j, (random.gauss(0, 1) for x in xrange(f)))
+            i.add_item(j, tuple(random.gauss(0, 1) for x in xrange(f)))
 
         i.build(n_trees)
 
@@ -678,3 +694,34 @@ class SeedTest(TestCase):
         for k in range(Y.shape[0]):
             self.assertEquals(indexes[0].get_nns_by_vector(Y[k], 100),
                               indexes[1].get_nns_by_vector(Y[k], 100))
+
+
+class HolesTest(TestCase):
+    # See https://github.com/spotify/annoy/issues/223
+    def test_holes(self):
+        f = 10
+        index = AnnoyIndex(f)
+        index.add_item(1000, numpy.random.normal(size=(f,)))
+        index.build(10)
+        js = index.get_nns_by_vector(numpy.random.normal(size=(f,)), 100)
+        self.assertEquals(js, [1000])
+
+    def test_holes_more(self):
+        f = 10
+        index = AnnoyIndex(f)
+        valid_indices = set()
+        for i in range(1000):
+            i2 = int(i*2**-0.5) # leave holes every few items
+            valid_indices.add(i2)
+            v = numpy.random.normal(size=(f,))
+            index.add_item(i2, v)
+        index.build(10)
+        for i in valid_indices:
+            js = index.get_nns_by_item(i, 10000)
+            for j in js:
+                self.assertTrue(j in valid_indices)
+        for i in range(1000):
+            v = numpy.random.normal(size=(f,))
+            js = index.get_nns_by_vector(v, 10000)
+            for j in js:
+                self.assertTrue(j in valid_indices)

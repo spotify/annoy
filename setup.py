@@ -47,13 +47,13 @@ if platform.machine() == "ppc64le":
     cputune = ['-mcpu=native',]
 
 if os.name != 'nt':
-    compile_args = ['-O3', '-ffast-math']
+    compile_args = ['-O3', '-ffast-math', '-fno-associative-math']
 else:
     compile_args = []
     cputune = []
 
 setup(name='annoy',
-      version='1.9.1',
+      version='1.9.5',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
