@@ -46,6 +46,12 @@ cputune = ['-march=native',]
 if platform.machine() == "ppc64le":
     cputune = ['-mcpu=native',]
 
+if os.name != 'nt':
+    compile_args = ['-O3', '-ffast-math', '-fno-associative-math']
+else:
+    compile_args = []
+    cputune = []
+
 setup(name='annoy',
       version='1.9.5',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
@@ -54,7 +60,7 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=['-O3', '-ffast-math', '-fno-associative-math'] + cputune + travis_extra_compile_args,
+            extra_compile_args=compile_args + cputune + travis_extra_compile_args
         )
       ],
       long_description=long_description,
