@@ -27,7 +27,12 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stddef.h>
+#if defined(_MSC_VER) && _MSC_VER == 1500
+typedef unsigned char     uint8_t;
+typedef signed __int32    int32_t;
+#else
 #include <stdint.h>
+#endif
 
 #ifdef _MSC_VER
 #define NOMINMAX
@@ -376,10 +381,10 @@ public:
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
-	if (_get(i)->n_descendants >= 1) // Issue #223
-	  indices.push_back(i);
-      }
-
+	      if (_get(i)->n_descendants >= 1) // Issue #223
+          indices.push_back(i);
+        }
+        
       _roots.push_back(_make_tree(indices));
     }
     // Also, copy the roots into the last segment of the array
