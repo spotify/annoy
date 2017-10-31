@@ -17,7 +17,11 @@
 #include "Python.h"
 #include "structmember.h"
 #include <exception>
+#if defined(_MSC_VER) && _MSC_VER == 1500
+typedef signed __int32    int32_t;
+#else
 #include <stdint.h>
+#endif
 
 
 #if PY_MAJOR_VERSION >= 3
