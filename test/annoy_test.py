@@ -24,13 +24,6 @@ from annoy import AnnoyIndex
 # from scipy.spatial.distance import cosine, euclidean
 
 
-try:
-    xrange
-except NameError:
-    # Python 3 compat
-    xrange = range
-
-
 class TestCase(unittest.TestCase):
     def assertAlmostEqual(self, x, y):
         # Annoy uses float precision, so we override the default precision
@@ -100,8 +93,8 @@ class AngularIndexTest(TestCase):
         # Generate pairs of random points where the pair is super close
         f = 10
         i = AnnoyIndex(f)
-        for j in xrange(0, 10000, 2):
-            p = [random.gauss(0, 1) for z in xrange(f)]
+        for j in range(0, 10000, 2):
+            p = [random.gauss(0, 1) for z in range(f)]
             f1 = random.random() + 1
             f2 = random.random() + 1
             x = [f1 * pi + random.gauss(0, 1e-2) for pi in p]
@@ -110,18 +103,18 @@ class AngularIndexTest(TestCase):
             i.add_item(j+1, y)
 
         i.build(10)
-        for j in xrange(0, 10000, 2):
+        for j in range(0, 10000, 2):
             self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
     def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
         found = 0
-        for r in xrange(n_rounds):
+        for r in range(n_rounds):
             # create random points at distance x from (1000, 0, 0, ...)
             f = 10
             i = AnnoyIndex(f, 'euclidean')
-            for j in xrange(n_points):
-                p = [random.gauss(0, 1) for z in xrange(f - 1)]
+            for j in range(n_points):
+                p = [random.gauss(0, 1) for z in range(f - 1)]
                 norm = sum([pi ** 2 for pi in p]) ** 0.5
                 x = [1000] + [pi / norm * j for pi in p]
                 i.add_item(j, x)
@@ -190,7 +183,7 @@ class AngularIndexTest(TestCase):
     def test_include_dists_check_ranges(self):
         f = 3
         i = AnnoyIndex(f)
-        for j in xrange(100000):
+        for j in range(100000):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
         indices, dists = i.get_nns_by_item(0, 100000, include_distances=True)
@@ -200,7 +193,7 @@ class AngularIndexTest(TestCase):
     def test_distance_consistency(self):
         n, f = 1000, 3
         i = AnnoyIndex(f)
-        for j in xrange(n):
+        for j in range(n):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
         for a in random.sample(range(n), 100):
@@ -282,28 +275,28 @@ class EuclideanIndexTest(TestCase):
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
         f = 10
-        q = [random.gauss(0, 10) for z in xrange(f)]
+        q = [random.gauss(0, 10) for z in range(f)]
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(0, 10000, 2):
-            p = [random.gauss(0, 1) for z in xrange(f)]
+        for j in range(0, 10000, 2):
+            p = [random.gauss(0, 1) for z in range(f)]
             x = [1 + pi + random.gauss(0, 1e-2) for pi in p] # todo: should be q[i]
             y = [1 + pi + random.gauss(0, 1e-2) for pi in p]
             i.add_item(j, x)
             i.add_item(j+1, y)
 
         i.build(10)
-        for j in xrange(0, 10000, 2):
+        for j in range(0, 10000, 2):
             self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
     def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
         found = 0
-        for r in xrange(n_rounds):
+        for r in range(n_rounds):
             # create random points at distance x
             f = 10
             i = AnnoyIndex(f, 'euclidean')
-            for j in xrange(n_points):
-                p = [random.gauss(0, 1) for z in xrange(f)]
+            for j in range(n_points):
+                p = [random.gauss(0, 1) for z in range(f)]
                 norm = sum([pi ** 2 for pi in p]) ** 0.5
                 x = [pi / norm * j for pi in p]
                 i.add_item(j, x)
@@ -364,7 +357,7 @@ class EuclideanIndexTest(TestCase):
     def test_distance_consistency(self):
         n, f = 1000, 3
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(n):
+        for j in range(n):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
         for a in random.sample(range(n), 100):
@@ -416,26 +409,26 @@ class ManhattanIndexTest(TestCase):
         # Generate pairs of random points where the pair is super close
         f = 10
         i = AnnoyIndex(f, 'manhattan')
-        for j in xrange(0, 10000, 2):
-            p = [random.gauss(0, 1) for z in xrange(f)]
+        for j in range(0, 10000, 2):
+            p = [random.gauss(0, 1) for z in range(f)]
             x = [1 + pi + random.gauss(0, 1e-2) for pi in p]
             y = [1 + pi + random.gauss(0, 1e-2) for pi in p]
             i.add_item(j, x)
             i.add_item(j+1, y)
 
         i.build(10)
-        for j in xrange(0, 10000, 2):
+        for j in range(0, 10000, 2):
             self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
     def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
         found = 0
-        for r in xrange(n_rounds):
+        for r in range(n_rounds):
             # create random points at distance x
             f = 10
             i = AnnoyIndex(f, 'manhattan')
-            for j in xrange(n_points):
-                p = [random.gauss(0, 1) for z in xrange(f)]
+            for j in range(n_points):
+                p = [random.gauss(0, 1) for z in range(f)]
                 norm = sum([pi ** 2 for pi in p]) ** 0.5
                 x = [pi / norm + j for pi in p]
                 i.add_item(j, x)
@@ -496,7 +489,7 @@ class ManhattanIndexTest(TestCase):
     def test_distance_consistency(self):
         n, f = 1000, 3
         i = AnnoyIndex(f, 'manhattan')
-        for j in xrange(n):
+        for j in range(n):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
         for a in random.sample(range(n), 100):
@@ -524,19 +517,19 @@ class IndexTest(TestCase):
     def test_load_unload(self):
         # Issue #108
         i = AnnoyIndex(10)
-        for x in xrange(100000):
+        for x in range(100000):
             i.load('test/test.tree')
             i.unload()
 
     def test_construct_load_destruct(self):
-        for x in xrange(100000):
+        for x in range(100000):
             i = AnnoyIndex(10)
             i.load('test/test.tree')
 
     def test_construct_destruct(self):
-        for x in xrange(100000):
+        for x in range(100000):
             i = AnnoyIndex(10)
-            i.add_item(1000, [random.gauss(0, 1) for z in xrange(10)])
+            i.add_item(1000, [random.gauss(0, 1) for z in range(10)])
 
     def test_save_twice(self):
         # Issue #100
@@ -560,7 +553,7 @@ class IndexTest(TestCase):
     def test_save_without_build(self):
         # Issue #61
         i = AnnoyIndex(10)
-        i.add_item(1000, [random.gauss(0, 1) for z in xrange(10)])
+        i.add_item(1000, [random.gauss(0, 1) for z in range(10)])
         i.save('x.tree')
         j = AnnoyIndex(10)
         j.load('x.tree')
@@ -592,7 +585,7 @@ class TypesTest(TestCase):
     def test_numpy(self, n_points=1000, n_trees=10):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(n_points):
+        for j in range(n_points):
             a = numpy.random.normal(size=f)
             a = a.astype(random.choice([numpy.float64, numpy.float32, numpy.uint8, numpy.int16]))
             i.add_item(j, a)
@@ -602,16 +595,16 @@ class TypesTest(TestCase):
     def test_tuple(self, n_points=1000, n_trees=10):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(n_points):
-            i.add_item(j, tuple(random.gauss(0, 1) for x in xrange(f)))
+        for j in range(n_points):
+            i.add_item(j, tuple(random.gauss(0, 1) for x in range(f)))
 
         i.build(n_trees)
 
     def test_wrong_length(self, n_points=1000, n_trees=10):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
-        self.assertRaises(IndexError, i.add_item, 1, [random.gauss(0, 1) for x in xrange(f+1000)])
+        i.add_item(0, [random.gauss(0, 1) for x in range(f)])
+        self.assertRaises(IndexError, i.add_item, 1, [random.gauss(0, 1) for x in range(f+1000)])
         self.assertRaises(IndexError, i.add_item, 2, [])
 
         i.build(n_trees)
@@ -619,9 +612,9 @@ class TypesTest(TestCase):
     def test_range_errors(self, n_points=1000, n_trees=10):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(n_points):
-            i.add_item(j, [random.gauss(0, 1) for x in xrange(f)])
-        self.assertRaises(IndexError, i.add_item, -1, [random.gauss(0, 1) for x in xrange(f)])
+        for j in range(n_points):
+            i.add_item(j, [random.gauss(0, 1) for x in range(f)])
+        self.assertRaises(IndexError, i.add_item, -1, [random.gauss(0, 1) for x in range(f)])
         i.build(n_trees)
         for bad_index in [-1000, -1, n_points, n_points + 1000]:
             self.assertRaises(IndexError, i.get_distance, 0, bad_index)
@@ -633,28 +626,28 @@ class MemoryLeakTest(TestCase):
     def test_get_item_vector(self):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
-        for j in xrange(100):
+        i.add_item(0, [random.gauss(0, 1) for x in range(f)])
+        for j in range(100):
             print(j, '...')
-            for k in xrange(1000 * 1000):
+            for k in range(1000 * 1000):
                 i.get_item_vector(0)
 
     def test_get_lots_of_nns(self):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        i.add_item(0, [random.gauss(0, 1) for x in xrange(f)])
+        i.add_item(0, [random.gauss(0, 1) for x in range(f)])
         i.build(10)
-        for j in xrange(100):
+        for j in range(100):
             self.assertEqual(i.get_nns_by_item(0, 999999999), [0])
             
     def test_build_unbuid(self):
         f = 10
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(1000):
-            i.add_item(j, [random.gauss(0, 1) for x in xrange(f)])
+        for j in range(1000):
+            i.add_item(j, [random.gauss(0, 1) for x in range(f)])
         i.build(10)
         
-        for j in xrange(100):
+        for j in range(100):
             i.unbuild()
             i.build(10)
             
@@ -665,7 +658,7 @@ class ThreadingTest(TestCase):
     def test_threads(self):
         n, f = 10000, 10
         i = AnnoyIndex(f, 'euclidean')
-        for j in xrange(n):
+        for j in range(n):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
 
