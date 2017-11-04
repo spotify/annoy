@@ -101,8 +101,8 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
   size_t i = random.index(count);
   size_t j = random.index(count-1);
   j += (j >= i); // ensure that i != j
-  std::copy(&nodes[i]->v[0], &nodes[i]->v[f], &iv[0]);
-  std::copy(&nodes[j]->v[0], &nodes[j]->v[f], &jv[0]);
+  memcpy(iv, nodes[i]->v, f * sizeof(T));
+  memcpy(jv, nodes[j]->v, f * sizeof(T));
   if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
 
   int ic = 1, jc = 1;
@@ -496,7 +496,7 @@ public:
 
   void get_item(S item, T* v) {
     Node* m = _get(item);
-    std::copy(&m->v[0], &m->v[_f], v);
+    memcpy(v, m->v, _f * sizeof(T));
   }
 
   void set_seed(int seed) {
@@ -532,7 +532,8 @@ protected:
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
-      std::copy(indices.begin(), indices.end(), m->children);
+      // Using memcpy instead of std::copy for MSVC compatibility. #235
+      memcpy(m->children, &indices[0], indices.size() * sizeof(S));
       return item;
     }
 
