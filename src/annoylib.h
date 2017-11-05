@@ -238,7 +238,7 @@ struct Hamming {
     return margin(n, y, f);
   }
   static inline int chunkcount(int f) {
-    return f / chunksize() + 1;
+    return (f + chunksize() - 1) / chunksize();
   }
   template<typename S, typename T = int64_t, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
