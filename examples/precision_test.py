@@ -28,7 +28,6 @@ time_sum = {}
 
 for i in xrange(prec_n):
     j = random.randrange(0, n)
-    print('finding nbs for', j)
         
     closest = set(t.get_nns_by_item(j, k, n))
     for limit in limits:

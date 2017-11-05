@@ -49,6 +49,9 @@ typedef signed __int32    int32_t;
 #include <queue>
 #include <limits>
 
+// Needed for Visual Studio to disable runtime checks for mempcy
+#pragma runtime_checks("s", off)
+
 // This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
 #ifndef __ERROR_PRINTER_OVERRIDE__
@@ -445,8 +448,10 @@ public:
 
   bool load(const char* filename) {
     _fd = open(filename, O_RDONLY, (int)0400);
-    if (_fd == -1)
+    if (_fd == -1) {
+      _fd = 0;
       return false;
+    }
     off_t size = lseek(_fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (Node*)mmap(
