@@ -1,0 +1,12 @@
+environment:
+  matrix:
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.3"
+      PYTHON_ARCH: "64"
+
+install:
+  build_script:
+    - "python setup.py install"
+
+test_script:
+  - "python setup.py nosetests"
