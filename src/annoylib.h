@@ -448,8 +448,10 @@ public:
 
   bool load(const char* filename) {
     _fd = open(filename, O_RDONLY, (int)0400);
-    if (_fd == -1)
+    if (_fd == -1) {
+      _fd = 0;
       return false;
+    }
     off_t size = lseek(_fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (Node*)mmap(
