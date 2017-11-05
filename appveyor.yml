@@ -14,6 +14,7 @@ install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 
 build_script:
+  - "pip install numpy"
   - "python setup.py build"
 
 test_script:
