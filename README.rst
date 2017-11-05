@@ -1,6 +1,8 @@
 Annoy
 -----
 
+`windows builds<https://ci.appveyor.com/api/projects/status/github/tjrileywisc/annoy>`_
+
 .. figure:: https://raw.github.com/spotify/annoy/master/ann.png
    :alt: Annoy example
    :align: center
