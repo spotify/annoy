@@ -1,12 +1,17 @@
 Annoy
 -----
 
+
+
 .. figure:: https://raw.github.com/spotify/annoy/master/ann.png
    :alt: Annoy example
    :align: center
 
 .. image:: https://img.shields.io/travis/spotify/annoy/master.svg?style=flat
     :target: https://travis-ci.org/spotify/annoy
+
+.. image:: https://ci.appveyor.com/api/projects/status/github/tjrileywisc/annoy?svg=true&pendingText=windows%20-%20Pending&passingText=windows%20-%20OK&failingText=windows%20-%20Failing
+    :target: https://ci.appveyor.com/project/tjrileywisc/annoy
 
 .. image:: https://img.shields.io/pypi/v/annoy.svg?style=flat
    :target: https://pypi.python.org/pypi/annoy
