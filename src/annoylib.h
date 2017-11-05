@@ -535,24 +535,10 @@ protected:
       Node* m = _get(item);
       m->n_descendants = (S)indices.size();
 
-<<<<<<< HEAD
-    // Using std::copy instead of a loop seems to resolve issues #3 and #13,
-    // probably because gcc 4.8 goes overboard with optimizations.
-
-    // (but copy not cooperating with MSVC in certain conditions)
-#if (defined(_MSC_VER) && defined(_DEBUG)) || (defined(_MSC_VER) && (_MSC_VER == 1500))
-    
-	  for (size_t i = 0; i < indices.size(); i++)
-      m->children[i] = indices[i];
-#else
-      std::copy(indices.begin(), indices.end(), m->children);
-#endif
-=======
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
       // Using memcpy instead of std::copy for MSVC compatibility. #235
       memcpy(m->children, &indices[0], indices.size() * sizeof(S));
->>>>>>> 9a828441276c7857f41f26173633eb153463d158
       return item;
     }
 

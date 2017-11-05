@@ -4,9 +4,8 @@ environment:
       PYTHON_VERSION: "3.6.3"
       PYTHON_ARCH: "64"
 
-install:
-  build_script:
-    - "python setup.py install"
+build_script:
+  - "python setup.py build"
 
 test_script:
   - "python setup.py nosetests"
