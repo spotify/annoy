@@ -44,8 +44,8 @@ class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
   // This translates binary (float) vectors into packed uint64_t vectors.
   // This is questionable from a performance point of view. Should reconsider this solution.
 private:
-  AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random> _index;
   int32_t _f_external, _f_internal;
+  AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random> _index;
   void _pack(const float* src, uint64_t* dst) {
     for (int32_t i = 0; i < _f_internal; i++) {
       dst[i] = 0;
@@ -64,8 +64,6 @@ public:
   void add_item(int32_t item, const float* w) {
     vector<uint64_t> w_internal(_f_internal, 0);
     _pack(w, &w_internal[0]);
-    for (int i = 0; i < _f_internal; i++) {
-    }
     _index.add_item(item, &w_internal[0]);
   };
   void build(int q) { _index.build(q); };
@@ -75,16 +73,24 @@ public:
   bool load(const char* filename) { return _index.load(filename); };
   float get_distance(int32_t i, int32_t j) { return _index.get_distance(i, j); };
   void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
-    vector<uint64_t> distances_internal;
-    _index.get_nns_by_item(item, n, search_k, result, &distances_internal);
-    std::copy(distances_internal.begin(), distances_internal.end(), distances->begin());
+    if (distances) {
+      vector<uint64_t> distances_internal;
+      _index.get_nns_by_item(item, n, search_k, result, &distances_internal);
+      distances->insert(distances->begin(), distances_internal.begin(), distances_internal.end());
+    } else {
+      _index.get_nns_by_item(item, n, search_k, result, NULL);
+    }
   };
   void get_nns_by_vector(const float* w, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
-    vector<uint64_t> distances_internal;
     vector<uint64_t> w_internal(_f_internal, 0);
     _pack(w, &w_internal[0]);
-    _index.get_nns_by_vector(&w_internal[0], n, search_k, result, &distances_internal);
-    std::copy(distances_internal.begin(), distances_internal.end(), distances->begin());
+    if (distances) {
+      vector<uint64_t> distances_internal;
+      _index.get_nns_by_vector(&w_internal[0], n, search_k, result, &distances_internal);
+      distances->insert(distances->begin(), distances_internal.begin(), distances_internal.end());
+    } else {
+      _index.get_nns_by_vector(&w_internal[0], n, search_k, result, NULL);
+    }
   };
   int32_t get_n_items() { return _index.get_n_items(); };
   void verbose(bool v) { _index.verbose(v); };

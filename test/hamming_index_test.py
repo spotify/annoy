@@ -34,3 +34,18 @@ class HammingIndexTest(TestCase):
         self.assertAlmostEqual(i.get_distance(1, 1), 0.0)
         self.assertAlmostEqual(i.get_distance(0, 1), numpy.dot(u - v, u - v))
         self.assertAlmostEqual(i.get_distance(1, 0), numpy.dot(u - v, u - v))
+
+    def test_basic_nns(self):
+        f = 100
+        i = AnnoyIndex(f, 'hamming')
+        u = numpy.random.binomial(1, 0.5, f)
+        v = numpy.random.binomial(1, 0.5, f)
+        i.add_item(0, u)
+        i.add_item(1, v)
+        i.build(10)
+        self.assertEquals(i.get_nns_by_item(0, 99), [0, 1])
+        self.assertEquals(i.get_nns_by_item(1, 99), [1, 0])
+        rs, ds = i.get_nns_by_item(0, 99, include_distances=True)
+        self.assertEquals(rs, [0, 1])
+        self.assertAlmostEqual(ds[0], 0)
+        self.assertAlmostEqual(ds[1], numpy.dot(u-v, u-v))
