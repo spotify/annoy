@@ -219,7 +219,7 @@ struct Angular {
 
 struct Hamming {
 
-  template<typename S, typename T = int64_t>
+  template<typename S, typename T = uint64_t>
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     S children[2];
@@ -228,16 +228,16 @@ struct Hamming {
 
   static const size_t max_iterations = 20;
 
-  template<typename T = int64_t>
+  template<typename T = uint64_t>
   static inline T pq_distance(T distance, T margin, int child_nr) {
     return distance - (margin != child_nr);
   }
 
-  template<typename T = int64_t>
+  template<typename T = uint64_t>
   static inline T pq_initial_value() {
     return 0;
   }
-  template<typename T = int64_t>
+  template<typename T = uint64_t>
   static inline T distance(const T* x, const T* y, int f) {
     size_t dist = 0;
     for (size_t i = 0; i < f; i++)
@@ -246,16 +246,16 @@ struct Hamming {
     }
     return dist;
   }
-  template<typename S, typename T = int64_t>
+  template<typename S, typename T = uint64_t>
   static inline bool margin(const Node<S, T>* n, const T* y, int f) {
     T chunk = n->v[0] / 64;
     return (y[chunk] & (static_cast<T>(1) << (64 - 1 - (n->v[0] % 64)))) != 0;
   }
-  template<typename S, typename T = int64_t, typename Random>
+  template<typename S, typename T = uint64_t, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     return margin(n, y, f);
   }
-  template<typename S, typename T = int64_t, typename Random>
+  template<typename S, typename T = uint64_t, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
     size_t cur_split = 0, cur_size = 0;
     int i = 0;
@@ -289,7 +289,7 @@ struct Hamming {
       }
     }
   }
-  template<typename T = int64_t>
+  template<typename T = uint64_t>
   static inline T normalized_distance(T distance) {
     return distance;
   }
