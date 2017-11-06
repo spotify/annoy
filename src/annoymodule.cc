@@ -39,6 +39,29 @@ typedef signed __int32    int32_t;
 
 template class AnnoyIndexInterface<int32_t, float>;
 
+class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
+  // Wrapper class for Hamming distance, using composition.
+  // This translates binary (float) vectors into packed int64_t vectors.
+  // This is questionable from a performance point of view. Should reconsider this solution.
+private:
+  AnnoyIndex<int64_t, int64_t, Hamming, Kiss64Random> _index;
+public:
+  HammingWrapper(int f) : _index((f + 63) / 64) {};
+  void add_item(int32_t item, const float* w) {};
+  void build(int q) {_index.build(q);};
+  void unbuild() {_index.unbuild();};
+  bool save(const char* filename) {return _index.save(filename);};
+  void unload() {_index.unload();};
+  bool load(const char* filename) {return _index.load(filename);};
+  float get_distance(int32_t i, int32_t j) {return _index.get_distance(i, j);};
+  void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {};
+  void get_nns_by_vector(const float* w, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {};
+  int32_t get_n_items() {return _index.get_n_items();};
+  void verbose(bool v) {_index.verbose(v);};
+  void get_item(int32_t item, float* v) {};
+  void set_seed(int q) {_index.set_seed(q);};
+};
+
 // annoy python object
 typedef struct {
   PyObject_HEAD
@@ -64,6 +87,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
     self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
   } else if (!strcmp(metric, "manhattan")) {
     self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
+  } else if (!strcmp(metric, "hamming")) {
+    self->ptr = new HammingWrapper(self->f);
   } else {
     PyErr_SetString(PyExc_ValueError, "No such metric");
     return NULL;
