@@ -247,8 +247,9 @@ struct Hamming {
   }
   template<typename S, typename T>
   static inline bool margin(const Node<S, T>* n, const T* y, int f) {
-    T chunk = n->v[0] / 64;
-    return (y[chunk] & (static_cast<T>(1) << (64 - 1 - (n->v[0] % 64)))) != 0;
+    static const size_t n_bits = sizeof(T) * 8;
+    T chunk = n->v[0] / n_bits;
+    return (y[chunk] & (static_cast<T>(1) << (n_bits - 1 - (n->v[0] % n_bits)))) != 0;
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
