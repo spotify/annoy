@@ -49,7 +49,7 @@ private:
   void _pack(const float* src, uint64_t* dst) {
     for (int32_t i = 0; i < _f_internal; i++) {
       dst[i] = 0;
-      for (int32_t j = 0; j < 64; j++) {
+      for (int32_t j = 0; j < 64 && i*64+j < _f_external; j++) {
 	dst[i] |= (uint64_t)(src[i * 64 + j] > 0.5) << j;
       }
     }
