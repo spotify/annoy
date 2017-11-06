@@ -19,6 +19,19 @@ from annoy import AnnoyIndex
 
 
 class HammingIndexTest(TestCase):
-    def test_create_index(self):
-        f = 3
-        i = AnnoyIndex(3, 'hamming')
+    def test_basic_conversion(self):
+        f = 100
+        i = AnnoyIndex(f, 'hamming')
+        u = numpy.random.binomial(1, 0.5, f)
+        v = numpy.random.binomial(1, 0.5, f)
+        print(u)
+        i.add_item(0, u)
+        i.add_item(1, v)
+        u2 = i.get_item_vector(0)
+        v2 = i.get_item_vector(1)
+        self.assertAlmostEqual(numpy.dot(u - u2, u - u2), 0.0)
+        self.assertAlmostEqual(numpy.dot(v - v2, v - v2), 0.0)
+        self.assertAlmostEqual(i.get_distance(0, 0), 0.0)
+        self.assertAlmostEqual(i.get_distance(1, 1), 0.0)
+        self.assertAlmostEqual(i.get_distance(0, 1), numpy.dot(u - v, u - v))
+        self.assertAlmostEqual(i.get_distance(1, 0), numpy.dot(u - v, u - v))
