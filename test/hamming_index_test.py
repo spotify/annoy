@@ -24,7 +24,6 @@ class HammingIndexTest(TestCase):
         i = AnnoyIndex(f, 'hamming')
         u = numpy.random.binomial(1, 0.5, f)
         v = numpy.random.binomial(1, 0.5, f)
-        print(u)
         i.add_item(0, u)
         i.add_item(1, v)
         u2 = i.get_item_vector(0)

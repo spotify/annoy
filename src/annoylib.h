@@ -62,9 +62,9 @@ typedef signed __int32    int32_t;
 
 
 #ifndef _MSC_VER
-#define uint64_popcount __builtin_popcountll
+#define popcount __builtin_popcountll
 #else
-#define uint64_popcount __popcnt64
+#define popcount __popcnt64
 #endif
 
 
@@ -219,7 +219,7 @@ struct Angular {
 
 struct Hamming {
 
-  template<typename S, typename T = uint64_t>
+  template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     S children[2];
@@ -228,43 +228,42 @@ struct Hamming {
 
   static const size_t max_iterations = 20;
 
-  template<typename T = uint64_t>
+  template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
     return distance - (margin != child_nr);
   }
 
-  template<typename T = uint64_t>
+  template<typename T>
   static inline T pq_initial_value() {
     return 0;
   }
-  template<typename T = uint64_t>
+  template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
     size_t dist = 0;
-    for (size_t i = 0; i < f; i++)
-    {
-      dist += uint64_popcount(x[i] ^ y[i]);
+    for (size_t i = 0; i < f; i++) {
+      dist += popcount(x[i] ^ y[i]);
     }
     return dist;
   }
-  template<typename S, typename T = uint64_t>
+  template<typename S, typename T>
   static inline bool margin(const Node<S, T>* n, const T* y, int f) {
     T chunk = n->v[0] / 64;
     return (y[chunk] & (static_cast<T>(1) << (64 - 1 - (n->v[0] % 64)))) != 0;
   }
-  template<typename S, typename T = uint64_t, typename Random>
+  template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     return margin(n, y, f);
   }
-  template<typename S, typename T = uint64_t, typename Random>
+  template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-    size_t cur_split = 0, cur_size = 0;
+    size_t cur_size = 0;
     int i = 0;
     for (; i < max_iterations; i++) {
       // choose random position to split at
       n->v[0] = random.index(f);
       cur_size = 0;
-      for (auto& nd: nodes) {
-        if (margin(n, nd->v, f)) {
+      for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+        if (margin(n, (*it)->v, f)) {
           cur_size++;
         }
       }
@@ -278,8 +277,8 @@ struct Hamming {
       for (; j < f; j++) {
         n->v[0] = j;
         cur_size = 0;
-        for (auto& nd: nodes) {
-          if (margin(n, nd->v, f)) {
+	for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+          if (margin(n, (*it)->v, f)) {
             cur_size++;
           }
         }
@@ -289,7 +288,7 @@ struct Hamming {
       }
     }
   }
-  template<typename T = uint64_t>
+  template<typename T>
   static inline T normalized_distance(T distance) {
     return distance;
   }
