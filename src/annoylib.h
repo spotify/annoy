@@ -61,7 +61,11 @@ typedef signed __int32    int32_t;
 #endif
 
 
-
+#ifndef _MSC_VER
+#define uint64_popcount __builtin_popcountll
+#else
+#define uint64_popcount __popcnt64
+#endif
 
 
 #ifndef ANNOY_NODE_ATTRIBUTE
@@ -238,7 +242,7 @@ struct Hamming {
     size_t dist = 0;
     for (size_t i = 0; i < f; i++)
     {
-      dist += __builtin_popcountll(x[i] ^ y[i]);
+      dist += uint64_popcount(x[i] ^ y[i]);
     }
     return dist;
   }
