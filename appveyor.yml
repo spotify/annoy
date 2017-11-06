@@ -1,8 +1,8 @@
 environment:
   matrix:
-    - PYTHON: "C:\Python27-x64"
-      PYTHON_VERSION: "2.7.14"
-      PYTHON_ARCH: "64"
+#    - PYTHON: "C:\\Python27-x64"
+#      PYTHON_VERSION: "2.7.14"
+#      PYTHON_ARCH: "64"
     
     - PYTHON: "C:\\Python36-x64"
       PYTHON_VERSION: "3.6.3"
@@ -14,6 +14,7 @@ install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 
 build_script:
+  - "pip install numpy"
   - "python setup.py build"
 
 test_script:
