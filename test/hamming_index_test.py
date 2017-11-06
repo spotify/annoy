@@ -49,3 +49,37 @@ class HammingIndexTest(TestCase):
         self.assertEquals(rs, [0, 1])
         self.assertAlmostEqual(ds[0], 0)
         self.assertAlmostEqual(ds[1], numpy.dot(u-v, u-v))
+
+    def test_save_load(self):
+        f = 100
+        i = AnnoyIndex(f, 'hamming')
+        u = numpy.random.binomial(1, 0.5, f)
+        v = numpy.random.binomial(1, 0.5, f)
+        i.add_item(0, u)
+        i.add_item(1, v)
+        i.build(10)
+        i.save('blah.ann')
+        j = AnnoyIndex(f, 'hamming')
+        j.load('blah.ann')
+        rs, ds = j.get_nns_by_item(0, 99, include_distances=True)
+        self.assertEquals(rs, [0, 1])
+        self.assertAlmostEqual(ds[0], 0)
+        self.assertAlmostEqual(ds[1], numpy.dot(u-v, u-v))
+
+    def test_many_vectors(self):
+        f = 10
+        i = AnnoyIndex(f, 'hamming')
+        for x in range(100000):
+            i.add_item(x, numpy.random.binomial(1, 0.5, f))
+        i.build(10)
+
+        rs, ds = i.get_nns_by_vector([0]*f, 10000, include_distances=True)
+        self.assertGreaterEqual(min(ds), 0)
+        self.assertLessEqual(max(ds), f)
+
+        dists = []
+        for x in range(1000):
+            rs, ds = i.get_nns_by_vector(numpy.random.binomial(1, 0.5, f), 1, search_k=1000, include_distances=True)
+            dists.append(ds[0])
+        avg_dist = 1.0 * sum(dists) / len(dists)
+        self.assertLessThan(avg_dist, 0.42)
