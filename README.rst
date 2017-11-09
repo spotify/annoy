@@ -11,7 +11,7 @@ Annoy
     :target: https://travis-ci.org/spotify/annoy
 
 .. image:: https://ci.appveyor.com/api/projects/status/github/spotify/annoy?svg=true&pendingText=windows%20-%20Pending&passingText=windows%20-%20OK&failingText=windows%20-%20Failing
-    :target: https://ci.appveyor.com/project/spotify/annoy
+    :target: https://ci.appveyor.com/project/erikbern/annoy
 
 .. image:: https://img.shields.io/pypi/v/annoy.svg?style=flat
    :target: https://pypi.python.org/pypi/annoy
