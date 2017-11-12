@@ -142,7 +142,10 @@ static int
 py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
   // Seems to be needed for Python 3
   const char *metric = NULL;
-  PyArg_ParseTuple(args, "i|s", &self->f, &metric);
+  int f;
+  static char const * kwlist[] = {"f", "metric", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", (char**)kwlist, &f, &metric))
+    return NULL;
   return 0;
 }
 
