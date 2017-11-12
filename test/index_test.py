@@ -93,3 +93,6 @@ class IndexTest(TestCase):
         i.add_item(1, [9, 0])
         self.assertAlmostEqual(i.get_distance(0, 1), 8)
         self.assertEquals(i.f, 2)
+
+    def test_metric_f_kwargs(self):
+        i = AnnoyIndex(f=3, metric='euclidean')
