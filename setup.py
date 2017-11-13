@@ -53,7 +53,7 @@ else:
     cputune = []
 
 setup(name='annoy',
-      version='1.9.5',
+      version='1.10.0',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
@@ -76,6 +76,7 @@ setup(name='annoy',
           'Programming Language :: Python :: 3.3',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
+          'Programming Language :: Python :: 3.6',
       ],
       keywords='nns, approximate nearest neighbor search',
       setup_requires=['nose>=1.0']
