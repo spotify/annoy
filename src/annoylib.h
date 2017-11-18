@@ -61,7 +61,11 @@ typedef signed __int32    int32_t;
 #endif
 
 
-
+#ifndef _MSC_VER
+#define popcount __builtin_popcountll
+#else
+#define popcount __popcnt64
+#endif
 
 
 #ifndef ANNOY_NODE_ATTRIBUTE
@@ -198,8 +202,99 @@ struct Angular {
     // so we have to make sure it's a positive number.
     return sqrt(std::max(distance, T(0)));
   }
+  template<typename T>
+  static inline T pq_distance(T distance, T margin, int child_nr) {
+    if (child_nr == 0)
+      margin = -margin;
+    return std::min(distance, margin);
+  }
+  template<typename T>
+  static inline T pq_initial_value() {
+    return numeric_limits<T>::infinity();
+  }
   static const char* name() {
     return "angular";
+  }
+};
+
+struct Hamming {
+
+  template<typename S, typename T>
+  struct ANNOY_NODE_ATTRIBUTE Node {
+    S n_descendants;
+    S children[2];
+    T v[1];
+  };
+
+  static const size_t max_iterations = 20;
+
+  template<typename T>
+  static inline T pq_distance(T distance, T margin, int child_nr) {
+    return distance - (margin != child_nr);
+  }
+
+  template<typename T>
+  static inline T pq_initial_value() {
+    return 0;
+  }
+  template<typename T>
+  static inline T distance(const T* x, const T* y, int f) {
+    size_t dist = 0;
+    for (size_t i = 0; i < f; i++) {
+      dist += popcount(x[i] ^ y[i]);
+    }
+    return dist;
+  }
+  template<typename S, typename T>
+  static inline bool margin(const Node<S, T>* n, const T* y, int f) {
+    static const size_t n_bits = sizeof(T) * 8;
+    T chunk = n->v[0] / n_bits;
+    return (y[chunk] & (static_cast<T>(1) << (n_bits - 1 - (n->v[0] % n_bits)))) != 0;
+  }
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
+    return margin(n, y, f);
+  }
+  template<typename S, typename T, typename Random>
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
+    size_t cur_size = 0;
+    int i = 0;
+    for (; i < max_iterations; i++) {
+      // choose random position to split at
+      n->v[0] = random.index(f);
+      cur_size = 0;
+      for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+        if (margin(n, (*it)->v, f)) {
+          cur_size++;
+        }
+      }
+      if (cur_size > 0 && cur_size < nodes.size()) {
+        break;
+      }
+    }
+    // brute-force search for splitting coordinate
+    if (i == max_iterations) {
+      int j = 0;
+      for (; j < f; j++) {
+        n->v[0] = j;
+        cur_size = 0;
+	for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+          if (margin(n, (*it)->v, f)) {
+            cur_size++;
+          }
+        }
+        if (cur_size > 0 && cur_size < nodes.size()) {
+          break;
+        }
+      }
+    }
+  }
+  template<typename T>
+  static inline T normalized_distance(T distance) {
+    return distance;
+  }
+  static const char* name() {
+    return "hamming";
   }
 };
 
@@ -225,6 +320,16 @@ struct Minkowski {
       return (dot > 0);
     else
       return random.flip();
+  }
+  template<typename T>
+  static inline T pq_distance(T distance, T margin, int child_nr) {
+    if (child_nr == 0)
+      margin = -margin;
+    return std::min(distance, margin);
+  }
+  template<typename T>
+  static inline T pq_initial_value() {
+    return numeric_limits<T>::infinity();
   }
 };
 
@@ -609,7 +714,7 @@ protected:
       search_k = n * _roots.size(); // slightly arbitrary default value
 
     for (size_t i = 0; i < _roots.size(); i++) {
-      q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
+      q.push(make_pair(Distance::template pq_initial_value<T>(), _roots[i]));
     }
 
     vector<S> nns;
@@ -626,8 +731,8 @@ protected:
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
         T margin = D::margin(nd, v, _f);
-        q.push(make_pair(std::min(d, +margin), nd->children[1]));
-        q.push(make_pair(std::min(d, -margin), nd->children[0]));
+        q.push(make_pair(D::pq_distance(d, margin, 1), nd->children[1]));
+        q.push(make_pair(D::pq_distance(d, margin, 0), nd->children[0]));
       }
     }
 
