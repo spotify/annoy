@@ -5,15 +5,21 @@
 build/
 dist/
 .vscode/
+.vs/
+x64/
 *.pdb
+annoy.vc*
 
 MANIFEST
 *.py[cod]
 *.idea
 
 # testing
+1.ann
 blah.ann
 t.ann
 x.tree
 test.tree
 foo.idx
+precision.tree
+glove*

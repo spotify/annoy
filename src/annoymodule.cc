@@ -66,7 +66,10 @@ public:
     _pack(w, &w_internal[0]);
     _index.add_item(item, &w_internal[0]);
   };
-  void build(int q) { _index.build(q); };
+  // TODO:
+  // support threading for building index
+  void build_tree_threaded(int num_trees, vector<int32_t> &_roots) {};
+  void build(int q, int n_threads) { _index.build(q, 1); };
   void unbuild() { _index.unbuild(); };
   bool save(const char* filename) { return _index.save(filename); };
   void unload() { _index.unload(); };
@@ -356,14 +359,15 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
 static PyObject *
 py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int q;
+  int n_threads;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"n_trees", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q))
+  static char const * kwlist[] = {"n_trees", "n_threads", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q, &n_threads))
     return NULL;
 
   Py_BEGIN_ALLOW_THREADS;
-  self->ptr->build(q);
+  self->ptr->build(q, n_threads);
   Py_END_ALLOW_THREADS;
 
   Py_RETURN_TRUE;
@@ -456,7 +460,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to vector `vector`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS | METH_KEYWORDS, "Adds item `i` (any nonnegative integer) with vector `v`.\n\nNote that it will allocate memory for `max(i)+1` items."},
-  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
+  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added.\n\n`n_threads`: number of threads to build index"},
   {"unbuild",(PyCFunction)py_an_unbuild, METH_NOARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
   {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, "Returns the distance between items `i` and `j`."},

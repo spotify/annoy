@@ -14,6 +14,7 @@
 #include <chrono>
 #include <algorithm>
 #include <map>
+#include <random>
 
 
 
@@ -47,7 +48,7 @@ int precision(int f=40, int n=1000000){
 	std::cout << std::endl;
 	std::cout << "Building index num_trees = 2 * num_features ...";
 	t_start = std::chrono::high_resolution_clock::now();
-	t.build(2 * f);
+	t.build(2 * f, 2);
 	t_end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>( t_end - t_start ).count();
 	std::cout << " Done in "<< duration << " secs." << std::endl;
@@ -155,7 +156,7 @@ int main(int argc, char **argv) {
 
 		feedback(f,n);
 
-		precision(40, 1000000);
+		precision(f, n);
 	}
 	else if(argc == 3){
 

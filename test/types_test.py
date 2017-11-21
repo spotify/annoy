@@ -26,7 +26,7 @@ class TypesTest(TestCase):
             a = a.astype(random.choice([numpy.float64, numpy.float32, numpy.uint8, numpy.int16]))
             i.add_item(j, a)
 
-        i.build(n_trees)
+        i.build(n_trees, 1)
 
     def test_tuple(self, n_points=1000, n_trees=10):
         f = 10
@@ -34,7 +34,7 @@ class TypesTest(TestCase):
         for j in range(n_points):
             i.add_item(j, tuple(random.gauss(0, 1) for x in range(f)))
 
-        i.build(n_trees)
+        i.build(n_trees, 1)
 
     def test_wrong_length(self, n_points=1000, n_trees=10):
         f = 10
@@ -43,7 +43,7 @@ class TypesTest(TestCase):
         self.assertRaises(IndexError, i.add_item, 1, [random.gauss(0, 1) for x in range(f+1000)])
         self.assertRaises(IndexError, i.add_item, 2, [])
 
-        i.build(n_trees)
+        i.build(n_trees, 1)
 
     def test_range_errors(self, n_points=1000, n_trees=10):
         f = 10
@@ -51,7 +51,7 @@ class TypesTest(TestCase):
         for j in range(n_points):
             i.add_item(j, [random.gauss(0, 1) for x in range(f)])
         self.assertRaises(IndexError, i.add_item, -1, [random.gauss(0, 1) for x in range(f)])
-        i.build(n_trees)
+        i.build(n_trees, 1)
         for bad_index in [-1000, -1, n_points, n_points + 1000]:
             self.assertRaises(IndexError, i.get_distance, 0, bad_index)
             self.assertRaises(IndexError, i.get_nns_by_item, bad_index, 1)
