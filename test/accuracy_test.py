@@ -46,7 +46,7 @@ class AccuracyTest(unittest.TestCase):
                 annoy.add_item(i, v)
 
             print('building index')
-            annoy.build(10, 1)
+            annoy.build(10)
             annoy.save(output)
 
         annoy = AnnoyIndex(f, distance)

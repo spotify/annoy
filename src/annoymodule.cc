@@ -363,7 +363,7 @@ py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!self->ptr) 
     return NULL;
   static char const * kwlist[] = {"n_trees", "n_threads", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q, &n_threads))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i", (char**)kwlist, &q, &n_threads))
     return NULL;
 
   Py_BEGIN_ALLOW_THREADS;
