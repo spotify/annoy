@@ -68,7 +68,7 @@ public:
   };
   // TODO:
   // support threading for building index
-  void build_tree_threaded(int num_trees, vector<int32_t> &_roots) {};
+  void build_tree_threaded(int num_trees, vector<int32_t> *_roots) {};
   void build(int q, int n_threads) { _index.build(q, 1); };
   void unbuild() { _index.unbuild(); };
   bool save(const char* filename) { return _index.save(filename); };

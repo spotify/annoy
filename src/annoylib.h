@@ -49,6 +49,7 @@ typedef signed __int32    int32_t;
 #include <queue>
 #include <limits>
 #include <thread>
+#include <mutex>
 
 // Needed for Visual Studio to disable runtime checks for mempcy
 #pragma runtime_checks("s", off)
@@ -84,6 +85,10 @@ using std::string;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
+using std::mutex;
+
+mutex _node_mutex;
+mutex _roots_mutex;
 
 template<typename T>
 inline T get_norm(T* v, int f) {
@@ -410,7 +415,7 @@ class AnnoyIndexInterface {
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) = 0;
   virtual void set_seed(int q) = 0;
-  virtual void build_tree_threaded(int q, vector<S> &_roots) = 0;
+  virtual void build_tree_threaded(int q, vector<S> *_roots) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random>
@@ -475,30 +480,31 @@ public:
       _n_items = item + 1;
   }
 
-  void build_tree_threaded(int num_trees, vector<S> &_roots) {
-	  // just for this thread
-	  vector<S> _roots_thread;
-	  while (1) {
-		  // user doesn't specify number of trees,
-		  // just fully develop one tree?
-		  if (num_trees == -1 && _n_nodes >= _n_items * 2)
-			  break;
-		  // quit when we have all trees built for this thread
-		  if (num_trees != -1 && _roots_thread.size() >= (size_t)num_trees)
-			  break;
-		  if (_verbose) showUpdate("pass %zd...\n", _roots.size());
+  void build_tree_threaded(int num_trees, vector<S>* _roots) {
+    // just for this thread
+    vector<S> _roots_thread;
+    while (1) {
+      // user doesn't specify number of trees,
+      // just fully develop one tree?
+      if (num_trees == -1 && _n_nodes >= _n_items * 2)
+        break;
+      // quit when we have all trees built for this thread
+      if (num_trees != -1 && _roots->size() >= (size_t)num_trees)
+        break;
+      if (_verbose) showUpdate("pass %zd...\n", _roots->size());
 
-		  vector<S> indices;
-		  for (S i = 0; i < _n_items; i++) {
-			  if (_get(i)->n_descendants >= 1) // Issue #223
-				  indices.push_back(i);
-		  }
-		  S tree = _make_tree(indices);
-		  _roots_thread.push_back(tree);
-	  }
-	  // push to our shared roots vector
-	  _roots.insert(_roots.end(), _roots_thread.begin(), _roots_thread.end());
-	  
+      vector<S> indices;
+      for (S i = 0; i < _n_items; i++) {
+        if (_get(i)->n_descendants >= 1) // Issue #223
+          indices.push_back(i);
+      }
+      S tree = _make_tree(indices);
+      _roots_thread.push_back(tree);
+      // push to our shared roots vector
+	  _roots_mutex.lock();
+      _roots->insert(_roots->end(), _roots_thread.begin(), _roots_thread.end());
+	  _roots_mutex.unlock();
+    }
   }
 
   void build(int q, int n_threads = 1) {
@@ -508,44 +514,38 @@ public:
       return;
     }
     _n_nodes = _n_items;
-	
-	if (n_threads > 1) {
-		vector<std::thread> threads;
-		// will probably go badly if n_threads not even or 1
-		int trees_per_thread = q / n_threads;
-		for (int i = 0; i < n_threads; i++) {
-			threads.push_back(std::thread(&AnnoyIndexInterface<S, T>::build_tree_threaded, this, trees_per_thread, std::ref(_roots)));
-		}
 
-		// rejoin
-		for (auto &t : threads) {
-			t.join();
-		}
-	}
-	else {
-		while (1) {
-			// quit if...?
-			if (q == -1 && _n_nodes >= _n_items * 2)
-				break;
-			// quit when we have all trees built
-			if (q != -1 && _roots.size() >= (size_t)q)
-				break;
-			if (_verbose) showUpdate("pass %zd...\n", _roots.size());
+    if (n_threads > 1) {
+      vector<std::thread> threads;
 
-			vector<S> indices;
-			for (S i = 0; i < _n_items; i++) {
-				if (_get(i)->n_descendants >= 1) // Issue #223
-					indices.push_back(i);
-			}
-			S tree = _make_tree(indices);
-			_roots.push_back(tree);
-		}
-	}
+      for (int i = 0; i < n_threads; i++) {
+        threads.push_back(std::thread(&AnnoyIndexInterface<S, T>::build_tree_threaded, this, q, &_roots));
+      }
 
+      // rejoin
+      for (auto &t : threads) {
+        t.join();
+      }
+    }
+    else {
+      while (1) {
+        // quit if...?
+        if (q == -1 && _n_nodes >= _n_items * 2)
+          break;
+        // quit when we have all trees built
+        if (q != -1 && _roots.size() >= (size_t)q)
+          break;
+        if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
-	
-
-
+        vector<S> indices;
+        for (S i = 0; i < _n_items; i++) {
+          if (_get(i)->n_descendants >= 1) // Issue #223
+            indices.push_back(i);
+        }
+        S tree = _make_tree(indices);
+        _roots.push_back(tree);
+      }
+    }
 
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
@@ -692,8 +692,10 @@ protected:
       return indices[0];
 
     if (indices.size() <= (size_t)_K) {
+	  _node_mutex.lock();
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
+	  _node_mutex.unlock();
       Node* m = _get(item);
       m->n_descendants = (S)indices.size();
 
@@ -751,8 +753,10 @@ protected:
       // run _make_tree for the smallest child first (for cache locality)
       m->children[side^flip] = _make_tree(children_indices[side^flip]);
 
+	_node_mutex.lock();
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
+	_node_mutex.unlock();
     memcpy(_get(item), m, _s);
     free(m);
 
