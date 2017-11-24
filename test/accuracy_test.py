@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import h5py
 import unittest
 import random
 import os
@@ -26,51 +27,40 @@ import gzip
 from nose.plugins.attrib import attr
 
 class AccuracyTest(unittest.TestCase):
-    def _get_index(self, f, distance):
-        input = 'test/glove.twitter.27B.%dd.txt.gz' % f
-        output = 'test/glove.%d.%s.annoy' % (f, distance)
-        output_correct = 'test/glove.%d.%s.correct' % (f, distance)
-        
-        if not os.path.exists(output):
-            if not os.path.exists(input):
-                # Download GloVe pretrained vectors: http://nlp.stanford.edu/projects/glove/
-                # Hosting them on my own S3 bucket since the original files changed format
-                url = 'https://s3-us-west-1.amazonaws.com/annoy-vectors/glove.twitter.27B.%dd.txt.gz' % f
-                print('downloading', url, '->', input)
-                urlretrieve(url, input)
+    def _get_index(self, dataset):
+        url = 'http://vectors.erikbern.com/%s.hdf5' % dataset
+        vectors_fn = os.path.join('test', dataset + '.hdf5')
+        index_fn = os.path.join('test', dataset + '.annoy')
 
+        if not os.path.exists(vectors_fn):
+            print('downloading', url, '->', vectors_fn)
+            urlretrieve(url, vectors_fn)
+
+        dataset = h5py.File(vectors_fn)
+        distance = dataset.attrs['distance']
+        f = dataset['train'].shape[1]
+        annoy = AnnoyIndex(f, distance)
+
+        if not os.path.exists(index_fn):
             print('adding items', distance, f)
-            annoy = AnnoyIndex(f, distance)
-            for i, line in enumerate(gzip.open(input, 'rb')):
-                v = [float(x) for x in line.strip().split()[1:]]
+            for i, v in enumerate(dataset['train']):
                 annoy.add_item(i, v)
 
             print('building index')
             annoy.build(10)
-            annoy.save(output)
+            annoy.save(index_fn)
 
-        annoy = AnnoyIndex(f, distance)
-        annoy.load(output)
+        annoy.load(index_fn)
+        return annoy, dataset
 
-        if not os.path.exists(output_correct):
-            print('finding correct answers')
-            f_output = open(output_correct, 'w')
-            for i in range(10000):
-                js_slow = annoy.get_nns_by_item(i, 11, 100000)[1:]
-                assert len(js_slow) == 10
-                f_output.write(' '.join(map(str, js_slow)) + '\n')
-            f_output.close()
-
-        return annoy, open(output_correct)
-
-    def _test_index(self, f, distance, exp_accuracy):
-        annoy, f_correct = self._get_index(f, distance)
+    def _test_index(self, dataset, exp_accuracy):
+        annoy, dataset = self._get_index(dataset)
 
         n, k = 0, 0
 
-        for i, line in enumerate(f_correct):
-            js_fast = annoy.get_nns_by_item(i, 11, 1000)[1:]
-            js_real = [int(x) for x in line.strip().split()]
+        for i, v in enumerate(dataset['test']):
+            js_fast = annoy.get_nns_by_vector(v, 10, 10000)
+            js_real = dataset['neighbors'][i][:10]
             assert len(js_fast) == 10
             assert len(js_real) == 10
 
@@ -78,39 +68,9 @@ class AccuracyTest(unittest.TestCase):
             k += len(set(js_fast).intersection(js_real))
 
         accuracy = 100.0 * k / n
-        print('%20s %4d accuracy: %5.2f%% (expected %5.2f%%)' % (distance, f, accuracy, exp_accuracy))
+        print('%50s accuracy: %5.2f%% (expected %5.2f%%)' % (dataset, accuracy, exp_accuracy))
 
         self.assertTrue(accuracy > exp_accuracy - 1.0) # should be within 1%
 
     def test_angular_25(self):
-        self._test_index(25, 'angular', 88.01)
-
-    def test_euclidean_25(self):
-        self._test_index(25, 'euclidean', 87.47)
-
-    def test_manhattan_25(self):
-        self._test_index(25, 'manhattan', 85.00)
-
-    @attr('slow')
-    def test_angular_50(self):
-        self._test_index(50, 'angular', 71.67)
-
-    @attr('slow')
-    def test_euclidean_50(self):
-        self._test_index(50, 'euclidean', 70.28)
-
-    @attr('slow')
-    def test_manhattan_50(self):
-        self._test_index(50, 'manhattan', 70.28)
-
-    @attr('slow')
-    def test_angular_100(self):
-        self._test_index(100, 'angular', 53.05)
-
-    @attr('slow')
-    def test_euclidean_100(self):
-        self._test_index(100, 'euclidean', 56.16)
-
-    @attr('slow')
-    def test_manhattan_100(self):
-        self._test_index(100, 'manhattan', 56.16)
+        self._test_index('glove-25-angular', 95.68)
