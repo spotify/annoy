@@ -36,31 +36,31 @@ class AccuracyTest(unittest.TestCase):
             print('downloading', url, '->', vectors_fn)
             urlretrieve(url, vectors_fn)
 
-        dataset = h5py.File(vectors_fn)
-        distance = dataset.attrs['distance']
-        f = dataset['train'].shape[1]
+        dataset_f = h5py.File(vectors_fn)
+        distance = dataset_f.attrs['distance']
+        f = dataset_f['train'].shape[1]
         annoy = AnnoyIndex(f, distance)
 
         if not os.path.exists(index_fn):
             print('adding items', distance, f)
-            for i, v in enumerate(dataset['train']):
+            for i, v in enumerate(dataset_f['train']):
                 annoy.add_item(i, v)
 
             print('building index')
             annoy.build(10)
             annoy.save(index_fn)
-
-        annoy.load(index_fn)
-        return annoy, dataset
+        else:
+            annoy.load(index_fn)
+        return annoy, dataset_f
 
     def _test_index(self, dataset, exp_accuracy):
-        annoy, dataset = self._get_index(dataset)
+        annoy, dataset_f = self._get_index(dataset)
 
         n, k = 0, 0
 
-        for i, v in enumerate(dataset['test']):
-            js_fast = annoy.get_nns_by_vector(v, 10, 10000)
-            js_real = dataset['neighbors'][i][:10]
+        for i, v in enumerate(dataset_f['test']):
+            js_fast = annoy.get_nns_by_vector(v, 10, 1000)
+            js_real = dataset_f['neighbors'][i][:10]
             assert len(js_fast) == 10
             assert len(js_real) == 10
 
@@ -72,5 +72,8 @@ class AccuracyTest(unittest.TestCase):
 
         self.assertTrue(accuracy > exp_accuracy - 1.0) # should be within 1%
 
-    def test_angular_25(self):
-        self._test_index('glove-25-angular', 95.68)
+    def test_glove_25(self):
+        self._test_index('glove-25-angular', 69.00)
+
+    def test_fashion_mnist(self):
+        self._test_index('fashion-mnist-784-euclidean', 90.00)
