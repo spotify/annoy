@@ -569,6 +569,7 @@ public:
     _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
+    _roots.clear();
     S m = -1;
     for (S i = _n_nodes - 1; i >= 0; i--) {
       S k = _get(i)->n_descendants;
