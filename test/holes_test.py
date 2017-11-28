@@ -13,6 +13,7 @@
 # the License.
 
 import numpy
+import random
 from common import TestCase
 from annoy import AnnoyIndex
 
@@ -30,12 +31,10 @@ class HolesTest(TestCase):
     def test_holes_more(self):
         f = 10
         index = AnnoyIndex(f)
-        valid_indices = set()
-        for i in range(1000):
-            i2 = int(i*2**-0.5) # leave holes every few items
-            valid_indices.add(i2)
+        valid_indices = random.sample(range(2000), 1000) # leave holes
+        for i in valid_indices:
             v = numpy.random.normal(size=(f,))
-            index.add_item(i2, v)
+            index.add_item(i, v)
         index.build(10)
         for i in valid_indices:
             js = index.get_nns_by_item(i, 10000)
