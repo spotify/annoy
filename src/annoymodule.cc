@@ -152,9 +152,7 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 static void 
 py_an_dealloc(py_annoy* self) {
-  if (self->ptr) {
-    delete self->ptr;
-  }
+  delete self->ptr;
   Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
