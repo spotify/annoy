@@ -49,8 +49,10 @@ typedef signed __int32    int32_t;
 #include <queue>
 #include <limits>
 
+#ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
 #pragma runtime_checks("s", off)
+#endif
 
 // This allows others to supply their own logger / error printer without
 // requiring Annoy to import their headers. See RcppAnnoy for a use case.
@@ -230,7 +232,7 @@ struct Hamming {
 
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
-    return distance - (margin != child_nr);
+    return distance - (margin != (unsigned int) child_nr);
   }
 
   template<typename T>
@@ -240,7 +242,7 @@ struct Hamming {
   template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
     size_t dist = 0;
-    for (size_t i = 0; i < f; i++) {
+    for (int i = 0; i < f; i++) {
       dist += popcount(x[i] ^ y[i]);
     }
     return dist;
@@ -258,7 +260,7 @@ struct Hamming {
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
     size_t cur_size = 0;
-    int i = 0;
+    size_t i = 0;
     for (; i < max_iterations; i++) {
       // choose random position to split at
       n->v[0] = random.index(f);
