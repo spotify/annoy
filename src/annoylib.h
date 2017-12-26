@@ -515,36 +515,15 @@ public:
     }
     _n_nodes = _n_items;
 
-    if (n_threads > 1) {
-      vector<std::thread> threads;
+    vector<std::thread> threads;
 
-      for (int i = 0; i < n_threads; i++) {
-        threads.push_back(std::thread(&AnnoyIndexInterface<S, T>::build_tree_threaded, this, q, &_roots));
-      }
-
-      // rejoin
-      for (auto &t : threads) {
-        t.join();
-      }
+    for (int i = 0; i < n_threads; i++) {
+      threads.push_back(std::thread(&AnnoyIndexInterface<S, T>::build_tree_threaded, this, q, &_roots));
     }
-    else {
-      while (1) {
-        // quit if...?
-        if (q == -1 && _n_nodes >= _n_items * 2)
-          break;
-        // quit when we have all trees built
-        if (q != -1 && _roots.size() >= (size_t)q)
-          break;
-        if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
-        vector<S> indices;
-        for (S i = 0; i < _n_items; i++) {
-          if (_get(i)->n_descendants >= 1) // Issue #223
-            indices.push_back(i);
-        }
-        S tree = _make_tree(indices);
-        _roots.push_back(tree);
-      }
+    // rejoin
+    for (auto &t : threads) {
+      t.join();
     }
 
     // Also, copy the roots into the last segment of the array

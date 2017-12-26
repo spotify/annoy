@@ -77,7 +77,7 @@ Full Python API
 
 * ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, or ``"hamming"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
-* ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
+* ``a.build(n_trees, n_threads)`` builds a forest of ``n_trees`` trees, with ``n_threads`` threads in parallel. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
 * ``a.save(fn)`` saves the index to disk.
 * ``a.load(fn)`` loads (mmaps) an index from disk.
 * ``a.unload()`` unloads.
