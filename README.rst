@@ -11,12 +11,12 @@ Annoy
     :target: https://travis-ci.org/spotify/annoy
 
 .. image:: https://ci.appveyor.com/api/projects/status/github/spotify/annoy?svg=true&pendingText=windows%20-%20Pending&passingText=windows%20-%20OK&failingText=windows%20-%20Failing
-    :target: https://ci.appveyor.com/project/spotify/annoy
+    :target: https://ci.appveyor.com/project/erikbern/annoy
 
 .. image:: https://img.shields.io/pypi/v/annoy.svg?style=flat
    :target: https://pypi.python.org/pypi/annoy
 
-Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor>`__ Oh Yeah) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are mmapped into memory so that many processes may share the same data.
+Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neighbor_search#Approximate_nearest_neighbor>`__ Oh Yeah) is a C++ library with Python bindings to search for points in space that are close to a given query point. It also creates large read-only file-based data structures that are `mmapped <https://en.wikipedia.org/wiki/Mmap>`__ into memory so that many processes may share the same data.
 
 Install
 -------
@@ -39,7 +39,8 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* Euclidean distance, Manhattan distance or cosine distance, where cosine distance uses Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
+* `Euclidean distance <https://en.wikipedia.org/wiki/Euclidean_distance>`__, `Manhattan distance <https://en.wikipedia.org/wiki/Taxicab_geometry>`__, `cosine distance <https://en.wikipedia.org/wiki/Cosine_similarity>`__, or `Hamming distance <https://en.wikipedia.org/wiki/Hamming_distance>`__
+* Cosine distance is equivalent to Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
@@ -74,7 +75,7 @@ Right now it only accepts integers as identifiers for items. Note that it will a
 Full Python API
 ---------------
 
-* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"`` or ``"manhattan"``.
+* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, or ``"hamming"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
 * ``a.save(fn)`` saves the index to disk.
@@ -111,16 +112,18 @@ Using `random projections <http://en.wikipedia.org/wiki/Locality-sensitive_hashi
 
 We do this k times so that we get a forest of trees. k has to be tuned to your need, by looking at what tradeoff you have between precision and performance.
 
+Hamming distance (contributed by `Martin Aumüller <https://github.com/maumueller>`__) packs the data into 64-bit integers under the hood and uses built-in bit count primitives so it could be quite fast. All splits are axis-aligned.
+
 More info
 ---------
 
-* `Dirk Eddelbuettel <http://dirk.eddelbuettel.com/>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
-* `Andy Sloane <http://www.a1k0n.net/>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
-* Pishen Tsai provides a `Scala wrapper of Annoy <https://github.com/pishen/annoy4s>`__ which uses JNA to call the C++ library of Annoy.
-* There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by Taneli Leppä.
-* Boris Nagaev wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
-* During part of Spotify Hack Week 2016 (and a bit afterward), Jim Kang wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
-* Min-Seok Kim built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
+* `Dirk Eddelbuettel <https://github.com/eddelbuettel>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
+* `Andy Sloane <https://github.com/a1k0n>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
+* `Pishen Tsai <https://github.com/pishen>`__ provides a `Scala wrapper of Annoy <https://github.com/pishen/annoy4s>`__ which uses JNA to call the C++ library of Annoy.
+* There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by `Taneli Leppä <https://github.com/rosmo>`__.
+* `Boris Nagaev <https://github.com/starius>`__ wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
+* During part of Spotify Hack Week 2016 (and a bit afterward), `Jim Kang <https://github.com/jimkang>`__ wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
+* `Min-Seok Kim <https://github.com/mskimm>`__ built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
 * Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
@@ -135,7 +138,7 @@ Source code
 
 It's all written in C++ with a handful of ugly optimizations for performance and memory usage. You have been warned :)
 
-The code should support Windows, thanks to `thirdwing <https://github.com/thirdwing>`__.
+The code should support Windows, thanks to `Qiang Kou <https://github.com/thirdwing>`__ and `Timothy Riley <https://github.com/tjrileywisc>`__.
 
 To run the tests, execute `python setup.py nosetests`. The test suite includes a big real world dataset that is downloaded from the internet, so it will take a few minutes to execute.
 
