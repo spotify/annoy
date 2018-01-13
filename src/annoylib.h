@@ -70,6 +70,18 @@ typedef signed __int32    int32_t;
 #endif
 
 
+#if !defined(NO_MANUAL_VECTORIZATION)
+#if defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
+#define USE_AVX
+#elif defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
+#define USE_SSE
+#endif
+#endif
+
+#if defined(USE_AVX) || defined(USE_SSE)
+#include <x86intrin.h>
+#endif
+
 #ifndef ANNOY_NODE_ATTRIBUTE
     #ifndef _MSC_VER
         #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
@@ -344,6 +356,33 @@ struct Euclidean : Minkowski{
       d += ((*x) - (*y)) * ((*x) - (*y));
     return d;
   }
+#ifdef USE_AVX
+  static inline float distance(const float* x, const float* y, int f) {
+    float result = 0;
+    int i = 0;
+    if (f > 7) {
+      __m256 euclidean = _mm256_setzero_ps();
+      for (; i < f; i += 8) {
+        const __m256 a = _mm256_loadu_ps(x + i);
+        const __m256 b = _mm256_loadu_ps(y + i);
+        const __m256 a_minus_b = _mm256_sub_ps(a, b);
+        const __m256 a_minus_b_sq = _mm256_mul_ps(a_minus_b, a_minus_b);
+        euclidean = _mm256_add_ps(euclidean, a_minus_b_sq);
+      }
+      // Sum all floats in euclidean register.
+      const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(euclidean, 1), _mm256_castps256_ps128(euclidean));
+      const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
+      const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+      result = _mm_cvtss_f32(x32);
+    }
+    // Don't forget the remaining values.
+    for (; i < f; i++) {
+      const float t = x[i] - y[i];
+      result += t * t;
+    }
+    return result;
+  }
+#endif
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
     vector<T> best_iv(f, 0), best_jv(f, 0);
