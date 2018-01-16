@@ -254,18 +254,18 @@ struct Angular {
       __m256 dot = _mm256_setzero_ps();
       for (; i > 7; i -= 8) {
         dot = _mm256_add_ps(dot, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
-          x += 8;
-          y += 8;
-        }
-        // Sum all floats in dot register.
-        result = hsum256_ps_avx(dot);
+        x += 8;
+        y += 8;
       }
-      // Don't forget the remaining values.
-      for (; i > 0; i--) {
-        result += *x * *y;
-        x++;
-        y++;
-      }
+      // Sum all floats in dot register.
+      result = hsum256_ps_avx(dot);
+    }
+    // Don't forget the remaining values.
+    for (; i > 0; i--) {
+      result += *x * *y;
+      x++;
+      y++;
+    }
     return result;
   }
 #endif
