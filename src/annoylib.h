@@ -204,6 +204,39 @@ struct Angular {
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
+#ifdef USE_AVX
+  static float distance(const float *x, const float *y, int f) {
+    float pp = 0, qq = 0, pq = 0;
+    int i = f;
+    if (i > 7) {
+      __m256 pp_vec = _mm256_setzero_ps(), qq_vec = _mm256_setzero_ps(), pq_vec = _mm256_setzero_ps();
+      for (; i > 7; i -= 8) {
+        const __m256 a = _mm256_loadu_ps(x);
+        const __m256 b = _mm256_loadu_ps(y);
+        pp_vec = _mm256_add_ps(pp_vec, _mm256_mul_ps(a, a));
+        qq_vec = _mm256_add_ps(qq_vec, _mm256_mul_ps(b, b));
+        pq_vec = _mm256_add_ps(pq_vec, _mm256_mul_ps(a, b));
+        x += 8;
+        y += 8;
+      }
+      // Sum all floats in pp, qq and pq register.
+      pp = hsum256_ps_avx(pp_vec);
+      qq = hsum256_ps_avx(qq_vec);
+      pq = hsum256_ps_avx(pq_vec);
+    }
+    // Don't forget the remaining values.
+    for (; i > 0; i--) {
+      pp += *x * *x;
+      qq += *y * *y;
+      pq += *x * *y;
+      x++;
+      y++;
+    }
+    float ppqq = pp * qq;
+    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    else return 2.0; // cos is 0
+  }
+#endif
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
     T dot = 0;
