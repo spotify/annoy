@@ -193,6 +193,32 @@ struct Angular {
       dot += n->v[z] * y[z];
     return dot;
   }
+#ifdef USE_AVX
+  template<typename S>
+  static inline float margin(const Node<S, float>* n, const float* y, int f) {
+    float result = 0;
+    int i = 0;
+    if (f > 7) {
+      __m256 dot = _mm256_setzero_ps();
+      for (; i < f; i += 8) {
+        const __m256 a = _mm256_loadu_ps(n->v + i);
+        const __m256 b = _mm256_loadu_ps(y + i);
+        const __m256 a_mul_b = _mm256_mul_ps(a, b);
+        dot = _mm256_add_ps(dot, a_mul_b);
+      }
+      // Sum all floats in dot register.
+      const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(dot, 1), _mm256_castps256_ps128(dot));
+      const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
+      const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+      result = _mm_cvtss_f32(x32);
+    }
+    // Don't forget the remaining values.
+    for (; i < f; i++) {
+      result += n->v[i] * y[i];
+    }
+    return result;
+  }
+#endif
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
@@ -327,6 +353,32 @@ struct Minkowski {
       dot += n->v[z] * y[z];
     return dot;
   }
+#ifdef USE_AVX
+  template<typename S>
+  static inline float margin(const Node<S, float>* n, const float* y, int f) {
+    float result = n->a;
+    int i = 0;
+    if (f > 7) {
+      __m256 dot = _mm256_setzero_ps();
+      for (; i < f; i += 8) {
+        const __m256 a = _mm256_loadu_ps(n->v + i);
+        const __m256 b = _mm256_loadu_ps(y + i);
+        const __m256 a_mul_b = _mm256_mul_ps(a, b);
+        dot = _mm256_add_ps(dot, a_mul_b);
+      }
+      // Sum all floats in dot register.
+      const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(dot, 1), _mm256_castps256_ps128(dot));
+      const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
+      const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+      result += _mm_cvtss_f32(x32);
+    }
+    // Don't forget the remaining values.
+    for (; i < f; i++) {
+      result += n->v[i] * y[i];
+    }
+    return result;
+  }
+#endif
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
