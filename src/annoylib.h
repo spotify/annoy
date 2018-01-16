@@ -69,8 +69,7 @@ typedef signed __int32    int32_t;
 #define popcount __popcnt64
 #endif
 
-
-#if !defined(NO_MANUAL_VECTORIZATION)
+#ifndef NO_MANUAL_VECTORIZATION
 #if defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
 #define USE_AVX
 #elif defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
@@ -80,6 +79,25 @@ typedef signed __int32    int32_t;
 
 #if defined(USE_AVX) || defined(USE_SSE)
 #include <x86intrin.h>
+#endif
+
+#ifdef USE_AVX
+// Horizontal single sum of 256bit vector.
+static inline float hsum256_ps_avx(__m256 v) {
+  const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
+  const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
+  const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+  return _mm_cvtss_f32(x32);
+}
+#endif
+
+#ifdef USE_SSE
+// Horizontal single sum of 128bit vector.
+static inline float hsum_ps_sse3(__m128 v) {
+  const __m128 x64 = _mm_add_ps(v, _mm_movehl_ps(v, v));
+  const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+  return _mm_cvtss_f32(x32);
+}
 #endif
 
 #ifndef ANNOY_NODE_ATTRIBUTE
@@ -196,26 +214,25 @@ struct Angular {
 #ifdef USE_AVX
   template<typename S>
   static inline float margin(const Node<S, float>* n, const float* y, int f) {
+    const float *x = n->v;
     float result = 0;
-    int i = 0;
+    int i = f;
     if (f > 7) {
       __m256 dot = _mm256_setzero_ps();
-      for (; i < f; i += 8) {
-        const __m256 a = _mm256_loadu_ps(n->v + i);
-        const __m256 b = _mm256_loadu_ps(y + i);
-        const __m256 a_mul_b = _mm256_mul_ps(a, b);
-        dot = _mm256_add_ps(dot, a_mul_b);
+      for (; i > 7; i -= 8) {
+        dot = _mm256_add_ps(dot, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
+          x += 8;
+          y += 8;
+        }
+        // Sum all floats in dot register.
+        result = hsum256_ps_avx(dot);
       }
-      // Sum all floats in dot register.
-      const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(dot, 1), _mm256_castps256_ps128(dot));
-      const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
-      const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
-      result = _mm_cvtss_f32(x32);
-    }
-    // Don't forget the remaining values.
-    for (; i < f; i++) {
-      result += n->v[i] * y[i];
-    }
+      // Don't forget the remaining values.
+      for (; i > 0; i--) {
+        result += *x * *y;
+        x++;
+        y++;
+      }
     return result;
   }
 #endif
@@ -356,25 +373,24 @@ struct Minkowski {
 #ifdef USE_AVX
   template<typename S>
   static inline float margin(const Node<S, float>* n, const float* y, int f) {
+    const float *x = n->v;
     float result = n->a;
-    int i = 0;
+    int i = f;
     if (f > 7) {
       __m256 dot = _mm256_setzero_ps();
-      for (; i < f; i += 8) {
-        const __m256 a = _mm256_loadu_ps(n->v + i);
-        const __m256 b = _mm256_loadu_ps(y + i);
-        const __m256 a_mul_b = _mm256_mul_ps(a, b);
-        dot = _mm256_add_ps(dot, a_mul_b);
+      for (; i > 7; i -= 8) {
+        dot = _mm256_add_ps(dot, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
+        x += 8;
+        y += 8;
       }
       // Sum all floats in dot register.
-      const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(dot, 1), _mm256_castps256_ps128(dot));
-      const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
-      const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
-      result += _mm_cvtss_f32(x32);
+      result += hsum256_ps_avx(dot);
     }
     // Don't forget the remaining values.
-    for (; i < f; i++) {
-      result += n->v[i] * y[i];
+    for (; i > 0; i--) {
+      result += *x * *y;
+      x++;
+      y++;
     }
     return result;
   }
@@ -411,26 +427,24 @@ struct Euclidean : Minkowski{
 #ifdef USE_AVX
   static inline float distance(const float* x, const float* y, int f) {
     float result = 0;
-    int i = 0;
+    int i = f;
     if (f > 7) {
       __m256 euclidean = _mm256_setzero_ps();
-      for (; i < f; i += 8) {
-        const __m256 a = _mm256_loadu_ps(x + i);
-        const __m256 b = _mm256_loadu_ps(y + i);
-        const __m256 a_minus_b = _mm256_sub_ps(a, b);
-        const __m256 a_minus_b_sq = _mm256_mul_ps(a_minus_b, a_minus_b);
-        euclidean = _mm256_add_ps(euclidean, a_minus_b_sq);
+      for (; i > 7; i -= 8) {
+        const __m256 x_minus_y = _mm256_sub_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
+        euclidean = _mm256_add_ps(euclidean, _mm256_mul_ps(x_minus_y, x_minus_y));
+        x += 8;
+        y += 8;
       }
       // Sum all floats in euclidean register.
-      const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(euclidean, 1), _mm256_castps256_ps128(euclidean));
-      const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
-      const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
-      result = _mm_cvtss_f32(x32);
+      result = hsum256_ps_avx(euclidean);
     }
     // Don't forget the remaining values.
-    for (; i < f; i++) {
-      const float t = x[i] - y[i];
+    for (; i > 0; i--) {
+      const float t = *x - *y;
       result += t * t;
+      x++;
+      y++;
     }
     return result;
   }
