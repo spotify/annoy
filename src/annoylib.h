@@ -117,7 +117,7 @@ using std::numeric_limits;
 using std::make_pair;
 
 template<typename T>
-inline T get_norm(T* v, int f) {
+static inline T get_norm(T* v, int f) {
   T sq_norm = 0;
   for (int z = 0; z < f; z++)
     sq_norm += v[z] * v[z];
@@ -125,14 +125,14 @@ inline T get_norm(T* v, int f) {
 }
 
 template<typename T>
-inline void normalize(T* v, int f) {
+static inline void normalize(T* v, int f) {
   T norm = get_norm(v, f);
   for (int z = 0; z < f; z++)
     v[z] /= norm;
 }
 
 template<typename T, typename Random, typename Distance, typename Node>
-inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
+static inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
   /*
     This algorithm is a huge heuristic. Empirically it works really well, but I
     can't motivate it well. The basic idea is to keep two centroids and assign
@@ -167,6 +167,108 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
   }
 }
 
+#ifdef USE_AVX
+static inline float get_norm(float *v, int f) {
+  float sq_norm = 0;
+  int i = f;
+  if (f > 7) {
+    __m256 norm = _mm256_setzero_ps();
+    for (; i > 7; i -= 8) {
+      const __m256 v_v = _mm256_loadu_ps(v);
+      norm = _mm256_add_ps(norm, _mm256_mul_ps(v_v, v_v));
+      v += 8;
+    }
+    // Sum all floats in norm register.
+    sq_norm = hsum256_ps_avx(norm);
+  }
+  // Don't forget the remaining values.
+  for (; i > 0; i--) {
+    sq_norm += *v * *v;
+    v++;
+  }
+  return sqrt(sq_norm);
+}
+
+static inline void normalize(float *v, int f) {
+  float norm = get_norm(v, f);
+  __m256 v_norm = _mm256_set1_ps(norm);
+
+  int i = f;
+  for (; i > 7; i -= 8) {
+    _mm256_storeu_ps(v, _mm256_div_ps(_mm256_loadu_ps(v), v_norm));
+    v += 8;
+  }
+  // Don't forget the remaining values.
+  for (; i > 0; i--) {
+    *v /= norm;
+    v++;
+  }
+}
+
+template<typename T, typename Random, typename Distance, typename Node>
+static inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, float* iv, float* jv) {
+  static int iteration_steps = 200;
+  size_t count = nodes.size();
+
+  size_t i = random.index(count);
+  size_t j = random.index(count - 1);
+  j += (j >= i); // ensure that i != j
+  memcpy(iv, nodes[i]->v, f * sizeof(float));
+  memcpy(jv, nodes[j]->v, f * sizeof(float));
+  if (cosine) {
+    normalize(&iv[0], f);
+    normalize(&jv[0], f);
+  }
+
+  int ic = 1, jc = 1;
+  __m256 v_ic = _mm256_set1_ps(1), v_jc = _mm256_set1_ps(1);
+  __m256 one = _mm256_set1_ps(1);
+  for (int l = 0; l < iteration_steps; l++) {
+    size_t k = random.index(count);
+    float di = ic * Distance::distance(&iv[0], nodes[k]->v, f),
+      dj = jc * Distance::distance(&jv[0], nodes[k]->v, f);
+    float norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+    __m256 v_norm = _mm256_set1_ps(norm);
+    if (di < dj) {
+      int m = f;
+      float *f_iv = iv;
+      float *f_nv = nodes[k]->v;
+      for (; m > 7; m -= 8) {
+        _mm256_storeu_ps(f_iv, _mm256_div_ps(
+          _mm256_add_ps(_mm256_mul_ps(_mm256_loadu_ps(f_iv), v_ic), _mm256_div_ps(_mm256_loadu_ps(f_nv), v_norm)),
+          _mm256_add_ps(v_ic, one)));
+        f_iv += 8;
+        f_nv += 8;
+      }
+      for (; m > 0; m--) {
+        *f_iv = (*f_iv * ic + *f_nv / norm) / (ic + 1);
+        f_iv++;
+        f_nv++;
+      }
+      ic++;
+      v_ic = _mm256_add_ps(v_ic, one);
+    } else if (dj < di) {
+      int m = f;
+      float *f_jv = jv;
+      float *f_nv = nodes[k]->v;
+      for (; m > 7; m -= 8) {
+        _mm256_storeu_ps(f_jv, _mm256_div_ps(
+          _mm256_add_ps(_mm256_mul_ps(_mm256_loadu_ps(f_jv), v_jc), _mm256_div_ps(_mm256_loadu_ps(f_nv), v_norm)),
+          _mm256_add_ps(v_jc, one)));
+        f_jv += 8;
+        f_nv += 8;
+      }
+      for (; m > 0; m--) {
+        *f_jv = (*f_jv * jc + *f_nv / norm) / (jc + 1);
+        f_jv++;
+        f_nv++;
+      }
+      jc++;
+      v_jc = _mm256_add_ps(v_jc, one);
+    }
+  }
+}
+#endif
 
 struct Angular {
   template<typename S, typename T>
