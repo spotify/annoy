@@ -160,7 +160,38 @@ static inline void two_means(const vector<Node*>& nodes, int f, Random& random, 
   }
 }
 
+template<typename T>
+T dot(const T* x, const T* y, int f) {
+  T s = 0;
+  for (int z = 0; z < f; z++)
+    s += x[z] * y[z];
+  return s;
+}
+
+
 #ifdef USE_AVX
+template<>
+float dot<float>(const float* x, const float *y, int f) {
+  float result = 0;
+  if (f > 7) {
+    __m256 d = _mm256_setzero_ps();
+    for (; f > 7; f -= 8) {
+      d = _mm256_add_ps(d, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
+      x += 8;
+      y += 8;
+    }
+    // Sum all floats in dot register.
+    result += hsum256_ps_avx(d);
+  }
+  // Don't forget the remaining values.
+  for (; f > 0; f--) {
+    result += *x * *y;
+    x++;
+    y++;
+  }
+  return result;
+}
+
 static inline float get_norm(float *v, int f) {
   float sq_norm = 0;
   int i = f;
@@ -197,70 +228,6 @@ static inline void normalize(float *v, int f) {
     v++;
   }
 }
-
-template<typename T, typename Random, typename Distance, typename Node>
-static inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, float* iv, float* jv) {
-  static int iteration_steps = 200;
-  size_t count = nodes.size();
-
-  size_t i = random.index(count);
-  size_t j = random.index(count - 1);
-  j += (j >= i); // ensure that i != j
-  memcpy(iv, nodes[i]->v, f * sizeof(float));
-  memcpy(jv, nodes[j]->v, f * sizeof(float));
-  if (cosine) {
-    normalize(&iv[0], f);
-    normalize(&jv[0], f);
-  }
-
-  int ic = 1, jc = 1;
-  __m256 v_ic = _mm256_set1_ps(1), v_jc = _mm256_set1_ps(1);
-  __m256 one = _mm256_set1_ps(1);
-  for (int l = 0; l < iteration_steps; l++) {
-    size_t k = random.index(count);
-    float di = ic * Distance::distance(&iv[0], nodes[k]->v, f),
-      dj = jc * Distance::distance(&jv[0], nodes[k]->v, f);
-    float norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
-    __m256 v_norm = _mm256_set1_ps(norm);
-    if (di < dj) {
-      int m = f;
-      float *f_iv = iv;
-      float *f_nv = nodes[k]->v;
-      for (; m > 7; m -= 8) {
-        _mm256_storeu_ps(f_iv, _mm256_div_ps(
-          _mm256_add_ps(_mm256_mul_ps(_mm256_loadu_ps(f_iv), v_ic), _mm256_div_ps(_mm256_loadu_ps(f_nv), v_norm)),
-          _mm256_add_ps(v_ic, one)));
-        f_iv += 8;
-        f_nv += 8;
-      }
-      for (; m > 0; m--) {
-        *f_iv = (*f_iv * ic + *f_nv / norm) / (ic + 1);
-        f_iv++;
-        f_nv++;
-      }
-      ic++;
-      v_ic = _mm256_add_ps(v_ic, one);
-    } else if (dj < di) {
-      int m = f;
-      float *f_jv = jv;
-      float *f_nv = nodes[k]->v;
-      for (; m > 7; m -= 8) {
-        _mm256_storeu_ps(f_jv, _mm256_div_ps(
-          _mm256_add_ps(_mm256_mul_ps(_mm256_loadu_ps(f_jv), v_jc), _mm256_div_ps(_mm256_loadu_ps(f_nv), v_norm)),
-          _mm256_add_ps(v_jc, one)));
-        f_jv += 8;
-        f_nv += 8;
-      }
-      for (; m > 0; m--) {
-        *f_jv = (*f_jv * jc + *f_nv / norm) / (jc + 1);
-        f_jv++;
-        f_nv++;
-      }
-      jc++;
-      v_jc = _mm256_add_ps(v_jc, one);
-    }
-  }
-}
 #endif
 
 struct Angular {
@@ -289,81 +256,15 @@ struct Angular {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
     // = 2 - 2cos
-    T pp = 0, qq = 0, pq = 0;
-    for (int z = 0; z < f; z++, x++, y++) {
-      pp += (*x) * (*x);
-      qq += (*y) * (*y);
-      pq += (*x) * (*y);
-    }
+    T pp = dot(x, x, f), qq = dot(y, y, f), pq = dot(x, y, f);
     T ppqq = pp * qq;
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
-#ifdef USE_AVX
-  static float distance(const float *x, const float *y, int f) {
-    float pp = 0, qq = 0, pq = 0;
-    int i = f;
-    if (i > 7) {
-      __m256 pp_vec = _mm256_setzero_ps(), qq_vec = _mm256_setzero_ps(), pq_vec = _mm256_setzero_ps();
-      for (; i > 7; i -= 8) {
-        const __m256 a = _mm256_loadu_ps(x);
-        const __m256 b = _mm256_loadu_ps(y);
-        pp_vec = _mm256_add_ps(pp_vec, _mm256_mul_ps(a, a));
-        qq_vec = _mm256_add_ps(qq_vec, _mm256_mul_ps(b, b));
-        pq_vec = _mm256_add_ps(pq_vec, _mm256_mul_ps(a, b));
-        x += 8;
-        y += 8;
-      }
-      // Sum all floats in pp, qq and pq register.
-      pp = hsum256_ps_avx(pp_vec);
-      qq = hsum256_ps_avx(qq_vec);
-      pq = hsum256_ps_avx(pq_vec);
-    }
-    // Don't forget the remaining values.
-    for (; i > 0; i--) {
-      pp += *x * *x;
-      qq += *y * *y;
-      pq += *x * *y;
-      x++;
-      y++;
-    }
-    float ppqq = pp * qq;
-    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
-    else return 2.0; // cos is 0
-  }
-#endif
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    T dot = 0;
-    for (int z = 0; z < f; z++)
-      dot += n->v[z] * y[z];
-    return dot;
+    return dot(n->v, y, f);
   }
-#ifdef USE_AVX
-  template<typename S>
-  static inline float margin(const Node<S, float>* n, const float* y, int f) {
-    const float *x = n->v;
-    float result = 0;
-    int i = f;
-    if (f > 7) {
-      __m256 dot = _mm256_setzero_ps();
-      for (; i > 7; i -= 8) {
-        dot = _mm256_add_ps(dot, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
-        x += 8;
-        y += 8;
-      }
-      // Sum all floats in dot register.
-      result = hsum256_ps_avx(dot);
-    }
-    // Don't forget the remaining values.
-    for (; i > 0; i--) {
-      result += *x * *y;
-      x++;
-      y++;
-    }
-    return result;
-  }
-#endif
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
@@ -493,36 +394,8 @@ struct Minkowski {
   };
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    T dot = n->a;
-    for (int z = 0; z < f; z++)
-      dot += n->v[z] * y[z];
-    return dot;
+    return n->a + dot(n->v, y, f);
   }
-#ifdef USE_AVX
-  template<typename S>
-  static inline float margin(const Node<S, float>* n, const float* y, int f) {
-    const float *x = n->v;
-    float result = n->a;
-    int i = f;
-    if (f > 7) {
-      __m256 dot = _mm256_setzero_ps();
-      for (; i > 7; i -= 8) {
-        dot = _mm256_add_ps(dot, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
-        x += 8;
-        y += 8;
-      }
-      // Sum all floats in dot register.
-      result += hsum256_ps_avx(dot);
-    }
-    // Don't forget the remaining values.
-    for (; i > 0; i--) {
-      result += *x * *y;
-      x++;
-      y++;
-    }
-    return result;
-  }
-#endif
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     T dot = margin(n, y, f);
@@ -547,36 +420,8 @@ struct Minkowski {
 struct Euclidean : Minkowski{
   template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
-    T d = 0.0;
-    for (int i = 0; i < f; i++, x++, y++)
-      d += ((*x) - (*y)) * ((*x) - (*y));
-    return d;
+    return dot(x, x, f) + dot(y, y, f) - 2 * dot(x, y, f);
   }
-#ifdef USE_AVX
-  static inline float distance(const float* x, const float* y, int f) {
-    float result = 0;
-    int i = f;
-    if (f > 7) {
-      __m256 euclidean = _mm256_setzero_ps();
-      for (; i > 7; i -= 8) {
-        const __m256 x_minus_y = _mm256_sub_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
-        euclidean = _mm256_add_ps(euclidean, _mm256_mul_ps(x_minus_y, x_minus_y));
-        x += 8;
-        y += 8;
-      }
-      // Sum all floats in euclidean register.
-      result = hsum256_ps_avx(euclidean);
-    }
-    // Don't forget the remaining values.
-    for (; i > 0; i--) {
-      const float t = *x - *y;
-      result += t * t;
-      x++;
-      y++;
-    }
-    return result;
-  }
-#endif
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
     vector<T> best_iv(f, 0), best_jv(f, 0);
