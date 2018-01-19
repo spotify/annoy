@@ -161,7 +161,7 @@ static inline void two_means(const vector<Node*>& nodes, int f, Random& random, 
 }
 
 template<typename T>
-T dot(const T* x, const T* y, int f) {
+inline T dot(const T* x, const T* y, int f) {
   T s = 0;
   for (int z = 0; z < f; z++) {
     s += (*x) * (*y);
@@ -172,7 +172,7 @@ T dot(const T* x, const T* y, int f) {
 }
 
 template<typename T>
-void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
+inline void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
   // This function computes x*y as well as x*x and y*y at the same time
   *xx = 0;
   *yy = 0;
@@ -189,7 +189,7 @@ void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
 
 #ifdef USE_AVX
 template<>
-float dot<float>(const float* x, const float *y, int f) {
+inline float dot<float>(const float* x, const float *y, int f) {
   float result = 0;
   if (f > 7) {
     __m256 d = _mm256_setzero_ps();
@@ -211,7 +211,7 @@ float dot<float>(const float* x, const float *y, int f) {
 }
 
 template<>
-void dot3<float>(const float* x, const float *y, int f, float* xx, float* yy, float* xy) {
+inline void dot3<float>(const float* x, const float *y, int f, float* xx, float* yy, float* xy) {
   *xx = 0;
   *yy = 0;
   *xy = 0;
