@@ -72,13 +72,15 @@ typedef signed __int32    int32_t;
 #ifndef NO_MANUAL_VECTORIZATION
 #if defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
 #define USE_AVX
-#elif defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
-#define USE_SSE
 #endif
 #endif
 
-#if defined(USE_AVX) || defined(USE_SSE)
+#ifdef USE_AVX
+#if defined(_MSC_VER)
+#include <intrin.h>
+#elif defined(__GNUC__)
 #include <x86intrin.h>
+#endif
 #endif
 
 #ifdef USE_AVX
@@ -86,15 +88,6 @@ typedef signed __int32    int32_t;
 static inline float hsum256_ps_avx(__m256 v) {
   const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
   const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
-  const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
-  return _mm_cvtss_f32(x32);
-}
-#endif
-
-#ifdef USE_SSE
-// Horizontal single sum of 128bit vector.
-static inline float hsum_ps_sse3(__m128 v) {
-  const __m128 x64 = _mm_add_ps(v, _mm_movehl_ps(v, v));
   const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
   return _mm_cvtss_f32(x32);
 }
