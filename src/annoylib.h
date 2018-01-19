@@ -241,7 +241,8 @@ inline void dot3<float>(const float* x, const float *y, int f, float* xx, float*
   }
 }
 
-static inline float get_norm(float *v, int f) {
+template<>
+static inline float get_norm<float>(float *v, int f) {
   float sq_norm = 0;
   int i = f;
   if (f > 7) {
@@ -262,7 +263,8 @@ static inline float get_norm(float *v, int f) {
   return sqrt(sq_norm);
 }
 
-static inline void normalize(float *v, int f) {
+template<>
+static inline void normalize<float>(float *v, int f) {
   float norm = get_norm(v, f);
   __m256 v_norm = _mm256_set1_ps(norm);
 
