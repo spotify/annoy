@@ -163,9 +163,27 @@ static inline void two_means(const vector<Node*>& nodes, int f, Random& random, 
 template<typename T>
 T dot(const T* x, const T* y, int f) {
   T s = 0;
-  for (int z = 0; z < f; z++)
-    s += x[z] * y[z];
+  for (int z = 0; z < f; z++) {
+    s += (*x) * (*y);
+    x++;
+    y++;
+  }
   return s;
+}
+
+template<typename T>
+void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
+  // This function computes x*y as well as x*x and y*y at the same time
+  *xx = 0;
+  *yy = 0;
+  *xy = 0;
+  for (int z = 0; z < f; z++) {
+    *xx += (*x) * (*x);
+    *yy += (*y) * (*y);
+    *xy += (*x) * (*y);
+    x++;
+    y++;
+  }
 }
 
 
@@ -190,6 +208,37 @@ float dot<float>(const float* x, const float *y, int f) {
     y++;
   }
   return result;
+}
+
+template<>
+void dot3<float>(const float* x, const float *y, int f, float* xx, float* yy, float* xy) {
+  *xx = 0;
+  *yy = 0;
+  *xy = 0;
+  if (f > 7) {
+    __m256 xx_vec = _mm256_setzero_ps(), yy_vec = _mm256_setzero_ps(), xy_vec = _mm256_setzero_ps();
+    for (; f > 7; f -= 8) {
+      const __m256 a = _mm256_loadu_ps(x);
+      const __m256 b = _mm256_loadu_ps(y);
+      xx_vec = _mm256_add_ps(xx_vec, _mm256_mul_ps(a, a));
+      yy_vec = _mm256_add_ps(yy_vec, _mm256_mul_ps(b, b));
+      xy_vec = _mm256_add_ps(xy_vec, _mm256_mul_ps(a, b));
+      x += 8;
+      y += 8;
+    }
+    // Sum all floats in xx, yy and xy register.
+    *xx = hsum256_ps_avx(xx_vec);
+    *yy = hsum256_ps_avx(yy_vec);
+    *xy = hsum256_ps_avx(xy_vec);
+  }
+  // Don't forget the remaining values.
+  for (; f > 0; f--) {
+    *xx += (*x) * (*x);
+    *yy += (*y) * (*y);
+    *xy += (*x) * (*y);
+    x++;
+    y++;
+  }
 }
 
 static inline float get_norm(float *v, int f) {
@@ -256,7 +305,8 @@ struct Angular {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
     // = 2 - 2cos
-    T pp = dot(x, x, f), qq = dot(y, y, f), pq = dot(x, y, f);
+    T pp, qq, pq;
+    dot3(x, y, f, &pp, &qq, &pq);
     T ppqq = pp * qq;
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
@@ -420,7 +470,9 @@ struct Minkowski {
 struct Euclidean : Minkowski{
   template<typename T>
   static inline T distance(const T* x, const T* y, int f) {
-    return dot(x, x, f) + dot(y, y, f) - 2 * dot(x, y, f);
+    T pp, qq, pq;
+    dot3(x, y, f, &pp, &qq, &pq);
+    return pp + qq - 2*pq;
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
