@@ -53,7 +53,7 @@ else:
     cputune = []
 
 setup(name='annoy',
-      version='1.10.0',
+      version='1.11.1',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
