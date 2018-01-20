@@ -124,42 +124,6 @@ static inline void normalize(T* v, int f) {
     v[z] /= norm;
 }
 
-template<typename T, typename Random, typename Distance, typename Node>
-static inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
-  /*
-    This algorithm is a huge heuristic. Empirically it works really well, but I
-    can't motivate it well. The basic idea is to keep two centroids and assign
-    points to either one of them. We weight each centroid by the number of points
-    assigned to it, so to balance it. 
-  */
-  static int iteration_steps = 200;
-  size_t count = nodes.size();
-
-  size_t i = random.index(count);
-  size_t j = random.index(count-1);
-  j += (j >= i); // ensure that i != j
-  memcpy(iv, nodes[i]->v, f * sizeof(T));
-  memcpy(jv, nodes[j]->v, f * sizeof(T));
-  if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
-
-  int ic = 1, jc = 1;
-  for (int l = 0; l < iteration_steps; l++) {
-    size_t k = random.index(count);
-    T di = ic * Distance::distance(&iv[0], nodes[k]->v, f),
-      dj = jc * Distance::distance(&jv[0], nodes[k]->v, f);
-    T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
-    if (di < dj) {
-      for (int z = 0; z < f; z++)
-	iv[z] = (iv[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
-      ic++;
-    } else if (dj < di) {
-      for (int z = 0; z < f; z++)
-	jv[z] = (jv[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
-      jc++;
-    }
-  }
-}
-
 template<typename T>
 inline T dot(const T* x, const T* y, int f) {
   T s = 0;
@@ -280,6 +244,42 @@ static inline void normalize<float>(float *v, int f) {
   }
 }
 #endif
+
+template<typename T, typename Random, typename Distance, typename Node>
+static inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
+  /*
+    This algorithm is a huge heuristic. Empirically it works really well, but I
+    can't motivate it well. The basic idea is to keep two centroids and assign
+    points to either one of them. We weight each centroid by the number of points
+    assigned to it, so to balance it. 
+  */
+  static int iteration_steps = 200;
+  size_t count = nodes.size();
+
+  size_t i = random.index(count);
+  size_t j = random.index(count-1);
+  j += (j >= i); // ensure that i != j
+  memcpy(iv, nodes[i]->v, f * sizeof(T));
+  memcpy(jv, nodes[j]->v, f * sizeof(T));
+  if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
+
+  int ic = 1, jc = 1;
+  for (int l = 0; l < iteration_steps; l++) {
+    size_t k = random.index(count);
+    T di = ic * Distance::distance(&iv[0], nodes[k]->v, f),
+      dj = jc * Distance::distance(&jv[0], nodes[k]->v, f);
+    T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+    if (di < dj) {
+      for (int z = 0; z < f; z++)
+	iv[z] = (iv[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+      ic++;
+    } else if (dj < di) {
+      for (int z = 0; z < f; z++)
+	jv[z] = (jv[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+      jc++;
+    }
+  }
+}
 
 struct Angular {
   template<typename S, typename T>
