@@ -99,8 +99,10 @@ using std::pair;
 using std::numeric_limits;
 using std::make_pair;
 
+namespace {
+
 template<typename T>
-static inline T get_norm(T* v, int f) {
+inline T get_norm(T* v, int f) {
   T sq_norm = 0;
   for (int z = 0; z < f; z++)
     sq_norm += v[z] * v[z];
@@ -108,7 +110,7 @@ static inline T get_norm(T* v, int f) {
 }
 
 template<typename T>
-static inline void normalize(T* v, int f) {
+inline void normalize(T* v, int f) {
   T norm = get_norm(v, f);
   for (int z = 0; z < f; z++)
     v[z] /= norm;
@@ -143,7 +145,7 @@ inline void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
 
 #ifdef USE_AVX
 // Horizontal single sum of 256bit vector.
-static inline float hsum256_ps_avx(__m256 v) {
+inline float hsum256_ps_avx(__m256 v) {
   const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
   const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
   const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
@@ -204,7 +206,7 @@ inline void dot3<float>(const float* x, const float *y, int f, float* xx, float*
 }
 
 template<>
-static inline float get_norm<float>(float *v, int f) {
+inline float get_norm<float>(float *v, int f) {
   float sq_norm = 0;
   int i = f;
   if (f > 7) {
@@ -226,7 +228,7 @@ static inline float get_norm<float>(float *v, int f) {
 }
 
 template<>
-static inline void normalize<float>(float *v, int f) {
+inline void normalize<float>(float *v, int f) {
   float norm = get_norm(v, f);
   __m256 v_norm = _mm256_set1_ps(norm);
 
@@ -244,7 +246,7 @@ static inline void normalize<float>(float *v, int f) {
 #endif
 
 template<typename T, typename Random, typename Distance, typename Node>
-static inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
+inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
   /*
     This algorithm is a huge heuristic. Empirically it works really well, but I
     can't motivate it well. The basic idea is to keep two centroids and assign
@@ -278,6 +280,8 @@ static inline void two_means(const vector<Node*>& nodes, int f, Random& random, 
     }
   }
 }
+
+} // namespace
 
 struct Angular {
   template<typename S, typename T>
