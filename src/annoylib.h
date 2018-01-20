@@ -83,16 +83,6 @@ typedef signed __int32    int32_t;
 #endif
 #endif
 
-#ifdef USE_AVX
-// Horizontal single sum of 256bit vector.
-static inline float hsum256_ps_avx(__m256 v) {
-  const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
-  const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
-  const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
-  return _mm_cvtss_f32(x32);
-}
-#endif
-
 #ifndef ANNOY_NODE_ATTRIBUTE
     #ifndef _MSC_VER
         #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
@@ -152,6 +142,14 @@ inline void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
 
 
 #ifdef USE_AVX
+// Horizontal single sum of 256bit vector.
+static inline float hsum256_ps_avx(__m256 v) {
+  const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
+  const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
+  const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+  return _mm_cvtss_f32(x32);
+}
+
 template<>
 inline float dot<float>(const float* x, const float *y, int f) {
   float result = 0;
