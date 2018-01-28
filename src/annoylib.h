@@ -112,6 +112,14 @@ inline T dot(const T* x, const T* y, int f) {
   return s;
 }
 
+template<typename T>
+inline T manhattan_distance(const T* x, const T* y, int f) {
+  T d = 0.0;
+  for (int i = 0; i < f; i++)
+    d += fabs(x[i] - y[i]);
+  return d;
+}
+
 #ifdef USE_AVX
 // Horizontal single sum of 256bit vector.
 inline float hsum256_ps_avx(__m256 v) {
@@ -137,6 +145,32 @@ inline float dot<float>(const float* x, const float *y, int f) {
   // Don't forget the remaining values.
   for (; f > 0; f--) {
     result += *x * *y;
+    x++;
+    y++;
+  }
+  return result;
+}
+
+template<>
+inline float manhattan_distance<float>(const float* x, const float* y, int f) {
+  float result = 0;
+  int i = f;
+  if (f > 7) {
+    __m256 manhattan = _mm256_setzero_ps();
+    __m256 minus_zero = _mm256_set1_ps(-0.0f);
+    for (; i > 7; i -= 8) {
+      const __m256 x_minus_y = _mm256_sub_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
+      const __m256 distance = _mm256_andnot_ps(minus_zero, x_minus_y); // Absolute value of x_minus_y (forces sign bit to zero)
+      manhattan = _mm256_add_ps(manhattan, distance);
+      x += 8;
+      y += 8;
+    }
+    // Sum all floats in manhattan register.
+    result = hsum256_ps_avx(manhattan);
+  }
+  // Don't forget the remaining values.
+  for (; i > 0; i--) {
+    result += fabsf(*x - *y);
     x++;
     y++;
   }
@@ -443,10 +477,7 @@ struct Euclidean : Minkowski{
 struct Manhattan : Minkowski{
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    T d = 0.0;
-    for (int i = 0; i < f; i++)
-      d += fabs((x->v[i]) - (y->v[i]));
-    return d;
+    return manhattan_distance(x->v, y->v, f);
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
