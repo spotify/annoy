@@ -144,6 +144,8 @@ inline void dot3(const T* x, const T* y, int f, T* xx, T* yy, T* xy) {
 
 
 #ifdef USE_AVX
+#pragma message "Using AVX instructions for float operations"
+
 // Horizontal single sum of 256bit vector.
 inline float hsum256_ps_avx(__m256 v) {
   const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
@@ -243,6 +245,8 @@ inline void normalize<float>(float *v, int f) {
     v++;
   }
 }
+#else
+#pragma message "NOT USING AVX"
 #endif
 
 template<typename T, typename Random, typename Distance, typename Node>
