@@ -102,8 +102,7 @@ using std::numeric_limits;
 using std::make_pair;
 using std::mutex;
 
-mutex _node_mutex;
-mutex _roots_mutex;
+
 
 namespace {
 
@@ -558,6 +557,8 @@ protected:
   bool _loaded;
   bool _verbose;
   int _fd;
+  mutex _node_mutex;
+  mutex _roots_mutex;
 public:
 
   AnnoyIndex(int f) : _f(f), _random() {
@@ -613,11 +614,12 @@ public:
         if (_get(i)->n_descendants >= 1) // Issue #223
           indices.push_back(i);
       }
-      S tree = _make_tree(indices);
+      S tree = _make_tree(indices, true);
       _roots_thread.push_back(tree);
       // push to our shared roots vector
 	  _roots_mutex.lock();
       _roots->insert(_roots->end(), _roots_thread.begin(), _roots_thread.end());
+      printf("num roots %i", _roots->size());
 	  _roots_mutex.unlock();
     }
   }
@@ -788,6 +790,7 @@ protected:
 	  _node_mutex.lock();
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
+      printf("n_nodes: %i", _n_nodes);
 	  _node_mutex.unlock();
       Node* m = _get(item);
       m->n_descendants = (S)indices.size();
