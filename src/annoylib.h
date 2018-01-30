@@ -69,6 +69,19 @@ typedef signed __int32    int32_t;
 #define popcount __popcnt64
 #endif
 
+#ifndef NO_MANUAL_VECTORIZATION
+#if defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
+#define USE_AVX
+#endif
+#endif
+
+#ifdef USE_AVX
+#if defined(_MSC_VER)
+#include <intrin.h>
+#elif defined(__GNUC__)
+#include <x86intrin.h>
+#endif
+#endif
 
 #ifndef ANNOY_NODE_ATTRIBUTE
     #ifndef _MSC_VER
@@ -86,12 +99,90 @@ using std::pair;
 using std::numeric_limits;
 using std::make_pair;
 
+namespace {
+
+template<typename T>
+inline T dot(const T* x, const T* y, int f) {
+  T s = 0;
+  for (int z = 0; z < f; z++) {
+    s += (*x) * (*y);
+    x++;
+    y++;
+  }
+  return s;
+}
+
+template<typename T>
+inline T manhattan_distance(const T* x, const T* y, int f) {
+  T d = 0.0;
+  for (int i = 0; i < f; i++)
+    d += fabs(x[i] - y[i]);
+  return d;
+}
+
+#ifdef USE_AVX
+// Horizontal single sum of 256bit vector.
+inline float hsum256_ps_avx(__m256 v) {
+  const __m128 x128 = _mm_add_ps(_mm256_extractf128_ps(v, 1), _mm256_castps256_ps128(v));
+  const __m128 x64 = _mm_add_ps(x128, _mm_movehl_ps(x128, x128));
+  const __m128 x32 = _mm_add_ss(x64, _mm_shuffle_ps(x64, x64, 0x55));
+  return _mm_cvtss_f32(x32);
+}
+
+template<>
+inline float dot<float>(const float* x, const float *y, int f) {
+  float result = 0;
+  if (f > 7) {
+    __m256 d = _mm256_setzero_ps();
+    for (; f > 7; f -= 8) {
+      d = _mm256_add_ps(d, _mm256_mul_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y)));
+      x += 8;
+      y += 8;
+    }
+    // Sum all floats in dot register.
+    result += hsum256_ps_avx(d);
+  }
+  // Don't forget the remaining values.
+  for (; f > 0; f--) {
+    result += *x * *y;
+    x++;
+    y++;
+  }
+  return result;
+}
+
+template<>
+inline float manhattan_distance<float>(const float* x, const float* y, int f) {
+  float result = 0;
+  int i = f;
+  if (f > 7) {
+    __m256 manhattan = _mm256_setzero_ps();
+    __m256 minus_zero = _mm256_set1_ps(-0.0f);
+    for (; i > 7; i -= 8) {
+      const __m256 x_minus_y = _mm256_sub_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
+      const __m256 distance = _mm256_andnot_ps(minus_zero, x_minus_y); // Absolute value of x_minus_y (forces sign bit to zero)
+      manhattan = _mm256_add_ps(manhattan, distance);
+      x += 8;
+      y += 8;
+    }
+    // Sum all floats in manhattan register.
+    result = hsum256_ps_avx(manhattan);
+  }
+  // Don't forget the remaining values.
+  for (; i > 0; i--) {
+    result += fabsf(*x - *y);
+    x++;
+    y++;
+  }
+  return result;
+}
+
+#endif
+
+ 
 template<typename T>
 inline T get_norm(T* v, int f) {
-  T sq_norm = 0;
-  for (int z = 0; z < f; z++)
-    sq_norm += v[z] * v[z];
-  return sqrt(sq_norm);
+  return sqrt(dot(v, v, f));
 }
 
 template<typename T>
@@ -102,7 +193,7 @@ inline void normalize(T* v, int f) {
 }
 
 template<typename T, typename Random, typename Distance, typename Node>
-inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, T* iv, T* jv) {
+inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, Node* p, Node* q) {
   /*
     This algorithm is a huge heuristic. Empirically it works really well, but I
     can't motivate it well. The basic idea is to keep two centroids and assign
@@ -115,28 +206,33 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
   size_t i = random.index(count);
   size_t j = random.index(count-1);
   j += (j >= i); // ensure that i != j
-  memcpy(iv, nodes[i]->v, f * sizeof(T));
-  memcpy(jv, nodes[j]->v, f * sizeof(T));
-  if (cosine) { normalize(&iv[0], f); normalize(&jv[0], f); }
+  memcpy(p->v, nodes[i]->v, f * sizeof(T));
+  memcpy(q->v, nodes[j]->v, f * sizeof(T));
+  if (cosine) { normalize(p->v, f); normalize(q->v, f); }
+  Distance::init_node(p, f);
+  Distance::init_node(q, f);
 
   int ic = 1, jc = 1;
   for (int l = 0; l < iteration_steps; l++) {
     size_t k = random.index(count);
-    T di = ic * Distance::distance(&iv[0], nodes[k]->v, f),
-      dj = jc * Distance::distance(&jv[0], nodes[k]->v, f);
+    T di = ic * Distance::distance(p, nodes[k], f),
+      dj = jc * Distance::distance(q, nodes[k], f);
     T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
     if (di < dj) {
       for (int z = 0; z < f; z++)
-	iv[z] = (iv[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+	p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+      Distance::init_node(p, f);
       ic++;
     } else if (dj < di) {
       for (int z = 0; z < f; z++)
-	jv[z] = (jv[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+	q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+      Distance::init_node(q, f);
       jc++;
     }
   }
 }
 
+} // namespace
 
 struct Angular {
   template<typename S, typename T>
@@ -156,30 +252,27 @@ struct Angular {
      * more memory to be able to fit the vector outside
      */
     S n_descendants;
-    S children[2]; // Will possibly store more than 2
+    union {
+      S children[2]; // Will possibly store more than 2
+      T norm;
+    };
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
-  template<typename T>
-  static inline T distance(const T* x, const T* y, int f) {
+  template<typename S, typename T>
+  static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
     // = 2 - 2cos
-    T pp = 0, qq = 0, pq = 0;
-    for (int z = 0; z < f; z++, x++, y++) {
-      pp += (*x) * (*x);
-      qq += (*y) * (*y);
-      pq += (*x) * (*y);
-    }
+    T pp = x->norm ? x->norm : dot(x->v, x->v, f); // For backwards compatibility reasons, we need to fall back and compute the norm here
+    T qq = y->norm ? y->norm : dot(y->v, y->v, f);
+    T pq = dot(x->v, y->v, f);
     T ppqq = pp * qq;
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    T dot = 0;
-    for (int z = 0; z < f; z++)
-      dot += n->v[z] * y[z];
-    return dot;
+    return dot(n->v, y, f);
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
@@ -190,12 +283,15 @@ struct Angular {
       return random.flip();
   }
   template<typename S, typename T, typename Random>
-  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-    vector<T> best_iv(f, 0), best_jv(f, 0); // TODO: avoid allocation
-    two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, &best_iv[0], &best_jv[0]);
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
+    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
-      n->v[z] = best_iv[z] - best_jv[z];
+      n->v[z] = p->v[z] - q->v[z];
     normalize(n->v, f);
+    free(p);
+    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -214,13 +310,16 @@ struct Angular {
   static inline T pq_initial_value() {
     return numeric_limits<T>::infinity();
   }
+  template<typename S, typename T>
+  static inline void init_node(Node<S, T>* n, int f) {
+    n->norm = dot(n->v, n->v, f);
+  }
   static const char* name() {
     return "angular";
   }
 };
 
 struct Hamming {
-
   template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
@@ -239,11 +338,11 @@ struct Hamming {
   static inline T pq_initial_value() {
     return 0;
   }
-  template<typename T>
-  static inline T distance(const T* x, const T* y, int f) {
+  template<typename S, typename T>
+  static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     size_t dist = 0;
     for (int i = 0; i < f; i++) {
-      dist += popcount(x[i] ^ y[i]);
+      dist += popcount(x->v[i] ^ y->v[i]);
     }
     return dist;
   }
@@ -258,7 +357,7 @@ struct Hamming {
     return margin(n, y, f);
   }
   template<typename S, typename T, typename Random>
-  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     size_t cur_size = 0;
     size_t i = 0;
     for (; i < max_iterations; i++) {
@@ -295,6 +394,9 @@ struct Hamming {
   static inline T normalized_distance(T distance) {
     return distance;
   }
+  template<typename S, typename T>
+  static inline void init_node(Node<S, T>* n, int f) {
+  }
   static const char* name() {
     return "hamming";
   }
@@ -305,15 +407,15 @@ struct Minkowski {
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
-    S children[2];
+    union {
+      S children[2];
+      T norm;
+    };
     T v[1];
   };
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    T dot = n->a;
-    for (int z = 0; z < f; z++)
-      dot += n->v[z] * y[z];
-    return dot;
+    return n->a + dot(n->v, y, f);
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
@@ -337,28 +439,35 @@ struct Minkowski {
 
 
 struct Euclidean : Minkowski{
-  template<typename T>
-  static inline T distance(const T* x, const T* y, int f) {
-    T d = 0.0;
-    for (int i = 0; i < f; i++, x++, y++)
-      d += ((*x) - (*y)) * ((*x) - (*y));
-    return d;
+  template<typename S, typename T>
+  static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
+    T pp = x->norm ? x->norm : dot(x->v, x->v, f); // For backwards compatibility reasons, we need to fall back and compute the norm here
+    T qq = y->norm ? y->norm : dot(y->v, y->v, f);
+    T pq = dot(x->v, y->v, f);
+    return pp + qq - 2*pq;
   }
   template<typename S, typename T, typename Random>
-  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-    vector<T> best_iv(f, 0), best_jv(f, 0);
-    two_means<T, Random, Euclidean, Node<S, T> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
+    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    two_means<T, Random, Euclidean, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
-      n->v[z] = best_iv[z] - best_jv[z];
+      n->v[z] = p->v[z] - q->v[z];
     normalize(n->v, f);
     n->a = 0.0;
     for (int z = 0; z < f; z++)
-      n->a += -n->v[z] * (best_iv[z] + best_jv[z]) / 2;
+      n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
+    free(p);
+    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
     return sqrt(std::max(distance, T(0)));
+  }
+  template<typename S, typename T>
+  static inline void init_node(Node<S, T>* n, int f) {
+    n->norm = dot(n->v, n->v, f);
   }
   static const char* name() {
     return "euclidean";
@@ -366,28 +475,31 @@ struct Euclidean : Minkowski{
 };
 
 struct Manhattan : Minkowski{
-  template<typename T>
-  static inline T distance(const T* x, const T* y, int f) {
-    T d = 0.0;
-    for (int i = 0; i < f; i++, x++, y++)
-      d += fabs((*x) - (*y));
-    return d;
+  template<typename S, typename T>
+  static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
+    return manhattan_distance(x->v, y->v, f);
   }
   template<typename S, typename T, typename Random>
-  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
-    vector<T> best_iv(f, 0), best_jv(f, 0);
-    two_means<T, Random, Manhattan, Node<S, T> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
+    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    two_means<T, Random, Manhattan, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
-      n->v[z] = best_iv[z] - best_jv[z];
+      n->v[z] = p->v[z] - q->v[z];
     normalize(n->v, f);
     n->a = 0.0;
     for (int z = 0; z < f; z++)
-      n->a += -n->v[z] * (best_iv[z] + best_jv[z]) / 2;
+      n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
+    free(p);
+    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
     return std::max(distance, T(0));
+  }
+  template<typename S, typename T>
+  static inline void init_node(Node<S, T>* n, int f) {
   }
   static const char* name() {
     return "manhattan";
@@ -470,6 +582,7 @@ public:
 
     for (int z = 0; z < _f; z++)
       n->v[z] = w[z];
+    D::init_node(n, _f);
 
     if (item >= _n_items)
       _n_items = item + 1;
@@ -495,7 +608,7 @@ public:
           indices.push_back(i);
       }
 
-      _roots.push_back(_make_tree(indices));
+      _roots.push_back(_make_tree(indices, true));
     }
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
@@ -592,9 +705,7 @@ public:
   }
 
   T get_distance(S i, S j) {
-    const T* x = _get(i)->v;
-    const T* y = _get(j)->v;
-    return D::normalized_distance(D::distance(x, y, _f));
+    return D::normalized_distance(D::distance(_get(i), _get(j), _f));
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
@@ -638,8 +749,8 @@ protected:
     return (Node*)((uint8_t *)_nodes + (_s * i));
   }
 
-  S _make_tree(const vector<S >& indices) {
-    if (indices.size() == 1)
+  S _make_tree(const vector<S >& indices, bool is_root) {
+    if (indices.size() == 1 && !is_root)
       return indices[0];
 
     if (indices.size() <= (size_t)_K) {
@@ -665,7 +776,7 @@ protected:
 
     vector<S> children_indices[2];
     Node* m = (Node*)malloc(_s); // TODO: avoid
-    D::create_split(children, _f, _random, m);
+    D::create_split(children, _f, _s, _random, m);
 
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
@@ -700,7 +811,7 @@ protected:
     m->n_descendants = (S)indices.size();
     for (int side = 0; side < 2; side++)
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(children_indices[side^flip]);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], false);
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
@@ -711,6 +822,10 @@ protected:
   }
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+    Node* v_node = (Node *)malloc(_s); // TODO: avoid
+    memcpy(v_node->v, v, sizeof(T)*_f);
+    D::init_node(v_node, _f);
+
     std::priority_queue<pair<T, S> > q;
 
     if (search_k == (size_t)-1)
@@ -720,7 +835,7 @@ protected:
       q.push(make_pair(Distance::template pq_initial_value<T>(), _roots[i]));
     }
 
-    vector<S> nns;
+    std::vector<S> nns;
     while (nns.size() < search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
       T d = top.first;
@@ -749,7 +864,7 @@ protected:
       if (j == last)
         continue;
       last = j;
-      nns_dist.push_back(make_pair(D::distance(v, _get(j)->v, _f), j));
+      nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
     }
 
     size_t m = nns_dist.size();
@@ -760,6 +875,7 @@ protected:
         distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
+    free(v_node);
   }
 };
 
