@@ -790,7 +790,6 @@ protected:
 	  _node_mutex.lock();
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
-      printf("n_nodes: %i", _n_nodes);
 	  _node_mutex.unlock();
       Node* m = _get(item);
       m->n_descendants = (S)indices.size();
