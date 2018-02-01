@@ -99,6 +99,20 @@ using std::pair;
 using std::numeric_limits;
 using std::make_pair;
 
+inline void* remap_memory(void* _ptr, int _fd, size_t old_size, size_t new_size) {
+#ifdef __linux__
+  _ptr = mremap(_ptr, old_size, new_size, MREMAP_MAYMOVE);
+#else
+  munmap(_ptr, old_size);
+#ifdef MAP_POPULATE
+  _ptr = mmap(_ptr, new_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, _fd, 0);
+#else
+  _ptr = mmap(_ptr, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
+#endif
+#endif
+  return _ptr;
+}
+
 namespace {
 
 template<typename T>
@@ -523,6 +537,7 @@ class AnnoyIndexInterface {
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) = 0;
   virtual void set_seed(int q) = 0;
+  virtual bool on_disk_build(const char* filename) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random>
@@ -551,6 +566,7 @@ protected:
   bool _loaded;
   bool _verbose;
   int _fd;
+  bool _on_disk;
 public:
 
   AnnoyIndex(int f) : _f(f), _random() {
@@ -587,7 +603,24 @@ public:
     if (item >= _n_items)
       _n_items = item + 1;
   }
-
+    
+  bool on_disk_build(const char* file) {
+    _on_disk = true;
+    _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (_fd == -1) {
+      _fd = 0;
+      return false;
+    }
+    _nodes_size = 1;
+    ftruncate(_fd, _s * _nodes_size);
+#ifdef MAP_POPULATE
+    _nodes = (Node*) mmap(0, _s * _nodes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, _fd, 0);
+#else
+    _nodes = (Node*) mmap(0, _s * _nodes_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
+#endif
+    return true;
+  }
+    
   void build(int q) {
     if (_loaded) {
       // TODO: throw exception
@@ -618,6 +651,12 @@ public:
     _n_nodes += _roots.size();
 
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
+    
+    if (_on_disk) {
+      _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * _n_nodes);
+      ftruncate(_fd, _s * _n_nodes);
+      _nodes_size = _n_nodes;
+    }
   }
   
   void unbuild() {
@@ -631,15 +670,19 @@ public:
   }
 
   bool save(const char* filename) {
-    FILE *f = fopen(filename, "wb");
-    if (f == NULL)
-      return false;
+    if (_on_disk) {
+      return true;
+    } else {
+      FILE *f = fopen(filename, "wb");
+      if (f == NULL)
+        return false;
 
-    fwrite(_nodes, _s, _n_nodes, f);
-    fclose(f);
+      fwrite(_nodes, _s, _n_nodes, f);
+      fclose(f);
 
-    unload();
-    return load(filename);
+      unload();
+      return load(filename);
+    }
   }
 
   void reinitialize() {
@@ -649,18 +692,23 @@ public:
     _n_items = 0;
     _n_nodes = 0;
     _nodes_size = 0;
+    _on_disk = false;
     _roots.clear();
   }
 
   void unload() {
-    if (_fd) {
-      // we have mmapped data
+    if (_on_disk && _fd) {
       close(_fd);
-      off_t size = _n_nodes * _s;
-      munmap(_nodes, size);
-    } else if (_nodes) {
-      // We have heap allocated data
-      free(_nodes);
+      munmap(_nodes, _s * _nodes_size);
+    } else {
+      if (_fd) {
+        // we have mmapped data
+        close(_fd);
+        munmap(_nodes, _n_nodes * _s);
+      } else if (_nodes) {
+        // We have heap allocated data
+        free(_nodes);
+      }
     }
     reinitialize();
     if (_verbose) showUpdate("unloaded\n");
@@ -736,12 +784,19 @@ protected:
   void _allocate_size(S n) {
     if (n > _nodes_size) {
       const double reallocation_factor = 1.3;
-      S new_nodes_size = std::max(n,
-				  (S)((_nodes_size + 1) * reallocation_factor));
-      if (_verbose) showUpdate("Reallocating to %d nodes\n", new_nodes_size);
-      _nodes = realloc(_nodes, _s * new_nodes_size);
-      memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
+      S new_nodes_size = std::max(n, (S) ((_nodes_size + 1) * reallocation_factor));
+      void *old = _nodes;
+      
+      if (_on_disk) {
+        ftruncate(_fd, _s * new_nodes_size);
+        _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * new_nodes_size);
+      } else {
+        _nodes = realloc(_nodes, _s * new_nodes_size);
+        memset((char *) _nodes + (_nodes_size * _s) / sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
+      }
+      
       _nodes_size = new_nodes_size;
+      if (_verbose) showUpdate("Reallocating to %d nodes: old_address=%p, new_address=%p\n", new_nodes_size, old, _nodes);
     }
   }
 

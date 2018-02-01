@@ -30,7 +30,7 @@ Background
 
 There are some other libraries to do nearest neighbor search. Annoy is almost as fast as the fastest libraries, (see below), but there is actually another feature that really sets Annoy apart: it has the ability to **use static files as indexes**. In particular, this means you can **share index across processes**. Annoy also decouples creating indexes from loading them, so you can pass around indexes as files and map them into memory quickly. Another nice thing of Annoy is that it tries to minimize memory footprint so the indexes are quite small.
 
-Why is this useful? If you want to find nearest neighbors and you have many CPU's, you only need the RAM to fit the index once. You can also pass around and distribute static files to use in production environment, in Hadoop jobs, etc. Any process will be able to load (mmap) the index into memory and will be able to do lookups immediately.
+Why is this useful? If you want to find nearest neighbors and you have many CPU's, you only need to build the index once. You can also pass around and distribute static files to use in production environment, in Hadoop jobs, etc. Any process will be able to load (mmap) the index into memory and will be able to do lookups immediately.
 
 We use it at `Spotify <http://www.spotify.com/>`__ for music recommendations. After running matrix factorization algorithms, every user/item can be represented as a vector in f-dimensional space. This library helps us search for similar users/items. We have many millions of tracks in a high-dimensional space, so memory usage is a prime concern.
 
@@ -46,6 +46,7 @@ Summary of features
 * Lets you share memory between multiple processes
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
 * Native Python support, tested with 2.6, 2.7, 3.3, 3.4, 3.5
+* Build index on disk to enable indexing big datasets that won't fit into memory
 
 Python code example
 -------------------
@@ -86,6 +87,7 @@ Full Python API
 * ``a.get_item_vector(i)`` returns the vector for item ``i`` that was previously added.
 * ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``. NOTE: this used to return the *squared* distance, but has been changed as of Aug 2016.
 * ``a.get_n_items()`` returns the number of items in the index.
+* ``a.on_disk_build(fn)`` prepares annoy to build the index in the specified file instead of RAM (execute before adding items, no need to save after build)
 
 Notes:
 
