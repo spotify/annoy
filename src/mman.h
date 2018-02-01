@@ -217,7 +217,7 @@ int ftruncate(int fd, unsigned int size) {
 
     HANDLE h = (HANDLE)_get_osfhandle(fd);
     unsigned int cur = SetFilePointer(h, 0, NULL, FILE_CURRENT);
-    if (curpos == ~0 || SetFilePointer(h, size, NULL, FILE_BEGIN) == ~0 || !SetEndOfFile(h)) {
+    if (cur == ~0 || SetFilePointer(h, size, NULL, FILE_BEGIN) == ~0 || !SetEndOfFile(h)) {
         int error = GetLastError();
         switch (GetLastError()) {
             case ERROR_INVALID_HANDLE:
