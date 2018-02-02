@@ -100,7 +100,7 @@ public:
     _unpack(&v_internal[0], v);
   };
   void set_seed(int q) { _index.set_seed(q); };
-  bool on_disk_build(const char* filename) { _index.on_disk_build(filename); };
+  bool on_disk_build(const char* filename) { return _index.on_disk_build(filename); };
 };
 
 // annoy python object

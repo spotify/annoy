@@ -606,7 +606,7 @@ public:
     
   bool on_disk_build(const char* file) {
     _on_disk = true;
-    _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
     if (_fd == -1) {
       _fd = 0;
       return false;
