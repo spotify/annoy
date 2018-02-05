@@ -218,6 +218,9 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     T di = ic * Distance::distance(p, nodes[k], f),
       dj = jc * Distance::distance(q, nodes[k], f);
     T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+    if (!(norm > T(0))) {
+      continue;
+    }
     if (di < dj) {
       for (int z = 0; z < f; z++)
 	p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
