@@ -188,8 +188,10 @@ inline T get_norm(T* v, int f) {
 template<typename T>
 inline void normalize(T* v, int f) {
   T norm = get_norm(v, f);
-  for (int z = 0; z < f; z++)
-    v[z] /= norm;
+  if (norm > 0) {
+    for (int z = 0; z < f; z++)
+      v[z] /= norm;
+  }
 }
 
 template<typename T, typename Random, typename Distance, typename Node>
