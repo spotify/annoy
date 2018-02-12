@@ -73,6 +73,14 @@ class AnnoyIndexEuclidean : public AnnoyIndex {
   }
 };
 
+class AnnoyIndexChamming : public AnnoyIndex {
+ public:
+  AnnoyIndexChamming(int f) {
+    ptr = new ::AnnoyIndex<int32_t, float, ::Chamming, ::Kiss64Random>(f);
+    this->f = f;
+  }
+};
+
 class AnnoyIndexManhattan : public AnnoyIndex {
  public:
   AnnoyIndexManhattan(int f) {

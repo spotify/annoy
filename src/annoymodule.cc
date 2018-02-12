@@ -125,6 +125,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
   } else if (!strcmp(metric, "euclidean")) {
     self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
+  } else if (!strcmp(metric, "chamming")) {
+    self->ptr = new AnnoyIndex<int32_t, float, Chamming, Kiss64Random>(self->f);
   } else if (!strcmp(metric, "manhattan")) {
     self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
   } else if (!strcmp(metric, "hamming")) {
