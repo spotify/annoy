@@ -15,6 +15,8 @@
 import random
 from common import TestCase
 from annoy import AnnoyIndex
+from nose.plugins.skip import SkipTest
+
 
 class IndexTest(TestCase):
     def test_not_found_tree(self):
@@ -96,3 +98,18 @@ class IndexTest(TestCase):
 
     def test_metric_f_kwargs(self):
         i = AnnoyIndex(f=3, metric='euclidean')
+
+    @SkipTest
+    def test_item_vector_after_save(self):
+        # Issue #279
+        a = AnnoyIndex(3)
+        a.verbose(True)
+        a.add_item(1, [1, 0, 0])
+        a.add_item(2, [0, 1, 0])
+        a.add_item(3, [0, 0, 1])
+        a.build(-1)
+        self.assertEquals(a.get_n_items(), 4)
+        a.get_item_vector(3)
+        a.save('something.annoy')
+        self.assertEquals(a.get_n_items(), 4)
+        a.get_item_vector(3)
