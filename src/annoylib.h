@@ -336,7 +336,7 @@ struct Hamming {
 
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
-    return distance - (margin != (unsigned int) child_nr);
+    return distance + (margin == (unsigned int) child_nr);
   }
 
   template<typename T>
@@ -365,9 +365,10 @@ struct Hamming {
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     size_t cur_size = 0;
     size_t i = 0;
+    int dim = f * 8 * sizeof(T);
     for (; i < max_iterations; i++) {
       // choose random position to split at
-      n->v[0] = random.index(f);
+      n->v[0] = random.index(dim);
       cur_size = 0;
       for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
         if (margin(n, (*it)->v, f)) {
@@ -381,7 +382,7 @@ struct Hamming {
     // brute-force search for splitting coordinate
     if (i == max_iterations) {
       int j = 0;
-      for (; j < f; j++) {
+      for (; j < dim; j++) {
         n->v[0] = j;
         cur_size = 0;
 	for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
