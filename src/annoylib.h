@@ -336,12 +336,12 @@ struct Hamming {
 
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
-    return distance + (margin == (unsigned int) child_nr);
+    return distance - (margin != (unsigned int) child_nr);
   }
 
   template<typename T>
   static inline T pq_initial_value() {
-    return 0;
+    return numeric_limits<T>::max();
   }
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
