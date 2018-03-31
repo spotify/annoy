@@ -763,7 +763,7 @@ protected:
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
       Node* m = _get(item);
-      m->n_descendants = (S)indices.size();
+      m->n_descendants = is_root ? _n_items : (S)indices.size();
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
@@ -814,7 +814,7 @@ protected:
 
     int flip = (children_indices[0].size() > children_indices[1].size());
 
-    m->n_descendants = (S)indices.size();
+    m->n_descendants = is_root ? _n_items : (S)indices.size();
     for (int side = 0; side < 2; side++)
       // run _make_tree for the smallest child first (for cache locality)
       m->children[side^flip] = _make_tree(children_indices[side^flip], false);
