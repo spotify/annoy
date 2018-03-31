@@ -15,7 +15,6 @@
 import random
 from common import TestCase
 from annoy import AnnoyIndex
-from nose.plugins.skip import SkipTest
 
 
 class IndexTest(TestCase):
@@ -99,7 +98,6 @@ class IndexTest(TestCase):
     def test_metric_f_kwargs(self):
         i = AnnoyIndex(f=3, metric='euclidean')
 
-    @SkipTest
     def test_item_vector_after_save(self):
         # Issue #279
         a = AnnoyIndex(3)
