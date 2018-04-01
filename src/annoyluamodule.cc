@@ -117,10 +117,10 @@ public:
     return 0;
   }
 
-  static int build(lua_State* L) {
+  static int build(lua_State* L, int n_threads) {
     Impl* self = getAnnoy(L, 1);
     int n_trees = luaL_checkinteger(L, 2);
-    self->build(n_trees);
+    self->build(n_trees, n_threads);
     lua_pushboolean(L, true);
     return 1;
   }
