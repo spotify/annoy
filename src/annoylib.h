@@ -870,7 +870,8 @@ protected:
       if (j == last)
         continue;
       last = j;
-      nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
+      if (_get(j)->n_descendants == 1)  // This is only to guard a really obscure case, #284
+	nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
     }
 
     size_t m = nns_dist.size();
