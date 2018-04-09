@@ -14,11 +14,11 @@ install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 
 build_script:
-  - "pip install numpy h5py cibuildwheel"
+  - "pip install numpy h5py wheel"
   - "python setup.py build"
 
 test_script:
   - "python setup.py nosetests"
 
 after_test:
-  - "cibuildwheel --output-dir wheelhouse"
+  - "python setup.py bdist_wheel"
