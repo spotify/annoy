@@ -48,6 +48,7 @@ typedef signed __int32    int32_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
+#include <utility>
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -522,12 +523,12 @@ class AnnoyIndexInterface {
   virtual bool save(const char* filename) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename) = 0;
-  virtual T get_distance(S i, S j) = 0;
-  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
-  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
-  virtual S get_n_items() = 0;
+  virtual T get_distance(S i, S j) const = 0;
+  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
+  virtual S get_n_items() const = 0;
   virtual void verbose(bool v) = 0;
-  virtual void get_item(S item, T* v) = 0;
+  virtual void get_item(S item, T* v) const = 0;
   virtual void set_seed(int q) = 0;
 };
 
@@ -610,7 +611,7 @@ public:
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
-	if (_get(i)->n_descendants >= 1) // Issue #223
+	      if (_get(i)->n_descendants >= 1) // Issue #223
           indices.push_back(i);
       }
 
@@ -710,26 +711,26 @@ public:
     return true;
   }
 
-  T get_distance(S i, S j) {
+  T get_distance(S i, S j) const {
     return D::normalized_distance(D::distance(_get(i), _get(j), _f));
   }
 
-  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     const Node* m = _get(item);
     _get_all_nns(m->v, n, search_k, result, distances);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     _get_all_nns(w, n, search_k, result, distances);
   }
-  S get_n_items() {
+  S get_n_items() const {
     return _n_items;
   }
   void verbose(bool v) {
     _verbose = v;
   }
 
-  void get_item(S item, T* v) {
+  void get_item(S item, T* v) const {
     Node* m = _get(item);
     memcpy(v, m->v, _f * sizeof(T));
   }
@@ -751,41 +752,43 @@ protected:
     }
   }
 
-  inline Node* _get(S i) {
+  inline Node* _get(S i) const {
     return (Node*)((uint8_t *)_nodes + (_s * i));
   }
 
   S _make_tree(const vector<S >& indices, bool is_root) {
-    if (indices.size() == 1 && !is_root)
+    size_t const isz = indices.size();
+    if (isz == 1 && !is_root)
       return indices[0];
 
-    if (indices.size() <= (size_t)_K) {
+    if (isz <= (size_t)_K) {
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
       Node* m = _get(item);
-      m->n_descendants = is_root ? _n_items : (S)indices.size();
+      m->n_descendants = is_root ? _n_items : (S)isz;
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
       // Using memcpy instead of std::copy for MSVC compatibility. #235
-      memcpy(m->children, &indices[0], indices.size() * sizeof(S));
+      memcpy(m->children, &indices[0], isz * sizeof(S));
       return item;
     }
 
     vector<Node*> children;
-    for (size_t i = 0; i < indices.size(); i++) {
-      S j = indices[i];
+    children.reserve(isz);
+    for (S j : indices) {
       Node* n = _get(j);
       if (n)
         children.push_back(n);
     }
 
     vector<S> children_indices[2];
+    children_indices[0].reserve(isz);
+    children_indices[1].reserve(isz);
     Node* m = (Node*)malloc(_s); // TODO: avoid
     D::create_split(children, _f, _s, _random, m);
 
-    for (size_t i = 0; i < indices.size(); i++) {
-      S j = indices[i];
+    for (S j : indices) {
       Node* n = _get(j);
       if (n) {
         bool side = D::side(m, n->v, _f, _random);
@@ -795,18 +798,16 @@ protected:
 
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
-      if (_verbose && indices.size() > 100000)
+      if (_verbose && isz > 100000)
         showUpdate("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
 
       // Set the vector to 0.0
-      for (int z = 0; z < _f; z++)
-        m->v[z] = 0.0;
+      memset(m->v, 0, _f * sizeof(T));
 
-      for (size_t i = 0; i < indices.size(); i++) {
-        S j = indices[i];
+      for (S j : indices) {
         // Just randomize...
         children_indices[_random.flip()].push_back(j);
       }
@@ -827,21 +828,30 @@ protected:
     return item;
   }
 
-  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     Node* v_node = (Node *)malloc(_s); // TODO: avoid
     memcpy(v_node->v, v, sizeof(T)*_f);
     D::init_node(v_node, _f);
 
-    std::priority_queue<pair<T, S> > q;
+    typedef std::pair<T, S> qpair_t;
+    typedef std::vector<qpair_t> qvector_t;
+
+    size_t const roots_size = _roots.size();
 
     if (search_k == (size_t)-1)
-      search_k = n * _roots.size(); // slightly arbitrary default value
+      search_k = n * roots_size; // slightly arbitrary default value
 
-    for (size_t i = 0; i < _roots.size(); i++) {
-      q.push(make_pair(Distance::template pq_initial_value<T>(), _roots[i]));
+    qvector_t qvector;
+    qvector.reserve(roots_size); // prealloc queue
+
+    std::priority_queue<qpair_t, qvector_t> q( std::less<qpair_t>(), std::move(qvector) );
+
+    for ( S r : _roots ) {
+      q.emplace(Distance::template pq_initial_value<T>(), r);
     }
 
     std::vector<S> nns;
+    nns.reserve(search_k);
     while (nns.size() < search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
       T d = top.first;
@@ -855,8 +865,8 @@ protected:
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
         T margin = D::margin(nd, v, _f);
-        q.push(make_pair(D::pq_distance(d, margin, 1), nd->children[1]));
-        q.push(make_pair(D::pq_distance(d, margin, 0), nd->children[0]));
+        q.emplace(D::pq_distance(d, margin, 1), nd->children[1]);
+        q.emplace(D::pq_distance(d, margin, 0), nd->children[0]);
       }
     }
 
@@ -864,20 +874,23 @@ protected:
     // To avoid calculating distance multiple times for any items, sort by id
     sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
+    nns_dist.reserve(nns.size());
     S last = -1;
-    for (size_t i = 0; i < nns.size(); i++) {
-      S j = nns[i];
+    for (S j : nns) {
       if (j == last)
         continue;
       last = j;
-      if (_get(j)->n_descendants == 1)  // This is only to guard a really obscure case, #284
-	nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
+      Node const *nd = _get(j);
+      if (nd->n_descendants == 1)  // This is only to guard a really obscure case, #284
+	      nns_dist.emplace_back(D::distance(v_node, nd, _f), j);
     }
 
     size_t m = nns_dist.size();
-    size_t p = n < m ? n : m; // Return this many items
-    std::partial_sort(nns_dist.begin(), nns_dist.begin() + p, nns_dist.end());
-    for (size_t i = 0; i < p; i++) {
+    if( n < m ) // Has more than N results, so get only top N
+      std::partial_sort(nns_dist.begin(), nns_dist.begin() + n, nns_dist.end());
+    else
+      std::sort(nns_dist.begin(), nns_dist.end());
+    for (size_t i = 0, p = std::min(p, n); i < p; i++) {
       if (distances)
         distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
