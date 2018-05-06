@@ -46,7 +46,7 @@ class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
 private:
   int32_t _f_external, _f_internal;
   AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random> _index;
-  void _pack(const float* src, uint64_t* dst) {
+  void _pack(const float* src, uint64_t* dst) const {
     for (int32_t i = 0; i < _f_internal; i++) {
       dst[i] = 0;
       for (int32_t j = 0; j < 64 && i*64+j < _f_external; j++) {
@@ -54,7 +54,7 @@ private:
       }
     }
   };
-  void _unpack(const uint64_t* src, float* dst) {
+  void _unpack(const uint64_t* src, float* dst) const {
     for (int32_t i = 0; i < _f_external; i++) {
       dst[i] = (src[i / 64] >> (i % 64)) & 1;
     }
