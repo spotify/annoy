@@ -71,8 +71,8 @@ public:
   bool save(const char* filename) { return _index.save(filename); };
   void unload() { _index.unload(); };
   bool load(const char* filename) { return _index.load(filename); };
-  float get_distance(int32_t i, int32_t j) { return _index.get_distance(i, j); };
-  void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
+  float get_distance(int32_t i, int32_t j) const { return _index.get_distance(i, j); };
+  void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) const {
     if (distances) {
       vector<uint64_t> distances_internal;
       _index.get_nns_by_item(item, n, search_k, result, &distances_internal);
@@ -81,7 +81,7 @@ public:
       _index.get_nns_by_item(item, n, search_k, result, NULL);
     }
   };
-  void get_nns_by_vector(const float* w, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
+  void get_nns_by_vector(const float* w, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) const {
     vector<uint64_t> w_internal(_f_internal, 0);
     _pack(w, &w_internal[0]);
     if (distances) {
@@ -92,7 +92,7 @@ public:
       _index.get_nns_by_vector(&w_internal[0], n, search_k, result, NULL);
     }
   };
-  int32_t get_n_items() { return _index.get_n_items(); };
+  int32_t get_n_items() const { return _index.get_n_items(); };
   void verbose(bool v) { _index.verbose(v); };
   void get_item(int32_t item, float* v) {
     vector<uint64_t> v_internal(_f_internal, 0);
