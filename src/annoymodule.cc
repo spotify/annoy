@@ -94,7 +94,7 @@ public:
   };
   int32_t get_n_items() const { return _index.get_n_items(); };
   void verbose(bool v) { _index.verbose(v); };
-  void get_item(int32_t item, float* v) {
+  void get_item(int32_t item, float* v) const {
     vector<uint64_t> v_internal(_f_internal, 0);
     _index.get_item(item, &v_internal[0]);
     _unpack(&v_internal[0], v);
