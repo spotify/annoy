@@ -47,7 +47,7 @@ if platform.machine() == "ppc64le":
     cputune = ['-mcpu=native',]
 
 if os.name != 'nt':
-    compile_args = ['-O3', '-ffast-math', '-fno-associative-math']
+    compile_args = ['-O3', '-ffast-math', '-fno-associative-math', '-std=c++11']
 else:
     compile_args = []
     cputune = []
