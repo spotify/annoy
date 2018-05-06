@@ -783,8 +783,8 @@ protected:
     }
 
     vector<S> children_indices[2];
-    children_indices[0].reserve(isz);
-    children_indices[1].reserve(isz);
+    children_indices[0].reserve(isz / 2 + 1);
+    children_indices[1].reserve(isz / 2 + 1);
     Node* m = (Node*)malloc(_s); // TODO: avoid
     D::create_split(children, _f, _s, _random, m);
 
@@ -797,7 +797,7 @@ protected:
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
-    while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
+    while (children_indices[0].empty() || children_indices[1].empty()) {
       if (_verbose && isz > 100000)
         showUpdate("Failed splitting %lu items\n", indices.size());
 
@@ -890,7 +890,7 @@ protected:
       std::partial_sort(nns_dist.begin(), nns_dist.begin() + n, nns_dist.end());
     else
       std::sort(nns_dist.begin(), nns_dist.end());
-    for (size_t i = 0, p = std::min(p, n); i < p; i++) {
+    for (size_t i = 0, p = std::min(m, n); i < p; i++) {
       if (distances)
         distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
