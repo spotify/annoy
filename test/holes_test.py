@@ -19,8 +19,8 @@ from annoy import AnnoyIndex
 
 
 class HolesTest(TestCase):
-    # See https://github.com/spotify/annoy/issues/223
     def test_holes(self):
+        # See https://github.com/spotify/annoy/issues/223
         f = 10
         index = AnnoyIndex(f)
         index.add_item(1000, numpy.random.normal(size=(f,)))
@@ -45,3 +45,14 @@ class HolesTest(TestCase):
             js = index.get_nns_by_vector(v, 10000)
             for j in js:
                 self.assertTrue(j in valid_indices)
+
+    def test_holes_even_more(self):
+        # See https://github.com/spotify/annoy/issues/295
+        annoy = AnnoyIndex(100)
+        base_i, n = 100000, 10
+        for i in range(n):
+            annoy.add_item(base_i + i, [random.gauss(0, 1) for z in range(100)])
+        annoy.build(100)
+        res = annoy.get_nns_by_item(base_i, i)
+        self.assertEquals(len(res), n)
+        self.assertEquals(res, set([base_i + i for i in range(n)]))
