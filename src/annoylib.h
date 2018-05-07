@@ -757,10 +757,15 @@ protected:
 
   S _make_tree(const vector<S >& indices, bool is_root) {
     size_t const isz = indices.size();
+    // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
+    // There's some regrettable complications caused by the problem that root nodes have to be "special":
+    // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
+    // 2. Root nodes with only 1 child need to be a "dummy" parent
+    // 3. Due to the _n_items "hack", we need to be careful with the cases where _n_items <= _K or _n_items > _K
     if (isz == 1 && !is_root)
       return indices[0];
 
-    if (isz <= (size_t)_K) {
+    if (isz <= (size_t)_K && (!is_root || _n_items <= (size_t)_K || isz == 1)) {
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
       Node* m = _get(item);
