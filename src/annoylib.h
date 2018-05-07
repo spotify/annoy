@@ -48,7 +48,6 @@ typedef signed __int32    int32_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
-#include <utility>
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -842,7 +841,7 @@ protected:
       search_k = n * roots_size; // slightly arbitrary default value
 
     qvector_t qvector;
-    qvector.reserve(roots_size); // prealloc queue
+    qvector.reserve(search_k); // prealloc queue
 
     std::priority_queue<qpair_t, qvector_t> q( std::less<qpair_t>(), std::move(qvector) );
 
