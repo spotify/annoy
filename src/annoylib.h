@@ -759,7 +759,7 @@ protected:
     if (indices.size() == 1 && !is_root)
       return indices[0];
 
-    if (indices.size() <= (size_t)_K) {
+    if (indices.size() <= (size_t)_K && !is_root) {
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
       Node* m = _get(item);

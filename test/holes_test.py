@@ -53,6 +53,5 @@ class HolesTest(TestCase):
         for i in range(n):
             annoy.add_item(base_i + i, [random.gauss(0, 1) for z in range(100)])
         annoy.build(100)
-        res = annoy.get_nns_by_item(base_i, i)
-        self.assertEquals(len(res), n)
-        self.assertEquals(res, set([base_i + i for i in range(n)]))
+        res = annoy.get_nns_by_item(base_i, n)
+        self.assertEquals(set(res), set([base_i + i for i in range(n)]))
