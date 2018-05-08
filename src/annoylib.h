@@ -480,6 +480,35 @@ struct Euclidean : Minkowski{
   }
 };
 
+struct Chamming : Minkowski{
+  template<typename T>
+  static inline T distance(const T* x, const T* y, int f) {
+    T d = 0.0;
+    for (int i = 0; i < f; i++, x++, y++)
+      d += ((*x) != (*y));
+    return d;
+  }
+  template<typename S, typename T, typename Random>
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, Random& random, Node<S, T>* n) {
+    vector<T> best_iv(f, 0), best_jv(f, 0);
+    two_means<T, Random, Chamming, Node<S, T> >(nodes, f, random, false, &best_iv[0], &best_jv[0]);
+
+    for (int z = 0; z < f; z++)
+      n->v[z] = best_iv[z] - best_jv[z];
+    normalize(n->v, f);
+    n->a = 0.0;
+    for (int z = 0; z < f; z++)
+      n->a += -n->v[z] * (best_iv[z] + best_jv[z]) / 2;
+  }
+  template<typename T>
+  static inline T normalized_distance(T distance) {
+    return std::max(distance, T(0));
+  }
+  static const char* name() {
+    return "chamming";
+  }
+};
+
 struct Manhattan : Minkowski{
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
