@@ -845,8 +845,11 @@ protected:
     if (search_k == (size_t)-1)
       search_k = n * roots_size; // slightly arbitrary default value
 
+    // reduce prealloc(maybe user give us wrong values?)
+    search_k = std::min(search_k, roots_size * 128);
+    
     qvector_t qvector;
-    qvector.reserve(std::min(search_k, roots_size * 128)); // prealloc queue
+    qvector.reserve(search_k); // prealloc queue
 
     std::priority_queue<qpair_t, qvector_t> q( std::less<qpair_t>(), std::move(qvector) );
 
