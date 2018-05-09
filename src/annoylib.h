@@ -846,10 +846,10 @@ protected:
       search_k = n * roots_size; // slightly arbitrary default value
 
     // reduce prealloc(maybe user give us wrong values?)
-    search_k = std::min(search_k, roots_size * 128);
-    
+    size_t const prealloc = std::min(search_k, roots_size * 128);
+
     qvector_t qvector;
-    qvector.reserve(search_k); // prealloc queue
+    qvector.reserve(prealloc); // prealloc queue
 
     std::priority_queue<qpair_t, qvector_t> q( std::less<qpair_t>(), std::move(qvector) );
 
@@ -858,7 +858,7 @@ protected:
     }
 
     std::vector<S> nns;
-    nns.reserve(search_k);
+    nns.reserve(prealloc);
     while (nns.size() < search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
       T d = top.first;
