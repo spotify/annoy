@@ -806,7 +806,7 @@ protected:
       children_indices[0].clear();
       children_indices[1].clear();
 
-      // Set the vector to 0.0
+      // try find new split for better hyperplane
       D::create_split(children, _f, _s, _random, m);
 
       for (size_t i = 0; i < indices.size(); i++) {
