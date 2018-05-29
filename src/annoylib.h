@@ -292,9 +292,11 @@ struct Angular {
     Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
     Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
+    normalize(p->v, f);
+    normalize(q->v, f);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
-    normalize(n->v, f);
+    // normalize(n->v, f);
     free(p);
     free(q);
   }
