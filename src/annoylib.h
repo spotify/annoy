@@ -101,6 +101,11 @@ using std::make_pair;
 
 namespace {
 
+template<typename S, typename Node>
+inline Node* get_node_ptr(const void* _nodes, const size_t _s, const S i) {
+  return (Node*)((uint8_t *)_nodes + (_s * i));
+}
+
 template<typename T>
 inline T dot(const T* x, const T* y, int f) {
   T s = 0;
@@ -210,6 +215,7 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
   j += (j >= i); // ensure that i != j
   memcpy(p->v, nodes[i]->v, f * sizeof(T));
   memcpy(q->v, nodes[j]->v, f * sizeof(T));
+
   if (cosine) { normalize(p->v, f); normalize(q->v, f); }
   Distance::init_node(p, f);
   Distance::init_node(q, f);
@@ -236,10 +242,20 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     }
   }
 }
-
 } // namespace
 
-struct Angular {
+struct Base {
+  static inline int internal_dimensions() {
+    return 0;
+  }
+
+  template<typename T, typename S, typename Node>
+  static inline void preprocess(void* nodes, size_t _s, const S node_count, const int f) {
+
+  }
+};
+
+struct Angular : Base {
   template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     /*
@@ -324,7 +340,65 @@ struct Angular {
   }
 };
 
-struct Hamming {
+
+struct DotProduct : Angular {
+  static const char* name() {
+    return "dot";
+  }
+
+  static inline int internal_dimensions() {
+    return 1;
+  }
+
+  template<typename S, typename T>
+  static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
+    return -dot(x->v, y->v, f);
+  }
+
+  template<typename T>
+  static inline T normalized_distance(T distance) {
+    return distance;
+  }
+
+  template<typename T, typename S, typename Node>
+  static inline void preprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    // Step one: compute the norm of each vector and store that in its extra dimension (f-1)
+    for (S i = 0; i < node_count; i++) {
+      Node* node = get_node_ptr<S, Node>(nodes, _s, i);
+      T norm = sqrt(dot(node->v, node->v, f - 1));
+      if (isnan(norm)) norm = 0;
+      node->v[f - 1] = norm;
+    }
+
+    // Step two: find the maximum norm
+    T max_norm = 0;
+    for (S i = 0; i < node_count; i++) {
+      Node* node = get_node_ptr<S, Node>(nodes, _s, i);
+      if (node->v[f - 1] > max_norm) {
+        max_norm = node->v[f - 1];
+      }
+    }
+
+    // Step three: set each vector's extra dimension to sqrt(max_norm^2 - norm^2)
+    for (S i = 0; i < node_count; i++) {
+      Node* node = get_node_ptr<S, Node>(nodes, _s, i);
+      T node_norm = node->v[f - 1];
+
+      T extra_dimension = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
+      if (isnan(extra_dimension)) extra_dimension = 0;
+
+      node->v[f - 1] = extra_dimension;
+
+      Angular::init_node(node, f);
+    }
+  }
+
+  static inline int default_search_k_multiplier() {
+    return 50;
+  }
+};
+
+struct Hamming : Base {
   template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
@@ -408,7 +482,8 @@ struct Hamming {
   }
 };
 
-struct Minkowski {
+
+struct Minkowski : Base {
   template<typename S, typename T>
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
@@ -444,7 +519,7 @@ struct Minkowski {
 };
 
 
-struct Euclidean : Minkowski{
+struct Euclidean : Minkowski {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     T pp = x->norm ? x->norm : dot(x->v, x->v, f); // For backwards compatibility reasons, we need to fall back and compute the norm here
@@ -478,9 +553,10 @@ struct Euclidean : Minkowski{
   static const char* name() {
     return "euclidean";
   }
+
 };
 
-struct Manhattan : Minkowski{
+struct Manhattan : Minkowski {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     return manhattan_distance(x->v, y->v, f);
@@ -559,10 +635,10 @@ protected:
   int _fd;
 public:
 
-  AnnoyIndex(int f) : _f(f), _random() {
-    _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
+  AnnoyIndex(int f) : _f(f + D::internal_dimensions()), _random() {
+    _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
-    _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
+    _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S)); // Max number of descendants to fit into node
     reinitialize(); // Reset everything
   }
   ~AnnoyIndex() {
@@ -570,7 +646,7 @@ public:
   }
 
   int get_f() const {
-    return _f;
+    return _f - D::internal_dimensions();
   }
 
   void add_item(S item, const T* w) {
@@ -586,7 +662,8 @@ public:
     n->children[1] = 0;
     n->n_descendants = 1;
 
-    for (int z = 0; z < _f; z++)
+    memset(n->v, 0, _f * sizeof(T));
+    for (int z = 0; z < (_f - D::internal_dimensions()); z++)
       n->v[z] = w[z];
     D::init_node(n, _f);
 
@@ -600,6 +677,9 @@ public:
       showUpdate("You can't build a loaded index\n");
       return;
     }
+
+    D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
+
     _n_nodes = _n_items;
     while (1) {
       if (q == -1 && _n_nodes >= _n_items * 2)
@@ -610,12 +690,13 @@ public:
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
-	if (_get(i)->n_descendants >= 1) // Issue #223
+	      if (_get(i)->n_descendants >= 1) // Issue #223
           indices.push_back(i);
       }
 
       _roots.push_back(_make_tree(indices, true));
     }
+
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
     _allocate_size(_n_nodes + (S)_roots.size());
@@ -663,7 +744,7 @@ public:
       // we have mmapped data
       close(_fd);
       off_t size = _n_nodes * _s;
-      munmap(_nodes, size);
+      munmap(_nodes, (size_t) size);
     } else if (_nodes) {
       // We have heap allocated data
       free(_nodes);
@@ -681,10 +762,10 @@ public:
     off_t size = lseek(_fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
+        0, (size_t) size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
     _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED, _fd, 0);
+        0, (size_t) size, PROT_READ, MAP_SHARED, _fd, 0);
 #endif
 
     _n_nodes = (S)(size / _s);
@@ -711,7 +792,7 @@ public:
   }
 
   T get_distance(S i, S j) {
-    return D::normalized_distance(D::distance(_get(i), _get(j), _f));
+    return D::normalized_distance(D::distance(_get(i), _get(j), _f - D::internal_dimensions()));
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
@@ -731,7 +812,7 @@ public:
 
   void get_item(S item, T* v) {
     Node* m = _get(item);
-    memcpy(v, m->v, _f * sizeof(T));
+    memcpy(v, m->v, (_f - D::internal_dimensions()) * sizeof(T));
   }
 
   void set_seed(int seed) {
@@ -751,8 +832,8 @@ protected:
     }
   }
 
-  inline Node* _get(S i) {
-    return (Node*)((uint8_t *)_nodes + (_s * i));
+  inline Node* _get(const S i) {
+    return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
   S _make_tree(const vector<S >& indices, bool is_root) {
@@ -781,8 +862,9 @@ protected:
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
       Node* n = _get(j);
-      if (n)
+      if (n) {
         children.push_back(n);
+      }
     }
 
     vector<S> children_indices[2];
@@ -800,6 +882,7 @@ protected:
 
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
+      showUpdate("\tNo hyperplane found\n");
       if (_verbose && indices.size() > 100000)
         showUpdate("Failed splitting %lu items\n", indices.size());
 
@@ -820,12 +903,14 @@ protected:
     int flip = (children_indices[0].size() > children_indices[1].size());
 
     m->n_descendants = is_root ? _n_items : (S)indices.size();
-    for (int side = 0; side < 2; side++)
+    for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
       m->children[side^flip] = _make_tree(children_indices[side^flip], false);
+    }
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
+
     memcpy(_get(item), m, _s);
     free(m);
 
@@ -834,7 +919,11 @@ protected:
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
     Node* v_node = (Node *)malloc(_s); // TODO: avoid
-    memcpy(v_node->v, v, sizeof(T)*_f);
+
+    // Copy the input vector save for the last internal_dimensions, leaving those as zeros.
+    memcpy(v_node->v, v, sizeof(T) * (_f - D::internal_dimensions()));
+    memset(&v_node->v[_f - D::internal_dimensions()], 0, sizeof(T) * D::internal_dimensions());
+
     D::init_node(v_node, _f);
 
     std::priority_queue<pair<T, S> > q;
@@ -859,7 +948,7 @@ protected:
         const S* dst = nd->children;
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
-        T margin = D::margin(nd, v, _f);
+        T margin = D::margin(nd, v_node->v, _f);
         q.push(make_pair(D::pq_distance(d, margin, 1), nd->children[1]));
         q.push(make_pair(D::pq_distance(d, margin, 0), nd->children[0]));
       }
@@ -876,7 +965,7 @@ protected:
         continue;
       last = j;
       if (_get(j)->n_descendants == 1)  // This is only to guard a really obscure case, #284
-	nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
+        nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f - D::internal_dimensions()), j));
     }
 
     size_t m = nns_dist.size();
