@@ -256,6 +256,10 @@ struct Base {
     // Override this in specific metric structs below if you need to do any pre-processing
     // on the entire set of nodes passed into this index.
   }
+
+  static inline size_t default_search_k(const size_t n, const size_t num_roots) {
+    return n * num_roots;
+  }
 };
 
 struct Angular : Base {
@@ -355,6 +359,10 @@ struct DotProduct : Angular {
     // space as an Angular space but get equivalent results to if we were querying with pure dot
     // product as the distance metric.
     return 1;
+  }
+
+  static inline size_t default_search_k(const size_t n, const size_t num_roots) {
+    return Angular::default_search_k(n, num_roots) * 10;
   }
 
   template<typename S, typename T>
@@ -882,12 +890,16 @@ protected:
       if (n) {
         bool side = D::side(m, n->v, _f, _random);
         children_indices[side].push_back(j);
+      } else {
+        showUpdate("No node for index %d?\n", j);
       }
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
-      showUpdate("\tNo hyperplane found\n");
+      if (_verbose)
+        showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
+          children_indices[0].size(), children_indices[1].size());
       if (_verbose && indices.size() > 100000)
         showUpdate("Failed splitting %lu items\n", indices.size());
 
@@ -932,8 +944,9 @@ protected:
 
     std::priority_queue<pair<T, S> > q;
 
-    if (search_k == (size_t)-1)
-      search_k = n * _roots.size(); // slightly arbitrary default value
+    if (search_k == (size_t)-1) {
+      search_k = D::default_search_k(n, _roots.size());
+    }
 
     for (size_t i = 0; i < _roots.size(); i++) {
       q.push(make_pair(Distance::template pq_initial_value<T>(), _roots[i]));

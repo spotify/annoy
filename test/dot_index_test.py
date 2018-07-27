@@ -72,14 +72,8 @@ class DotIndexTest(TestCase):
         for j in range(0, 10000):
             self.assertTrue(i.get_nns_by_item(j, 1)[0] >= j)
 
-    def test_random_accuracy(self):
-        n = 10
-
-        n_trees = 10
-        n_points = 1000
-        n_rounds = 5
-
-        random.seed(1)
+    def precision(self, n, n_trees=10, n_points=1000, n_rounds=5):
+        total_similarity = 0.
 
         for r in range(n_rounds):
             # create random points at distance x
@@ -106,44 +100,25 @@ class DotIndexTest(TestCase):
 
             for i in range(n_points):
                 nns = idx.get_nns_by_vector(data[i], n)
-                self.assertGreater(similarity(nns, expected_results[i]), 0.75)
+                total_similarity += similarity(nns, expected_results[i])
 
-    def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
-        found = 0
-        for r in range(n_rounds):
-            # create random points at distance x
-            f = 10
-            i = AnnoyIndex(f, 'dot')
-            for j in range(n_points):
-                p = [random.gauss(0, 1) for z in range(f)]
-                norm = sum([pi ** 2 for pi in p]) ** 0.5
-                x = [pi / norm * j for pi in p]
-                i.add_item(j, x)
-
-            i.build(n_trees)
-
-            nns = i.get_nns_by_vector([0] * f, n)
-            self.assertEqual(nns, sorted(nns))  # should be in order
-            # The number of gaps should be equal to the last item minus n-1
-            found += len([y for y in nns if y < n])
-
-        return 1.0 * found / (n * n_rounds)
+        return total_similarity / float(n_rounds * n_points)
 
     def test_precision_10(self):
-        random.seed(1)
-        self.assertTrue(self.precision(10) >= 0.98)
+        value = self.precision(10)
+        self.assertGreaterEqual(value, 0.98)
 
     def test_precision_100(self):
-        random.seed(1)
-        self.assertTrue(self.precision(100) >= 0.98)
+        value = self.precision(100)
+        self.assertGreaterEqual(value, 0.98)
 
     def test_precision_1000(self):
-        random.seed(1)
-        self.assertTrue(self.precision(1000) >= 0.98)
+        value = self.precision(1000)
+        self.assertGreaterEqual(value, 0.98)
 
     def test_precision_1000_fewer_trees(self):
-        random.seed(1)
-        self.assertTrue(self.precision(1000, n_trees=4) >= 0.98)
+        value = self.precision(1000, n_trees=4)
+        self.assertGreaterEqual(value, 0.98)
 
     def test_get_nns_with_distances(self):
         f = 3
