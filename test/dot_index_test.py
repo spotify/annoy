@@ -79,6 +79,8 @@ class DotIndexTest(TestCase):
         n_points = 1000
         n_rounds = 5
 
+        random.seed(1)
+
         for r in range(n_rounds):
             # create random points at distance x
             f = 10
@@ -104,7 +106,7 @@ class DotIndexTest(TestCase):
 
             for i in range(n_points):
                 nns = idx.get_nns_by_vector(data[i], n)
-                self.assertGreater(similarity(nns, expected_results[i]), 0.9)
+                self.assertGreater(similarity(nns, expected_results[i]), 0.75)
 
     def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
         found = 0
@@ -128,15 +130,19 @@ class DotIndexTest(TestCase):
         return 1.0 * found / (n * n_rounds)
 
     def test_precision_10(self):
+        random.seed(1)
         self.assertTrue(self.precision(10) >= 0.98)
 
     def test_precision_100(self):
+        random.seed(1)
         self.assertTrue(self.precision(100) >= 0.98)
 
     def test_precision_1000(self):
+        random.seed(1)
         self.assertTrue(self.precision(1000) >= 0.98)
 
     def test_precision_1000_fewer_trees(self):
+        random.seed(1)
         self.assertTrue(self.precision(1000, n_trees=4) >= 0.98)
 
     def test_get_nns_with_distances(self):
