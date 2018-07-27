@@ -62,16 +62,6 @@ class DotIndexTest(TestCase):
         self.assertAlmostEqual(i.get_distance(0, 1), -1.0)
         self.assertAlmostEqual(i.get_distance(1, 2), 0.0)
 
-    def test_large_index(self):
-        f = 1
-        i = AnnoyIndex(f, 'dot')
-        for j in range(0, 10000):
-            i.add_item(j, [j])
-
-        i.build(10)
-        for j in range(0, 10000):
-            self.assertTrue(i.get_nns_by_item(j, 1)[0] >= j)
-
     def precision(self, n, n_trees=10, n_points=1000, n_rounds=5):
         total_similarity = 0.
 

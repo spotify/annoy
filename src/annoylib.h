@@ -190,15 +190,6 @@ inline T get_norm(T* v, int f) {
   return sqrt(dot(v, v, f));
 }
 
-template<typename T>
-inline void normalize(T* v, int f) {
-  T norm = get_norm(v, f);
-  if (norm > 0) {
-    for (int z = 0; z < f; z++)
-      v[z] /= norm;
-  }
-}
-
 template<typename T, typename Random, typename Distance, typename Node>
 inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, Node* p, Node* q) {
   /*
@@ -213,10 +204,11 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
   size_t i = random.index(count);
   size_t j = random.index(count-1);
   j += (j >= i); // ensure that i != j
-  memcpy(p->v, nodes[i]->v, f * sizeof(T));
-  memcpy(q->v, nodes[j]->v, f * sizeof(T));
 
-  if (cosine) { normalize(p->v, f); normalize(q->v, f); }
+  Distance::template copy_node<T, Node>(p, nodes[i], f);
+  Distance::template copy_node<T, Node>(q, nodes[j], f);
+
+  if (cosine) { Distance::template normalize<T, Node>(p, f); Distance::template normalize<T, Node>(q, f); }
   Distance::init_node(p, f);
   Distance::init_node(q, f);
 
@@ -245,12 +237,6 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
 } // namespace
 
 struct Base {
-  static inline int internal_dimensions() {
-    // An "internal dimension" is an extra dimension added by Annoy for optimization or
-    // other purposes specific to Annoy but not relevant to the caller.
-    return 0;
-  }
-
   template<typename T, typename S, typename Node>
   static inline void preprocess(void* nodes, size_t _s, const S node_count, const int f) {
     // Override this in specific metric structs below if you need to do any pre-processing
@@ -259,6 +245,20 @@ struct Base {
 
   static inline size_t default_search_k(const size_t n, const size_t num_roots) {
     return n * num_roots;
+  }
+
+  template<typename T, typename Node>
+  static inline void copy_node(Node* dest, const Node* source, const int f) {
+    memcpy(dest->v, source->v, f * sizeof(T));
+  }
+
+  template<typename T, typename Node>
+  static inline void normalize(Node* node, int f) {
+    T norm = get_norm(node->v, f);
+    if (norm > 0) {
+      for (int z = 0; z < f; z++)
+        node->v[z] /= norm;
+    }
   }
 };
 
@@ -317,7 +317,7 @@ struct Angular : Base {
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
-    normalize(n->v, f);
+    Base::normalize<T, Node<S, T> >(n, f);
     free(p);
     free(q);
   }
@@ -349,16 +349,22 @@ struct Angular : Base {
 
 
 struct DotProduct : Angular {
+  template<typename S, typename T>
+  struct ANNOY_NODE_ATTRIBUTE Node {
+    /*
+     * This is an extension of the Angular node with an extra attribute for the scaled norm.
+     */
+    S n_descendants;
+    union {
+      S children[2]; // Will possibly store more than 2
+      T norm;
+    };
+    T dot_factor;
+    T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
+  };
+
   static const char* name() {
     return "dot";
-  }
-
-  static inline int internal_dimensions() {
-    // DotProduct stores one extra dimension for storing sqrt(max(||node->v||)^2 - ||node->v||^2),
-    // which - by the paper referenced below - makes it much more efficient for us to query this
-    // space as an Angular space but get equivalent results to if we were querying with pure dot
-    // product as the distance metric.
-    return 1;
   }
 
   static inline size_t default_search_k(const size_t n, const size_t num_roots) {
@@ -368,6 +374,57 @@ struct DotProduct : Angular {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     return -dot(x->v, y->v, f);
+  }
+
+  template<typename S, typename T>
+  static inline void init_node(Node<S, T>* n, int f) {
+    n->norm = dot(n->v, n->v, f) + (n->dot_factor * n->dot_factor);
+  }
+
+  template<typename T, typename Node>
+  static inline void copy_node(Node* dest, const Node* source, const int f) {
+    memcpy(dest->v, source->v, f * sizeof(T));
+    dest->dot_factor = source->dot_factor;
+    dest->norm = source->norm;
+  }
+
+  template<typename S, typename T, typename Random>
+  static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
+    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    p->dot_factor = 0;
+    q->dot_factor = 0;
+    two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
+    for (int z = 0; z < f; z++)
+      n->v[z] = p->v[z] - q->v[z];
+    n->dot_factor = p->dot_factor - q->dot_factor;
+    DotProduct::normalize<T, Node<S, T> >(n, f);
+    free(p);
+    free(q);
+  }
+
+  template<typename T, typename Node>
+  static inline void normalize(Node* node, int f) {
+    T norm = sqrt(dot(node->v, node->v, f) + pow(node->dot_factor, 2));
+    if (norm > 0) {
+      for (int z = 0; z < f; z++)
+        node->v[z] /= norm;
+      node->dot_factor /= norm;
+    }
+  }
+
+  template<typename S, typename T>
+  static inline T margin(const Node<S, T>* n, const T* y, int f) {
+    return dot(n->v, y, f);
+  }
+
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
+    T dot = margin(n, y, f);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return random.flip();
   }
 
   template<typename T>
@@ -383,31 +440,31 @@ struct DotProduct : Angular {
     // Step one: compute the norm of each vector and store that in its extra dimension (f-1)
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
-      T norm = sqrt(dot(node->v, node->v, f - 1));
+      T norm = sqrt(dot(node->v, node->v, f));
       if (isnan(norm)) norm = 0;
-      node->v[f - 1] = norm;
+      node->dot_factor = norm;
     }
 
     // Step two: find the maximum norm
     T max_norm = 0;
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
-      if (node->v[f - 1] > max_norm) {
-        max_norm = node->v[f - 1];
+      if (node->dot_factor > max_norm) {
+        max_norm = node->dot_factor;
       }
     }
 
     // Step three: set each vector's extra dimension to sqrt(max_norm^2 - norm^2)
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
-      T node_norm = node->v[f - 1];
+      T node_norm = node->dot_factor;
 
       T extra_dimension = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
       if (isnan(extra_dimension)) extra_dimension = 0;
 
-      node->v[f - 1] = extra_dimension;
+      node->dot_factor = extra_dimension;
 
-      Angular::init_node(node, f);
+      init_node(node, f);
     }
   }
 };
@@ -549,7 +606,7 @@ struct Euclidean : Minkowski {
 
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
-    normalize(n->v, f);
+    Base::normalize<T, Node<S, T> >(n, f);
     n->a = 0.0;
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
@@ -583,7 +640,7 @@ struct Manhattan : Minkowski {
 
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
-    normalize(n->v, f);
+    Base::normalize<T, Node<S, T> >(n, f);
     n->a = 0.0;
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
@@ -649,7 +706,7 @@ protected:
   int _fd;
 public:
 
-  AnnoyIndex(int f) : _f(f + D::internal_dimensions()), _random() {
+  AnnoyIndex(int f) : _f(f), _random() {
     _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
     _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S)); // Max number of descendants to fit into node
@@ -660,7 +717,7 @@ public:
   }
 
   int get_f() const {
-    return _f - D::internal_dimensions();
+    return _f;
   }
 
   void add_item(S item, const T* w) {
@@ -677,7 +734,7 @@ public:
     n->n_descendants = 1;
 
     memset(n->v, 0, _f * sizeof(T));
-    for (int z = 0; z < (_f - D::internal_dimensions()); z++)
+    for (int z = 0; z < (_f); z++)
       n->v[z] = w[z];
     D::init_node(n, _f);
 
@@ -806,7 +863,7 @@ public:
   }
 
   T get_distance(S i, S j) {
-    return D::normalized_distance(D::distance(_get(i), _get(j), _f - D::internal_dimensions()));
+    return D::normalized_distance(D::distance(_get(i), _get(j), _f));
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
@@ -826,7 +883,7 @@ public:
 
   void get_item(S item, T* v) {
     Node* m = _get(item);
-    memcpy(v, m->v, (_f - D::internal_dimensions()) * sizeof(T));
+    memcpy(v, m->v, (_f) * sizeof(T));
   }
 
   void set_seed(int seed) {
@@ -934,12 +991,8 @@ protected:
   }
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
-    Node* v_node = (Node *)malloc(_s); // TODO: avoid
-
-    // Copy the input vector save for the last internal_dimensions, leaving those as zeros.
-    memcpy(v_node->v, v, sizeof(T) * (_f - D::internal_dimensions()));
-    memset(&v_node->v[_f - D::internal_dimensions()], 0, sizeof(T) * D::internal_dimensions());
-
+    Node* v_node = (Node *)calloc(_s, 1); // TODO: avoid
+    memcpy(v_node->v, v, sizeof(T) * _f);
     D::init_node(v_node, _f);
 
     std::priority_queue<pair<T, S> > q;
@@ -982,7 +1035,7 @@ protected:
         continue;
       last = j;
       if (_get(j)->n_descendants == 1)  // This is only to guard a really obscure case, #284
-        nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f - D::internal_dimensions()), j));
+        nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
     }
 
     size_t m = nns_dist.size();
