@@ -246,12 +246,15 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
 
 struct Base {
   static inline int internal_dimensions() {
+    // An "internal dimension" is an extra dimension added by Annoy for optimization or
+    // other purposes specific to Annoy but not relevant to the caller.
     return 0;
   }
 
   template<typename T, typename S, typename Node>
   static inline void preprocess(void* nodes, size_t _s, const S node_count, const int f) {
-
+    // Override this in specific metric structs below if you need to do any pre-processing
+    // on the entire set of nodes passed into this index.
   }
 };
 
@@ -347,6 +350,10 @@ struct DotProduct : Angular {
   }
 
   static inline int internal_dimensions() {
+    // DotProduct stores one extra dimension for storing sqrt(max(||node->v||)^2 - ||node->v||^2),
+    // which - by the paper referenced below - makes it much more efficient for us to query this
+    // space as an Angular space but get equivalent results to if we were querying with pure dot
+    // product as the distance metric.
     return 1;
   }
 
@@ -362,6 +369,9 @@ struct DotProduct : Angular {
 
   template<typename T, typename S, typename Node>
   static inline void preprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    // This uses a method from Microsoft Research for transforming inner product spaces to cosine/angular-compatible spaces.
+    // (Bachrach et al., 2014, see https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/XboxInnerProduct.pdf)
+
     // Step one: compute the norm of each vector and store that in its extra dimension (f-1)
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
@@ -391,10 +401,6 @@ struct DotProduct : Angular {
 
       Angular::init_node(node, f);
     }
-  }
-
-  static inline int default_search_k_multiplier() {
-    return 50;
   }
 };
 
@@ -862,9 +868,8 @@ protected:
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
       Node* n = _get(j);
-      if (n) {
+      if (n)
         children.push_back(n);
-      }
     }
 
     vector<S> children_indices[2];
@@ -910,7 +915,6 @@ protected:
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
-
     memcpy(_get(item), m, _s);
     free(m);
 
