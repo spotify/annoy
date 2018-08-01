@@ -22,10 +22,9 @@ def dot_metric(a, b):
     return -numpy.dot(a, b)
 
 
-def similarity(a, b):
-    # Could replace this with kendall-tau if we're comfortable
-    # bringing in scipy as a test dependency.
-    return float(len(set(a) & set(b))) / float(len(set(a) | set(b)))
+def recall(retrieved, relevant):
+    return float(len(set(relevant) & set(retrieved))) \
+        / float(len(set(relevant)))
 
 
 class DotIndexTest(TestCase):
@@ -59,11 +58,12 @@ class DotIndexTest(TestCase):
         i.add_item(1, [1, 1])
         i.add_item(2, [0, 0])
 
-        self.assertAlmostEqual(i.get_distance(0, 1), -1.0)
+        self.assertAlmostEqual(i.get_distance(0, 1), 1.0)
         self.assertAlmostEqual(i.get_distance(1, 2), 0.0)
 
-    def precision(self, n, n_trees=10, n_points=1000, n_rounds=5):
-        total_similarity = 0.
+    def recall_at(self, n, n_trees=10, n_points=1000, n_rounds=5):
+        # the best movie/variable name
+        total_recall = 0.
 
         for r in range(n_rounds):
             # create random points at distance x
@@ -90,25 +90,25 @@ class DotIndexTest(TestCase):
 
             for i in range(n_points):
                 nns = idx.get_nns_by_vector(data[i], n)
-                total_similarity += similarity(nns, expected_results[i])
+                total_recall += recall(nns, expected_results[i])
 
-        return total_similarity / float(n_rounds * n_points)
+        return total_recall / float(n_rounds * n_points)
 
-    def test_precision_10(self):
-        value = self.precision(10)
-        self.assertGreaterEqual(value, 0.98)
+    def test_recall_at_10(self):
+        value = self.recall_at(10)
+        self.assertGreaterEqual(value, 0.65)
 
-    def test_precision_100(self):
-        value = self.precision(100)
-        self.assertGreaterEqual(value, 0.98)
+    def test_recall_at_100(self):
+        value = self.recall_at(100)
+        self.assertGreaterEqual(value, 0.95)
 
-    def test_precision_1000(self):
-        value = self.precision(1000)
-        self.assertGreaterEqual(value, 0.98)
+    def test_recall_at_1000(self):
+        value = self.recall_at(1000)
+        self.assertGreaterEqual(value, 0.99)
 
-    def test_precision_1000_fewer_trees(self):
-        value = self.precision(1000, n_trees=4)
-        self.assertGreaterEqual(value, 0.98)
+    def test_recall_at_1000_fewer_trees(self):
+        value = self.recall_at(1000, n_trees=4)
+        self.assertGreaterEqual(value, 0.99)
 
     def test_get_nns_with_distances(self):
         f = 3
@@ -120,15 +120,15 @@ class DotIndexTest(TestCase):
 
         l, d = i.get_nns_by_item(0, 3, -1, True)
         self.assertEqual(l, [0, 1, 2])
-        self.assertAlmostEqual(d[0], -4.0)
-        self.assertAlmostEqual(d[1], -2.0)
-        self.assertAlmostEqual(d[2], -0.0)
+        self.assertAlmostEqual(d[0], 4.0)
+        self.assertAlmostEqual(d[1], 2.0)
+        self.assertAlmostEqual(d[2], 0.0)
 
         l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
         self.assertEqual(l, [0, 1, 2])
-        self.assertAlmostEqual(d[0], -4.0)
-        self.assertAlmostEqual(d[1], -4.0)
-        self.assertAlmostEqual(d[2], -2.0)
+        self.assertAlmostEqual(d[0], 4.0)
+        self.assertAlmostEqual(d[1], 4.0)
+        self.assertAlmostEqual(d[2], 2.0)
 
     def test_include_dists(self):
         f = 40
@@ -140,7 +140,7 @@ class DotIndexTest(TestCase):
 
         indices, dists = i.get_nns_by_item(0, 2, 10, True)
         self.assertEqual(indices, [0, 1])
-        self.assertAlmostEqual(dists[0], -numpy.dot(v, v))
+        self.assertAlmostEqual(dists[0], numpy.dot(v, v))
 
     def test_distance_consistency(self):
         n, f = 1000, 3
@@ -151,7 +151,7 @@ class DotIndexTest(TestCase):
         for a in random.sample(range(n), 100):
             indices, dists = i.get_nns_by_item(a, 100, include_distances=True)
             for b, dist in zip(indices, dists):
-                self.assertAlmostEqual(dist, -numpy.dot(
+                self.assertAlmostEqual(dist, numpy.dot(
                     i.get_item_vector(a),
                     i.get_item_vector(b)
                 ))

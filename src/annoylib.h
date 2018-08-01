@@ -223,12 +223,12 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     }
     if (di < dj) {
       for (int z = 0; z < f; z++)
-	p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+        p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
       Distance::init_node(p, f);
       ic++;
     } else if (dj < di) {
       for (int z = 0; z < f; z++)
-	q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+        q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
       Distance::init_node(q, f);
       jc++;
     }
@@ -243,8 +243,9 @@ struct Base {
     // on the entire set of nodes passed into this index.
   }
 
-  static inline size_t default_search_k(const size_t n, const size_t num_roots) {
-    return n * num_roots;
+  template<typename Node>
+  static inline void zero_value(Node* dest) {
+    // Initialize any fields that require sane defaults within this node.
   }
 
   template<typename T, typename Node>
@@ -366,19 +367,19 @@ struct DotProduct : Angular {
   static const char* name() {
     return "dot";
   }
-
-  static inline size_t default_search_k(const size_t n, const size_t num_roots) {
-    return Angular::default_search_k(n, num_roots) * 10;
-  }
-
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     return -dot(x->v, y->v, f);
   }
 
+  template<typename Node>
+  static inline void zero_value(Node* dest) {
+    dest->dot_factor = 0;
+  }
+
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
-    n->norm = dot(n->v, n->v, f) + (n->dot_factor * n->dot_factor);
+    n->norm = dot(n->v, n->v, f);
   }
 
   template<typename T, typename Node>
@@ -392,8 +393,8 @@ struct DotProduct : Angular {
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
     Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
-    p->dot_factor = 0;
-    q->dot_factor = 0;
+    DotProduct::zero_value(p); 
+    DotProduct::zero_value(q);
     two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
@@ -429,7 +430,7 @@ struct DotProduct : Angular {
 
   template<typename T>
   static inline T normalized_distance(T distance) {
-    return distance;
+    return -distance;
   }
 
   template<typename T, typename S, typename Node>
@@ -459,12 +460,11 @@ struct DotProduct : Angular {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T node_norm = node->dot_factor;
 
-      T extra_dimension = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
-      if (isnan(extra_dimension)) extra_dimension = 0;
+      T dot_factor = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
+      if (isnan(dot_factor)) dot_factor = 0;
 
-      node->dot_factor = extra_dimension;
-
-      init_node(node, f);
+      node->dot_factor = dot_factor;
+      node->norm = dot(node->v, node->v, f) + (dot_factor * dot_factor);
     }
   }
 };
@@ -733,9 +733,7 @@ public:
     n->children[1] = 0;
     n->n_descendants = 1;
 
-    memset(n->v, 0, _f * sizeof(T));
-    for (int z = 0; z < (_f); z++)
-      n->v[z] = w[z];
+    memcpy(n->v, w, _f * sizeof(T));
     D::init_node(n, _f);
 
     if (item >= _n_items)
@@ -815,7 +813,7 @@ public:
       // we have mmapped data
       close(_fd);
       off_t size = _n_nodes * _s;
-      munmap(_nodes, (size_t) size);
+      munmap(_nodes, size);
     } else if (_nodes) {
       // We have heap allocated data
       free(_nodes);
@@ -833,10 +831,10 @@ public:
     off_t size = lseek(_fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
     _nodes = (Node*)mmap(
-        0, (size_t) size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
+        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
     _nodes = (Node*)mmap(
-        0, (size_t) size, PROT_READ, MAP_SHARED, _fd, 0);
+        0, size, PROT_READ, MAP_SHARED, _fd, 0);
 #endif
 
     _n_nodes = (S)(size / _s);
@@ -991,14 +989,15 @@ protected:
   }
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
-    Node* v_node = (Node *)calloc(_s, 1); // TODO: avoid
+    Node* v_node = (Node *)malloc(_s); // TODO: avoid
+    D::template zero_value<Node>(v_node);
     memcpy(v_node->v, v, sizeof(T) * _f);
     D::init_node(v_node, _f);
 
     std::priority_queue<pair<T, S> > q;
 
     if (search_k == (size_t)-1) {
-      search_k = D::default_search_k(n, _roots.size());
+      search_k = n * _roots.size();
     }
 
     for (size_t i = 0; i < _roots.size(); i++) {
@@ -1018,7 +1017,7 @@ protected:
         const S* dst = nd->children;
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
-        T margin = D::margin(nd, v_node->v, _f);
+        T margin = D::margin(nd, v, _f);
         q.push(make_pair(D::pq_distance(d, margin, 1), nd->children[1]));
         q.push(make_pair(D::pq_distance(d, margin, 0), nd->children[0]));
       }
