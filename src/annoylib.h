@@ -729,11 +729,15 @@ public:
     _allocate_size(item + 1);
     Node* n = _get(item);
 
+    D::zero_value(n);
+
     n->children[0] = 0;
     n->children[1] = 0;
     n->n_descendants = 1;
 
-    memcpy(n->v, w, _f * sizeof(T));
+    for (int z = 0; z < _f; z++)
+      n->v[z] = w[z];
+
     D::init_node(n, _f);
 
     if (item >= _n_items)
