@@ -39,7 +39,7 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* `Euclidean distance <https://en.wikipedia.org/wiki/Euclidean_distance>`__, `Manhattan distance <https://en.wikipedia.org/wiki/Taxicab_geometry>`__, `cosine distance <https://en.wikipedia.org/wiki/Cosine_similarity>`__, or `Hamming distance <https://en.wikipedia.org/wiki/Hamming_distance>`__
+* `Euclidean distance <https://en.wikipedia.org/wiki/Euclidean_distance>`__, `Manhattan distance <https://en.wikipedia.org/wiki/Taxicab_geometry>`__, `cosine distance <https://en.wikipedia.org/wiki/Cosine_similarity>`__, `Hamming distance <https://en.wikipedia.org/wiki/Hamming_distance>`__, or `Dot (Inner) Product distance <https://en.wikipedia.org/wiki/Dot_product>`__
 * Cosine distance is equivalent to Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
@@ -75,7 +75,7 @@ Right now it only accepts integers as identifiers for items. Note that it will a
 Full Python API
 ---------------
 
-* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, or ``"hamming"``.
+* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, ``"hamming"``, or ``"dot"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
 * ``a.save(fn)`` saves the index to disk.
@@ -103,7 +103,7 @@ There are just two parameters you can use to tune Annoy: the number of trees ``n
 * ``n_trees`` is provided during build time and affects the build time and the index size. A larger value will give more accurate results, but larger indexes.
 * ``search_k`` is provided in runtime and affects the search performance. A larger value will give more accurate results, but will take longer time to return.
 
-If ``search_k`` is not provided, it will default to ``n * n_trees`` where ``n`` is the number of approximate nearest neighbors. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
+If ``search_k`` is not provided, it will default to ``n * n_trees * D`` where ``n`` is the number of approximate nearest neighbors and ``D`` is a constant depending on the metric. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
 
 How does it work
 ----------------
@@ -113,6 +113,8 @@ Using `random projections <http://en.wikipedia.org/wiki/Locality-sensitive_hashi
 We do this k times so that we get a forest of trees. k has to be tuned to your need, by looking at what tradeoff you have between precision and performance.
 
 Hamming distance (contributed by `Martin Aumüller <https://github.com/maumueller>`__) packs the data into 64-bit integers under the hood and uses built-in bit count primitives so it could be quite fast. All splits are axis-aligned.
+
+Dot Product distance (contributed by `Peter Sobot <https://github.com/psobot>`__) reduces the provided vectors from dot (or "inner-product") space to a more query-friendly cosine space using [a method by Bachrach et al., at Microsoft Research, published in 2014](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/XboxInnerProduct.pdf).
 
 More info
 ---------
