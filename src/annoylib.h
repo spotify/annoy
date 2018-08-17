@@ -416,7 +416,7 @@ struct DotProduct : Angular {
 
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    return dot(n->v, y, f);
+    return dot(n->v, y, f) + (n->dot_factor * n->dot_factor);
   }
 
   template<typename S, typename T, typename Random>
