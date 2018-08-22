@@ -129,6 +129,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
     self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
   } else if (!strcmp(metric, "hamming")) {
     self->ptr = new HammingWrapper(self->f);
+  } else if (!strcmp(metric, "dot")) {
+    self->ptr = new AnnoyIndex<int32_t, float, DotProduct, Kiss64Random>(self->f);
   } else {
     PyErr_SetString(PyExc_ValueError, "No such metric");
     return NULL;
@@ -145,7 +147,7 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int f;
   static char const * kwlist[] = {"f", "metric", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", (char**)kwlist, &f, &metric))
-    return NULL;
+    return (int) NULL;
   return 0;
 }
 
@@ -263,8 +265,16 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 bool
 convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
+  if (PyObject_Size(v) == -1) {
+    char buf[256];
+    snprintf(buf, 256, "Expected an iterable, got an object of type \"%s\"", v->ob_type->tp_name);
+    PyErr_SetString(PyExc_ValueError, buf);
+    return false;
+  }
   if (PyObject_Size(v) != f) {
-    PyErr_SetString(PyExc_IndexError, "Vector has wrong length");
+    char buf[128];
+    snprintf(buf, 128, "Vector has wrong length (expected %d, got %ld)", f, PyObject_Size(v));
+    PyErr_SetString(PyExc_IndexError, buf);
     return false;
   }
   for (int z = 0; z < f; z++) {

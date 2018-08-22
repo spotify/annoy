@@ -19,16 +19,7 @@ from annoy import AnnoyIndex
 
 
 class HolesTest(TestCase):
-    def test_holes(self):
-        # See https://github.com/spotify/annoy/issues/223
-        f = 10
-        index = AnnoyIndex(f)
-        index.add_item(1000, numpy.random.normal(size=(f,)))
-        index.build(10)
-        js = index.get_nns_by_vector(numpy.random.normal(size=(f,)), 100)
-        self.assertEquals(js, [1000])
-
-    def test_holes_more(self):
+    def test_random_holes(self):
         f = 10
         index = AnnoyIndex(f)
         valid_indices = random.sample(range(2000), 1000) # leave holes
@@ -46,12 +37,24 @@ class HolesTest(TestCase):
             for j in js:
                 self.assertTrue(j in valid_indices)
 
-    def test_holes_even_more(self):
-        # See https://github.com/spotify/annoy/issues/295
-        annoy = AnnoyIndex(100)
-        base_i, n = 100000, 10
+    def _test_holes_base(self, n, f=100, base_i=100000):
+        annoy = AnnoyIndex(f)
         for i in range(n):
-            annoy.add_item(base_i + i, [random.gauss(0, 1) for z in range(100)])
+            annoy.add_item(base_i + i, numpy.random.normal(size=(f,)))
         annoy.build(100)
         res = annoy.get_nns_by_item(base_i, n)
         self.assertEquals(set(res), set([base_i + i for i in range(n)]))
+
+    def test_root_one_child(self):
+        # See https://github.com/spotify/annoy/issues/223
+        self._test_holes_base(1)
+
+    def test_root_two_children(self):
+        self._test_holes_base(2)
+
+    def test_root_some_children(self):
+        # See https://github.com/spotify/annoy/issues/295
+        self._test_holes_base(10)
+
+    def test_root_many_children(self):
+        self._test_holes_base(1000)
