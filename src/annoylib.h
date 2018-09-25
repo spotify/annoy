@@ -313,14 +313,13 @@ struct Angular : Base {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    char nodes_buffer[s * 2];
+    Node<S, T>* p = (Node<S, T>*)nodes_buffer;
+    Node<S, T>* q = (Node<S, T>*)nodes_buffer + 1;
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
     Base::normalize<T, Node<S, T> >(n, f);
-    free(p);
-    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -391,8 +390,9 @@ struct DotProduct : Angular {
 
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    char nodes_buffer[s * 2];
+    Node<S, T>* p = (Node<S, T>*)nodes_buffer;
+    Node<S, T>* q = (Node<S, T>*)nodes_buffer + 1;
     DotProduct::zero_value(p); 
     DotProduct::zero_value(q);
     two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
@@ -400,8 +400,6 @@ struct DotProduct : Angular {
       n->v[z] = p->v[z] - q->v[z];
     n->dot_factor = p->dot_factor - q->dot_factor;
     DotProduct::normalize<T, Node<S, T> >(n, f);
-    free(p);
-    free(q);
   }
 
   template<typename T, typename Node>
@@ -600,8 +598,9 @@ struct Euclidean : Minkowski {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    char nodes_buffer[s * 2];
+    Node<S, T>* p = (Node<S, T>*)nodes_buffer;
+    Node<S, T>* q = (Node<S, T>*)nodes_buffer + 1;
     two_means<T, Random, Euclidean, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
@@ -610,8 +609,6 @@ struct Euclidean : Minkowski {
     n->a = 0.0;
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
-    free(p);
-    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -693,23 +690,25 @@ public:
 
 protected:
   const int _f;
-  size_t _s;
-  S _n_items;
-  Random _random;
+  S const _s; // Size of each node
+  S const _K; // Max number of descendants to fit into node
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
-  S _n_nodes;
-  S _nodes_size;
   vector<S> _roots;
-  S _K;
+  S _n_items;
+  S _nodes_size; // capacity of the write buffer
+  S _n_nodes; // number of nodes
+  Random _random;
   bool _loaded;
   bool _verbose;
   int _fd;
 public:
 
-  AnnoyIndex(int f) : _f(f), _random() {
-    _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
-    _verbose = false;
-    _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S)); // Max number of descendants to fit into node
+  AnnoyIndex(int f) 
+    : _f(f)
+    , _s(offsetof(Node, v) + _f * sizeof(T))
+    , _K(((size_t) (_s - offsetof(Node, children))) / sizeof(S))
+    , _verbose(false)
+  {
     reinitialize(); // Reset everything
   }
   ~AnnoyIndex() {
@@ -772,10 +771,11 @@ public:
 
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
-    _allocate_size(_n_nodes + (S)_roots.size());
-    for (size_t i = 0; i < _roots.size(); i++)
-      memcpy(_get(_n_nodes + (S)i), _get(_roots[i]), _s);
-    _n_nodes += _roots.size();
+    S const nroots = _roots.size();
+    _allocate_size(_n_nodes + nroots);
+    for (S i = 0; i < nroots; i++)
+      memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
+    _n_nodes += nroots;
 
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
   }
@@ -910,7 +910,7 @@ protected:
   }
 
   S _make_tree(const vector<S >& indices, bool is_root) {
-    size_t const isz = indices.size();
+    S const isz = indices.size();
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -919,7 +919,7 @@ protected:
     if (isz == 1 && !is_root)
       return indices[0];
 
-    if (isz <= (size_t)_K && (!is_root || _n_items <= (size_t)_K || isz == 1)) {
+    if (isz <= _K && (!is_root || _n_items <= _K || isz == 1)) {
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
       Node* m = _get(item);
@@ -932,12 +932,12 @@ protected:
       return item;
     }
 
+    // map indices to nodes pointers
     vector<Node*> children;
     children.reserve(isz);
     for (S j : indices) {
       Node* n = _get(j);
-      if (n)
-        children.push_back(n);
+      children.push_back(n);
     }
 
     vector<S> children_indices[2];
@@ -948,12 +948,8 @@ protected:
 
     for (S j : indices) {
       Node* n = _get(j);
-      if (n) {
-        bool side = D::side(m, n->v, _f, _random);
-        children_indices[side].push_back(j);
-      } else {
-        showUpdate("No node for index %d?\n", j);
-      }
+      bool side = D::side(m, n->v, _f, _random);
+      children_indices[side].push_back(j);
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
@@ -993,7 +989,9 @@ protected:
   }
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-    Node* v_node = (Node *)malloc(_s); // TODO: avoid
+    char node_alloc_buf[_s]; // alloc on stack!
+    Node* v_node = (Node *)node_alloc_buf;
+
     D::template zero_value<Node>(v_node);
     memcpy(v_node->v, v, sizeof(T) * _f);
     D::init_node(v_node, _f);
@@ -1019,7 +1017,7 @@ protected:
     }
 
     std::vector<S> nns;
-    nns.reserve(prealloc);
+    nns.reserve(search_k);
     while (nns.size() < search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
       T d = top.first;
@@ -1053,17 +1051,22 @@ protected:
 	      nns_dist.emplace_back(D::distance(v_node, nd, _f), j);
     }
 
-    size_t m = nns_dist.size();
+    size_t m = nns_dist.size(), p = std::min(m, n);
     if( n < m ) // Has more than N results, so get only top N
       std::partial_sort(nns_dist.begin(), nns_dist.begin() + n, nns_dist.end());
     else
       std::sort(nns_dist.begin(), nns_dist.end());
-    for (size_t i = 0, p = std::min(m, n); i < p; i++) {
+
+    // prealloc result buffers
+    result->reserve(p);
+    if (distances)
+      distances->reserve(p);
+
+    for (size_t i = 0; i < p; i++) {
       if (distances)
         distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
-    free(v_node);
   }
 };
 
