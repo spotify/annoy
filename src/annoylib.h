@@ -1022,8 +1022,8 @@ protected:
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
         T margin = D::margin(nd, v, _f);
-        q.push(make_pair(D::pq_distance(d, margin, 1), nd->children[1]));
-        q.push(make_pair(D::pq_distance(d, margin, 0), nd->children[0]));
+        q.push(make_pair(D::pq_distance(d, margin, 1), static_cast<S>(nd->children[1])));
+        q.push(make_pair(D::pq_distance(d, margin, 0), static_cast<S>(nd->children[0])));
       }
     }
 
