@@ -315,7 +315,7 @@ struct Angular : Base {
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     char nodes_buffer[s * 2];
     Node<S, T>* p = (Node<S, T>*)nodes_buffer;
-    Node<S, T>* q = (Node<S, T>*)nodes_buffer + 1;
+    Node<S, T>* q = (Node<S, T>*)(nodes_buffer + s);
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
@@ -392,7 +392,7 @@ struct DotProduct : Angular {
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     char nodes_buffer[s * 2];
     Node<S, T>* p = (Node<S, T>*)nodes_buffer;
-    Node<S, T>* q = (Node<S, T>*)nodes_buffer + 1;
+    Node<S, T>* q = (Node<S, T>*)(nodes_buffer + s);
     DotProduct::zero_value(p); 
     DotProduct::zero_value(q);
     two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
@@ -600,7 +600,7 @@ struct Euclidean : Minkowski {
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     char nodes_buffer[s * 2];
     Node<S, T>* p = (Node<S, T>*)nodes_buffer;
-    Node<S, T>* q = (Node<S, T>*)nodes_buffer + 1;
+    Node<S, T>* q = (Node<S, T>*)(nodes_buffer + s);
     two_means<T, Random, Euclidean, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
@@ -631,8 +631,9 @@ struct Manhattan : Minkowski {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    char nodes_buffer[s * 2];
+    Node<S, T>* p = (Node<S, T>*)nodes_buffer;
+    Node<S, T>* q = (Node<S, T>*)(nodes_buffer + s);
     two_means<T, Random, Manhattan, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
@@ -641,8 +642,6 @@ struct Manhattan : Minkowski {
     n->a = 0.0;
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
-    free(p);
-    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -848,7 +847,7 @@ public:
     S m = -1;
     for (S i = _n_nodes - 1; i >= 0; i--) {
       S k = _get(i)->n_descendants;
-      if (m == -1 || k == m) {
+      if (m == S(-1) || k == m) {
         _roots.push_back(i);
         m = k;
       } else {
@@ -1071,4 +1070,5 @@ protected:
 };
 
 #endif
+
 // vim: tabstop=2 shiftwidth=2
