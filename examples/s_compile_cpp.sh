@@ -2,6 +2,8 @@
 
 
 echo "compiling precision example..."
-cmd="c++ precision_test.cpp -o precision_test -std=c++11"
-eval $cmd
-echo "Done"
+for cpp in $(find -type f -name "*.cpp"); do
+    echo "compiling ${cpp}..."
+    c++ "${cpp}" -o $(basename "${cpp}" .cpp) -std=c++11 -mssse3
+    echo "Done"
+done
