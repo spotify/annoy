@@ -919,7 +919,7 @@ protected:
     if (indices.size() == 1 && !is_root)
       return indices[0];
 
-    if (indices.size() <= (size_t)_K && (!is_root || _n_items <= (size_t)_K || indices.size() == 1)) {
+    if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
       _allocate_size(_n_nodes + 1);
       S item = _n_nodes++;
       Node* m = _get(item);
