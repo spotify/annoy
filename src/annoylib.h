@@ -593,10 +593,11 @@ struct Minkowski : Base {
 struct Euclidean : Minkowski {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    T pp = x->norm ? x->norm : dot(x->v, x->v, f); // For backwards compatibility reasons, we need to fall back and compute the norm here
-    T qq = y->norm ? y->norm : dot(y->v, y->v, f);
     T pq = dot(x->v, y->v, f);
-    return pp + qq - 2*pq;
+    // Instead of pp + qq - 2*pq, we compute (pp - pq) + (qq - pq). See #314
+    T pp_minus_pq = x->norm ? x->norm - pq : dot(x->v, x->v, f) - pq; // For backwards compatibility reasons, we need to fall back and compute the norm here
+    T qq_minus_pq = y->norm ? y->norm - pq : dot(y->v, y->v, f) - pq;
+    return pp_minus_pq + qq_minus_pq;
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
