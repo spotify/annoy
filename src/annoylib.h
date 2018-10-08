@@ -965,14 +965,16 @@ protected:
       children_indices[0].clear();
       children_indices[1].clear();
 
-      // Set the vector to 0.0
-      for (int z = 0; z < _f; z++)
-        m->v[z] = 0.0;
+      // try find new split for better hyperplane
+      D::create_split(children, _f, _s, _random, m);
 
       for (size_t i = 0; i < indices.size(); i++) {
         S j = indices[i];
-        // Just randomize...
-        children_indices[_random.flip()].push_back(j);
+        Node *n = _get(j);
+        if (n) {
+          bool side = D::side(m, n->v, _f, _random);
+          children_indices[side].push_back(j);
+        }
       }
     }
 
