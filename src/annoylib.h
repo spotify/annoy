@@ -129,9 +129,11 @@ template<typename T>
 inline T euclidean_distance(const T* x, const T* y, int f) {
   // Don't use dot-product: avoid catastrophic cancellation in #314.
   T d = 0.0;
-  for (int i = 0; i < f; i++) {
-    const T tmp=x[i] - y[i];
+  for (int i = 0; i < f; ++i) {
+    const T tmp=*x - *y;
     d += tmp * tmp;
+    ++x;
+    ++y;
   }
   return d;
 }
