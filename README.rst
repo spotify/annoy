@@ -130,7 +130,7 @@ More info
 * Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
 
-.. figure:: https://raw.github.com/erikbern/ann-benchmarks/master/results/glove.png
+.. figure:: https://github.com/erikbern/ann-benchmarks/raw/master/results/glove-100-angular.png
    :alt: ANN benchmarks
    :align: center
    :target: https://github.com/erikbern/ann-benchmarks
