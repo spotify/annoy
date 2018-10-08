@@ -149,3 +149,10 @@ class EuclideanIndexTest(TestCase):
                 # self.assertAlmostEqual(dist, euclidean(u, v))
                 self.assertAlmostEqual(dist, numpy.dot(u - v, u - v) ** 0.5)
                 self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u, v)])**0.5)
+
+    def test_rounding_error(self):
+        # https://github.com/spotify/annoy/issues/314
+        i = AnnoyIndex(1, 'euclidean')
+        i.add_item(0, [0.7125930])
+        i.add_item(1, [0.7123166])
+        self.assertGreater(i.get_distance(0, 1), 0.0)
