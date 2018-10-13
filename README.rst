@@ -78,8 +78,8 @@ Full Python API
 * ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, ``"hamming"``, or ``"dot"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
-* ``a.save(fn)`` saves the index to disk.
-* ``a.load(fn)`` loads (mmaps) an index from disk.
+* ``a.save(fn, prefault=True)`` saves the index to disk. 
+* ``a.load(fn, prefault=True)`` loads (mmaps) an index from disk.
 * ``a.unload()`` unloads.
 * ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
 * ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
@@ -98,12 +98,15 @@ The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
 Tradeoffs
 ---------
 
-There are just two parameters you can use to tune Annoy: the number of trees ``n_trees`` and the number of nodes to inspect during searching ``search_k``.
+There are just two main parameters needed to tune Annoy: the number of trees ``n_trees`` and the number of nodes to inspect during searching ``search_k``.
 
 * ``n_trees`` is provided during build time and affects the build time and the index size. A larger value will give more accurate results, but larger indexes.
 * ``search_k`` is provided in runtime and affects the search performance. A larger value will give more accurate results, but will take longer time to return.
 
 If ``search_k`` is not provided, it will default to ``n * n_trees * D`` where ``n`` is the number of approximate nearest neighbors and ``D`` is a constant depending on the metric. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
+
+You can also accept slower search times in favour of reduced loading times, memory usage, and disk IO. On supported platforms the index is prefaulted during ``load`` and ``save``, causing the file to be pre-emptively read from disk into memory. If you set ``prefault`` to ``False``, pages of the mmapped index are instead read from disk and cached in memory on-demand, as necessary for a search to complete. This can significantly increase early search times but may be better suited for systems with low memory compared to index size, when few queries are executed against a loaded index, and/or when large areas of the index are unlikely to be relevant to search queries.
+
 
 How does it work
 ----------------

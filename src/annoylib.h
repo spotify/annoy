@@ -667,9 +667,9 @@ class AnnoyIndexInterface {
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
   virtual void unbuild() = 0;
-  virtual bool save(const char* filename) = 0;
+  virtual bool save(const char* filename, bool prefault) = 0;
   virtual void unload() = 0;
-  virtual bool load(const char* filename) = 0;
+  virtual bool load(const char* filename, bool prefault) = 0;
   virtual T get_distance(S i, S j) = 0;
   virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
@@ -791,7 +791,7 @@ public:
     _n_nodes = _n_items;
   }
 
-  bool save(const char* filename) {
+  bool save(const char* filename, bool prefault) {
     FILE *f = fopen(filename, "wb");
     if (f == NULL)
       return false;
@@ -800,7 +800,7 @@ public:
     fclose(f);
 
     unload();
-    return load(filename);
+    return load(filename, prefault);
   }
 
   void reinitialize() {
@@ -827,7 +827,7 @@ public:
     if (_verbose) showUpdate("unloaded\n");
   }
 
-  bool load(const char* filename) {
+  bool load(const char* filename, bool prefault) {
     _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1) {
       _fd = 0;
@@ -835,8 +835,9 @@ public:
     }
     off_t size = lseek(_fd, 0, SEEK_END);
 #ifdef MAP_POPULATE
+    const int populate = prefault ? MAP_POPULATE : 0;
     _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
+        0, size, PROT_READ, MAP_SHARED | populate, _fd, 0);
 #else
     _nodes = (Node*)mmap(
         0, size, PROT_READ, MAP_SHARED, _fd, 0);
