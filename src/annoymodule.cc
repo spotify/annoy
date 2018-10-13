@@ -68,9 +68,9 @@ public:
   };
   void build(int q) { _index.build(q); };
   void unbuild() { _index.unbuild(); };
-  bool save(const char* filename) { return _index.save(filename); };
+  bool save(const char* filename, bool prefault) { return _index.save(filename, prefault); };
   void unload() { _index.unload(); };
-  bool load(const char* filename) { return _index.load(filename); };
+  bool load(const char* filename, bool prefault) { return _index.load(filename, prefault); };
   float get_distance(int32_t i, int32_t j) { return _index.get_distance(i, j); };
   void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
     if (distances) {
@@ -170,13 +170,14 @@ static PyObject *
 py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char* filename;
   bool res = false;
+  bool prefault = true;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"fn", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
+  static char const * kwlist[] = {"fn", "prefault", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->load(filename);
+  res = self->ptr->load(filename, prefault);
 
   if (!res) {
     PyErr_SetFromErrno(PyExc_IOError);
@@ -190,13 +191,14 @@ static PyObject *
 py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename;
   bool res = false;
+  bool prefault = true;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"fn", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
+  static char const * kwlist[] = {"fn", "prefault", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->save(filename);
+  res = self->ptr->save(filename, prefault);
 
   if (!res) {
     PyErr_SetFromErrno(PyExc_IOError);

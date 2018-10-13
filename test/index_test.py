@@ -57,13 +57,24 @@ class IndexTest(TestCase):
         i = AnnoyIndex(10)
         i.load('test/test.tree')
         u = i.get_item_vector(99)
-        i.save('x.tree')
+        i.save('i.tree')
         v = i.get_item_vector(99)
         self.assertEqual(u, v)
         j = AnnoyIndex(10)
         j.load('test/test.tree')
         w = i.get_item_vector(99)
         self.assertEqual(u, w)
+        # Ensure specifying if prefault is allowed does not impact result
+        j.save('j.tree', True)
+        k = AnnoyIndex(10)
+        k.load('j.tree', True)
+        x = k.get_item_vector(99)
+        self.assertEqual(u, x)
+        k.save('k.tree', False)
+        l = AnnoyIndex(10)
+        l.load('k.tree', False)
+        y = l.get_item_vector(99)
+        self.assertEqual(u, y)
 
     def test_save_without_build(self):
         # Issue #61
