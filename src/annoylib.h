@@ -48,6 +48,7 @@ typedef signed __int32    int32_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
+#include <bitset>
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -65,6 +66,9 @@ typedef signed __int32    int32_t;
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
+#elif _MSC_VER == 1500
+#define isnan(x) (sizeof(x) == sizeof(float) ? _isnanf(x) : _isnan(x))
+#define popcount std_popcount
 #else
 #define popcount __popcnt64
 #endif
@@ -406,7 +410,7 @@ struct DotProduct : Angular {
 
   template<typename T, typename Node>
   static inline void normalize(Node* node, int f) {
-    T norm = sqrt(dot(node->v, node->v, f) + pow(node->dot_factor, 2));
+    T norm = sqrt(dot(node->v, node->v, f) + std::pow(node->dot_factor, 2));
     if (norm > 0) {
       for (int z = 0; z < f; z++)
         node->v[z] /= norm;
@@ -460,7 +464,7 @@ struct DotProduct : Angular {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T node_norm = node->dot_factor;
 
-      T dot_factor = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
+      T dot_factor = sqrt(std::pow(max_norm, static_cast<T>(2.0)) - std::pow(node_norm, static_cast<T>(2.0)));
       if (isnan(dot_factor)) dot_factor = 0;
 
       node->dot_factor = dot_factor;
@@ -487,6 +491,10 @@ struct Hamming : Base {
   template<typename T>
   static inline T pq_initial_value() {
     return numeric_limits<T>::max();
+  }
+  template<typename T>
+  static inline int std_popcount(T v) {
+    return std::bitset<numeric_limits<T>::digits>(v).count();
   }
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
