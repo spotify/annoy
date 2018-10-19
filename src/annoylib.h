@@ -494,6 +494,7 @@ struct Hamming : Base {
   }
   template<typename T>
   static inline int std_popcount(T v) {
+    // Note: this is only used with Visual Studio
     return std::bitset<numeric_limits<T>::digits>(v).count();
   }
   template<typename S, typename T>
