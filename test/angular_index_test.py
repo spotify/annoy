@@ -17,6 +17,7 @@ import random
 from common import TestCase
 from annoy import AnnoyIndex
 
+
 class AngularIndexTest(TestCase):
     def test_get_nns_by_vector(self):
         f = 3

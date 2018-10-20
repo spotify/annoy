@@ -30,7 +30,7 @@
 #if defined(_MSC_VER) && _MSC_VER == 1500
 typedef unsigned char     uint8_t;
 typedef signed __int32    int32_t;
-typedef unsigned __int64    uint64_t;
+typedef unsigned __int64  uint64_t;
 #else
 #include <stdint.h>
 #endif
@@ -49,7 +49,6 @@ typedef unsigned __int64    uint64_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
-#include <bitset>
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -411,7 +410,7 @@ struct DotProduct : Angular {
 
   template<typename T, typename Node>
   static inline void normalize(Node* node, int f) {
-    T norm = sqrt(dot(node->v, node->v, f) + std::pow(node->dot_factor, 2));
+    T norm = sqrt(dot(node->v, node->v, f) + pow(node->dot_factor, 2));
     if (norm > 0) {
       for (int z = 0; z < f; z++)
         node->v[z] /= norm;
@@ -465,7 +464,7 @@ struct DotProduct : Angular {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T node_norm = node->dot_factor;
 
-      T dot_factor = sqrt(std::pow(max_norm, static_cast<T>(2.0)) - std::pow(node_norm, static_cast<T>(2.0)));
+      T dot_factor = sqrt(pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0)));
       if (isnan(dot_factor)) dot_factor = 0;
 
       node->dot_factor = dot_factor;
