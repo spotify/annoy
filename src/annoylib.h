@@ -30,6 +30,7 @@
 #if defined(_MSC_VER) && _MSC_VER == 1500
 typedef unsigned char     uint8_t;
 typedef signed __int32    int32_t;
+typedef unsigned __int64  uint64_t;
 #else
 #include <stdint.h>
 #endif
@@ -65,6 +66,9 @@ typedef signed __int32    int32_t;
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
+#elif _MSC_VER == 1500
+#define isnan(x) _isnan(x)
+#define popcount cole_popcount
 #else
 #define popcount __popcnt64
 #endif
@@ -460,7 +464,7 @@ struct DotProduct : Angular {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T node_norm = node->dot_factor;
 
-      T dot_factor = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
+      T dot_factor = sqrt(pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0)));
       if (isnan(dot_factor)) dot_factor = 0;
 
       node->dot_factor = dot_factor;
@@ -487,6 +491,17 @@ struct Hamming : Base {
   template<typename T>
   static inline T pq_initial_value() {
     return numeric_limits<T>::max();
+  }
+  template<typename T>
+  static inline int cole_popcount(T v) {
+    // Note: Only used with MSVC 9, which lacks intrinsics and fails to
+    // calculate std::bitset::count for v > 32bit. Uses the generalized
+    // approach by Eric Cole.
+    // See https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSet64
+    v = v - ((v >> 1) & (T)~(T)0/3);
+    v = (v & (T)~(T)0/15*3) + ((v >> 2) & (T)~(T)0/15*3);
+    v = (v + (v >> 4)) & (T)~(T)0/255*15;
+    return (T)(v * ((T)~(T)0/255)) >> (sizeof(T) - 1) * 8;
   }
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
@@ -929,7 +944,9 @@ protected:
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
       // probably because gcc 4.8 goes overboard with optimizations.
       // Using memcpy instead of std::copy for MSVC compatibility. #235
-      memcpy(m->children, &indices[0], indices.size() * sizeof(S));
+      // Only copy when necessary to avoid crash in MSVC 9. #293
+      if (!indices.empty())
+        memcpy(m->children, &indices[0], indices.size() * sizeof(S));
       return item;
     }
 
