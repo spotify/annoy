@@ -397,10 +397,7 @@ struct DotProduct : Angular {
      * This is an extension of the Angular node with an extra attribute for the scaled norm.
      */
     S n_descendants;
-    union {
-      S children[2]; // Will possibly store more than 2
-      T norm;
-    };
+    S children[2]; // Will possibly store more than 2
     T dot_factor;
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
@@ -420,14 +417,12 @@ struct DotProduct : Angular {
 
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
-    n->norm = dot(n->v, n->v, f);
   }
 
   template<typename T, typename Node>
   static inline void copy_node(Node* dest, const Node* source, const int f) {
     memcpy(dest->v, source->v, f * sizeof(T));
     dest->dot_factor = source->dot_factor;
-    dest->norm = source->norm;
   }
 
   template<typename S, typename T, typename Random>
@@ -505,7 +500,6 @@ struct DotProduct : Angular {
       if (isnan(dot_factor)) dot_factor = 0;
 
       node->dot_factor = dot_factor;
-      node->norm = dot(node->v, node->v, f) + (dot_factor * dot_factor);
     }
   }
 };
@@ -611,10 +605,7 @@ struct Minkowski : Base {
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
-    union {
-      S children[2];
-      T norm;
-    };
+    S children[2];
     T v[1];
   };
   template<typename S, typename T>
