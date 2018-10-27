@@ -129,6 +129,19 @@ inline T manhattan_distance(const T* x, const T* y, int f) {
   return d;
 }
 
+template<typename T>
+inline T euclidean_distance(const T* x, const T* y, int f) {
+  // Don't use dot-product: avoid catastrophic cancellation in #314.
+  T d = 0.0;
+  for (int i = 0; i < f; ++i) {
+    const T tmp=*x - *y;
+    d += tmp * tmp;
+    ++x;
+    ++y;
+  }
+  return d;
+}
+
 #ifdef USE_AVX
 // Horizontal single sum of 256bit vector.
 inline float hsum256_ps_avx(__m256 v) {
@@ -180,6 +193,30 @@ inline float manhattan_distance<float>(const float* x, const float* y, int f) {
   // Don't forget the remaining values.
   for (; i > 0; i--) {
     result += fabsf(*x - *y);
+    x++;
+    y++;
+  }
+  return result;
+}
+
+template<>
+inline float euclidean_distance<float>(const float* x, const float* y, int f) {
+  float result=0;
+  if (f > 7) {
+    __m256 d = _mm256_setzero_ps();
+    for (; f > 7; f -= 8) {
+      const __m256 diff = _mm256_sub_ps(_mm256_loadu_ps(x), _mm256_loadu_ps(y));
+      d = _mm256_add_ps(d, _mm256_mul_ps(diff, diff)); // no support for fmadd in AVX...
+      x += 8;
+      y += 8;
+    }
+    // Sum all floats in dot register.
+    result = hsum256_ps_avx(d);
+  }
+  // Don't forget the remaining values.
+  for (; f > 0; f--) {
+    float tmp = *x - *y;
+    result += tmp * tmp;
     x++;
     y++;
   }
@@ -608,11 +645,7 @@ struct Minkowski : Base {
 struct Euclidean : Minkowski {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    T pq = dot(x->v, y->v, f);
-    // Instead of pp + qq - 2*pq, we compute (pp - pq) + (qq - pq). See #314
-    T pp_minus_pq = x->norm ? x->norm - pq : dot(x->v, x->v, f) - pq; // For backwards compatibility reasons, we need to fall back and compute the norm here
-    T qq_minus_pq = y->norm ? y->norm - pq : dot(y->v, y->v, f) - pq;
-    return pp_minus_pq + qq_minus_pq;
+    return euclidean_distance(x->v, y->v, f);    
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
@@ -635,7 +668,6 @@ struct Euclidean : Minkowski {
   }
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
-    n->norm = dot(n->v, n->v, f);
   }
   static const char* name() {
     return "euclidean";
