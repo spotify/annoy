@@ -705,9 +705,9 @@ class AnnoyIndexInterface {
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
   virtual void unbuild() = 0;
-  virtual bool save(const char* filename, bool prefault) = 0;
+  virtual bool save(const char* filename, bool prefault=false) = 0;
   virtual void unload() = 0;
-  virtual bool load(const char* filename, bool prefault) = 0;
+  virtual bool load(const char* filename, bool prefault=false) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -829,7 +829,7 @@ public:
     _n_nodes = _n_items;
   }
 
-  bool save(const char* filename, bool prefault) {
+  bool save(const char* filename, bool prefault=false) {
     FILE *f = fopen(filename, "wb");
     if (f == NULL)
       return false;
@@ -838,7 +838,7 @@ public:
     fclose(f);
 
     unload();
-    return load(filename, prefault);
+    return load(filename, prefault=false);
   }
 
   void reinitialize() {
@@ -865,7 +865,7 @@ public:
     if (_verbose) showUpdate("unloaded\n");
   }
 
-  bool load(const char* filename, bool prefault) {
+  bool load(const char* filename, bool prefault=false) {
     _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1) {
       _fd = 0;
