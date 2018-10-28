@@ -708,12 +708,12 @@ class AnnoyIndexInterface {
   virtual bool save(const char* filename, bool prefault) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault) = 0;
-  virtual T get_distance(S i, S j) = 0;
-  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
-  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
-  virtual S get_n_items() = 0;
+  virtual T get_distance(S i, S j) const = 0;
+  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
+  virtual S get_n_items() const = 0;
   virtual void verbose(bool v) = 0;
-  virtual void get_item(S item, T* v) = 0;
+  virtual void get_item(S item, T* v) const = 0;
   virtual void set_seed(int q) = 0;
 };
 
@@ -904,26 +904,26 @@ public:
     return true;
   }
 
-  T get_distance(S i, S j) {
+  T get_distance(S i, S j) const {
     return D::normalized_distance(D::distance(_get(i), _get(j), _f));
   }
 
-  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     const Node* m = _get(item);
     _get_all_nns(m->v, n, search_k, result, distances);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     _get_all_nns(w, n, search_k, result, distances);
   }
-  S get_n_items() {
+  S get_n_items() const {
     return _n_items;
   }
   void verbose(bool v) {
     _verbose = v;
   }
 
-  void get_item(S item, T* v) {
+  void get_item(S item, T* v) const {
     Node* m = _get(item);
     memcpy(v, m->v, (_f) * sizeof(T));
   }
@@ -945,7 +945,7 @@ protected:
     }
   }
 
-  inline Node* _get(const S i) {
+  inline Node* _get(const S i) const {
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
@@ -1034,7 +1034,7 @@ protected:
     return item;
   }
 
-  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     Node* v_node = (Node *)malloc(_s); // TODO: avoid
     D::template zero_value<Node>(v_node);
     memcpy(v_node->v, v, sizeof(T) * _f);
