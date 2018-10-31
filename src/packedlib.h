@@ -24,6 +24,19 @@
 #include <memory>
 #include <iostream>
 
+namespace detail {
+  // This is common storage header(tailer)
+  struct Header
+  {
+    uint32_t version;
+    uint32_t vlen, idx_block_len;
+    uint32_t nblocks;
+  };
+
+  static_assert( sizeof(Header) == 16, "header must 16 bytes long!");
+
+} // namespace detail
+
 template<typename S, typename T, typename Distance, typename Random>
 class PackedAnnoyIndexer {
   /*
@@ -60,12 +73,14 @@ protected:
   std::deque<indices_list_t>  _indices_lists;
 public:
 
-  PackedAnnoyIndexer(int f, S idx_block_len ) 
+  PackedAnnoyIndexer(int f, S idx_block_len)
     : _f(f)
     , _s(offsetof(Node, v) + _f * sizeof(T))
     , _K(idx_block_len)
     , _verbose(false)
   {
+    if( (_K * sizeof(S)) % 16 )
+      throw std::runtime_error("size of the index-node must be multiply of 16 bytes, consider using different idx_block_len!");
     reinitialize(); // Reset everything
   }
 
@@ -133,7 +148,7 @@ public:
 
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
   }
-  
+
   void unbuild() {
     if (_loaded) {
       showUpdate("You can't unbuild a loaded index\n");
@@ -145,7 +160,7 @@ public:
   }
 
   static inline uint32_t maxbits(uint32_t const v)
-  {   
+  {
     return v == 0 ? 0 : 32 - __builtin_clz(v);
   }
 
@@ -171,72 +186,58 @@ public:
     for (S i = 0; i < _n_nodes; i++) {
       Node *node = get_node_ptr<S, Node>(_nodes, _s, i);
       Node *packed = get_node_ptr<S, Node>(packed_nodes, packed_size, i);
-      // pack and copy to new buffer      
+      // pack and copy to new buffer
       memcpy(packed, node, offsetof(Node, v));
       pack_float_vector_i16(node->v, (uint16_t*)packed->v, _f);
     }
 
-    // get indices stats?
     S const iblocks = _indices_lists.size();
-    //*
-    uint32_t min_max_bit = 100, max_max_bit = 0;
-    size_t total_bits = 0, total_size = 0;
-    for( auto const &i : _indices_lists )
-    {
-      total_size += i.size();
-      uint32_t const *idx = i.data(), *e = idx + i.size();
-      //std::sort(idx, e);
-      uint32_t mb = get_max_bits(idx, e);
-      min_max_bit = std::min(min_max_bit, mb);
-      max_max_bit = std::max(max_max_bit, mb);
-      total_bits += mb;
+
+    if (_verbose) {
+      // get indices stats?
+      uint32_t min_max_bit = 100, max_max_bit = 0;
+      size_t total_bits = 0, total_size = 0;
+      for( auto const &i : _indices_lists )
+      {
+        total_size += i.size();
+        uint32_t const *idx = i.data(), *e = idx + i.size();
+        uint32_t mb = get_max_bits(idx, e);
+        min_max_bit = std::min(min_max_bit, mb);
+        max_max_bit = std::max(max_max_bit, mb);
+        total_bits += mb;
+      }
+      showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\ntotal size of indices=%zd numbers of blocks=%zd\n",
+      _n_items, _n_nodes, iblocks * _K * sizeof(S), iblocks);
+
+      auto iblock_avg_sz = total_size / double(iblocks);
+
+      showUpdate("iblock avg sz=%zd waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
     }
-
-    std::cout << "total normal=" << _n_items << " total_nodes=" << _n_nodes
-          << "\nmin_max_bit=" << min_max_bit << " max_max_bit=" << max_max_bit << " avg_mb=" << total_bits / double(iblocks)
-          << "\ntotal size of indices=" << iblocks * _K * sizeof(S) << " numbers of blocks=" << iblocks
-          << std::endl;
-
-    
-    auto iblock_avg_sz = total_size / double(iblocks);
-    std::cout << "iblock avg sz=" << iblock_avg_sz << " waste=" << 1.0 - (iblock_avg_sz / (_K - 1 )) << std::endl;
-    //*/
 
     FILE *f = fopen(filename, "wb");
     if (f == NULL)
       return false;
 
-
     // write indices first
     S index_write_block[_K];
-    S header_size = 1;
-    // find first not fully filled node and use it as preudo-header ;)
-    // yes we very love hacks :)
     for( auto const &i : _indices_lists )
     {
       S const isz = i.size();
       index_write_block[0] = isz;
       S *data_start = index_write_block + 1;
       memset(data_start, 0, sizeof(index_write_block) - sizeof(S));
-      if( _K - isz > header_size )
-      {
-          // found(!)
-          // fill backward
-          index_write_block[_K - header_size] = iblocks;
-          // prevent from writting this for ever block
-          header_size = _K << 1;
-      }      
       memcpy(data_start, i.data(), isz * sizeof(S));
       fwrite(index_write_block, sizeof(index_write_block), 1, f);
     }
     // and nodes data
     fwrite(packed_nodes, packed_size, _n_nodes, f);
+    // header goes to the tail
+    _write_header(f, iblocks);
     fclose(f);
 
     unload();
 
     return true;
-    //return load(filename);
   }
 
   void reinitialize() {
@@ -267,6 +268,17 @@ public:
   }
 
 protected:
+
+  void _write_header( FILE *f, S nblocks ) {
+    // write header only at tail of file to keep strict alignment in memory
+    // for faster memory access
+    detail::Header hdr = { 0 };
+    hdr.vlen = _f;
+    hdr.idx_block_len = _K;
+    hdr.nblocks = nblocks;
+    fwrite(&hdr, sizeof(hdr), 1, f);
+  }
+
   void _allocate_size(S n) {
     if (n > _nodes_size) {
       const double reallocation_factor = 1.3;
@@ -380,26 +392,26 @@ public:
   typedef Distance D;
   typedef typename Distance::PackedFloatType PackedFloatType;
   //typedef EuclideanPacked16 SD;
-  typedef typename D::template Node<S, T> Node;
+  typedef typename D::template Node<S, T> Node; 
 private:
   static constexpr S const _K_mask = S(1) << S(sizeof(S) * 8 - 1);
   static constexpr S const _K_mask_clear = _K_mask - 1;
 protected:
-  int const _f;
-  S const _s; // Size of each node
-  S const _K; // Max number of descendants to fit into node
+  int _f;
+  S _s; // Size of each node
+  S _K; // Max number of descendants to fit into node
   S _n_items; // number of ordinal nodes(i.e leaf)
   void const *_nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   void const *_mmaped;
-  std::vector<S> _roots;  
+  std::vector<S> _roots;
   size_t _size_of_mapping;
   int _fd;
 public:
 
-  PackedAnnoySearcher( int f, S idx_block_len ) 
-    : _f(f)
-    , _s(offsetof(Node, v) + _f * sizeof(PackedFloatType))
-    , _K(idx_block_len)
+  PackedAnnoySearcher()
+    : _f(0)
+    , _s(0)
+    , _K(0)
     , _n_items(0)
     , _nodes(nullptr)
     , _mmaped(nullptr)
@@ -409,9 +421,6 @@ public:
     // check size of node must be multiply of 16
     if( _s % 16 )
       throw std::runtime_error("size of the node must be multiply of 16 bytes, consider using different config!");
-
-    if( (_K * sizeof(S)) % 16 )
-      throw std::runtime_error("size of the index-node must be multiply of 16 bytes, consider using different idx_block_len!");
   }
 
   ~PackedAnnoySearcher()
@@ -433,6 +442,8 @@ public:
   }
 
   bool load(const char* filename, bool need_mlock) {
+    if( _fd )
+      return false; // already opened!
     _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1) {
       _fd = 0;
@@ -453,20 +464,10 @@ public:
 
     _size_of_mapping = size;
 
-    // read pseudo-header
-    S const *index_start = (S const*)_mmaped;
-    S const size_needed = 1;
-    S nblocks = 0;
-    for( S const *line = index_start; /* win or die */; line += _K )
-    {
-      if( (_K - *line) > size_needed ) 
-      {
-        nblocks = line[_K - 1];
-        break; // win
-      }
-    }
+    S const *index_start = static_cast<S const*>(_mmaped);
 
-    S nindices = nblocks * _K;
+    // read pseudo-header
+    S nindices = _init_header();
 
     // get offset to the vector data start
     _nodes = (void*)(index_start + nindices);
@@ -516,6 +517,18 @@ public:
   }
 
 private:
+
+  S _init_header() {
+    detail::Header const *hdr = reinterpret_cast<detail::Header const*>((uint8_t const*)_mmaped 
+      + _size_of_mapping - sizeof(detail::Header));
+
+    _f = hdr->vlen;
+    _s = offsetof(Node, v) + _f * sizeof(PackedFloatType);
+    _K = hdr->idx_block_len;
+
+    return _K * hdr->nblocks;
+  }
+
   inline Node* _get(S i) const {
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
@@ -555,7 +568,7 @@ private:
       T d = top.first;
       S fi = top.second, i = fi & _K_mask_clear;
       q.pop();
-      
+
       if( !(fi & _K_mask) )
       {
         // ordinal node
@@ -628,7 +641,7 @@ struct EuclideanPacked16 : Euclidean
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     __builtin_prefetch((uint8_t const*)x + 8);
     T pp = x->norm;
-    T qq = y->norm;    
+    T qq = y->norm;
     T pq = decode_and_dot_i16_f32((PackedFloatType const*)x->v, y->v, f);
     return pp + qq - 2*pq;
   }

@@ -35,9 +35,8 @@ static std::vector<float> GenerateVector( size_t n, float lo, float hi )
 
 #define CHECK_AND_THROW(eq) { if( eq ) throw std::runtime_error(#eq); }
 
-static int test(int f, int k, int count)
+static int test(int f, int k, int count, int depth = 30)
 {
-	int const depth = 30;
 	// create indexer first
 	{
 		PackedAnnoyIndexer<uint32_t, float, Euclidean, Kiss32Random> indexer(f, k);
@@ -46,15 +45,15 @@ static int test(int f, int k, int count)
 			auto vec = GenerateVector(f, -1.f, +1.f);
 			indexer.add_item(i, vec.data());
 		}
-
+		std::cout << "build with depth=" << depth << " started." << std::endl;
 		indexer.build(depth);
-
+		std::cout << "building done, save into: \"" << TMP_FNAME << "\"" << std::endl;
 		indexer.save(TMP_FNAME);
 	}
 
 	// and load from scratch
 
-	PackedAnnoySearcher<uint32_t, float, EuclideanPacked16> searcher(f, k);
+	PackedAnnoySearcher<uint32_t, float, EuclideanPacked16> searcher;
 
 	searcher.load(TMP_FNAME, false);
 
@@ -66,11 +65,12 @@ static int test(int f, int k, int count)
 
     size_t const search_k = (size_t)-1;
 
-    uint32_t nitems_for_test = std::min(nitems, uint32_t(nitems * 0.1));
+    uint32_t nitems_for_test = std::min(nitems, uint32_t(nitems * 0.2));
+
+	std::cout << "scan start, nitems_for_test=" << nitems_for_test << std::endl;
 
     for( uint32_t i = 0; i < nitems_for_test; ++i )
     {
-        //idx.get_item(i, vdata);
         // try to locate it in scan
         results.clear();
         searcher.get_nns_by_item(i, depth, search_k, &results, nullptr);
@@ -86,25 +86,28 @@ static int test(int f, int k, int count)
 }
 
 int main(int argc, char **argv) {
-	int f, k, n;
+	int f, k, n, d;
 
 	try
 	{
 		if(argc == 1){
 			return test(64, 128, 100000);
 		}
-		else if(argc == 4){
+		else if(argc == 5){
 
 			f = atoi(argv[1]);
 			k = atoi(argv[2]);
 			n = atoi(argv[3]);
-			return test(f, k, n);
+			d = atoi(argv[4]);
+			return test(f, k, n, d);
 		}
 
 	}
 	catch(std::exception const &e)
 	{
 		std::cerr << e.what() << '\n';
+
+		return EXIT_FAILURE;
 	}
 
 
