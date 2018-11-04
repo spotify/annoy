@@ -124,3 +124,8 @@ class IndexTest(TestCase):
         self.assertEquals(a.get_n_items(), 4)
         self.assertEquals(a.get_item_vector(3), [0, 0, 1])
         self.assertEquals(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
+
+    def test_prefault(self):
+        i = AnnoyIndex(10)
+        i.load('test/test.tree', prefault=True)
+        self.assertEqual(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
