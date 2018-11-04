@@ -170,7 +170,7 @@ static PyObject *
 py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char* filename;
   bool res = false;
-  bool prefault = true;
+  bool prefault = false;
   if (!self->ptr) 
     return NULL;
   static char const * kwlist[] = {"fn", "prefault", NULL};
@@ -191,7 +191,7 @@ static PyObject *
 py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename;
   bool res = false;
-  bool prefault = true;
+  bool prefault = false;
   if (!self->ptr) 
     return NULL;
   static char const * kwlist[] = {"fn", "prefault", NULL};

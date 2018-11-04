@@ -78,8 +78,8 @@ Full Python API
 * ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, ``"hamming"``, or ``"dot"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
-* ``a.save(fn, prefault=True)`` saves the index to disk. 
-* ``a.load(fn, prefault=True)`` loads (mmaps) an index from disk.
+* ``a.save(fn, prefault=False)`` saves the index to disk and loads it (see next function). After saving, no more items can be added.
+* ``a.load(fn, prefault=False)`` loads (mmaps) an index from disk. If `prefault` is set to `True`, it will pre-read the entire file into memory (using mmap with `MAP_POPULATE`). Default is `False`.
 * ``a.unload()`` unloads.
 * ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
 * ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
