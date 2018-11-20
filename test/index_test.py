@@ -16,6 +16,7 @@ import random
 from common import TestCase
 from annoy import AnnoyIndex
 
+
 class IndexTest(TestCase):
     def test_not_found_tree(self):
         i = AnnoyIndex(10)
@@ -56,13 +57,24 @@ class IndexTest(TestCase):
         i = AnnoyIndex(10)
         i.load('test/test.tree')
         u = i.get_item_vector(99)
-        i.save('x.tree')
+        i.save('i.tree')
         v = i.get_item_vector(99)
         self.assertEqual(u, v)
         j = AnnoyIndex(10)
         j.load('test/test.tree')
         w = i.get_item_vector(99)
         self.assertEqual(u, w)
+        # Ensure specifying if prefault is allowed does not impact result
+        j.save('j.tree', True)
+        k = AnnoyIndex(10)
+        k.load('j.tree', True)
+        x = k.get_item_vector(99)
+        self.assertEqual(u, x)
+        k.save('k.tree', False)
+        l = AnnoyIndex(10)
+        l.load('k.tree', False)
+        y = l.get_item_vector(99)
+        self.assertEqual(u, y)
 
     def test_save_without_build(self):
         # Issue #61
@@ -96,3 +108,24 @@ class IndexTest(TestCase):
 
     def test_metric_f_kwargs(self):
         i = AnnoyIndex(f=3, metric='euclidean')
+
+    def test_item_vector_after_save(self):
+        # Issue #279
+        a = AnnoyIndex(3)
+        a.verbose(True)
+        a.add_item(1, [1, 0, 0])
+        a.add_item(2, [0, 1, 0])
+        a.add_item(3, [0, 0, 1])
+        a.build(-1)
+        self.assertEquals(a.get_n_items(), 4)
+        self.assertEquals(a.get_item_vector(3), [0, 0, 1])
+        self.assertEquals(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
+        a.save('something.annoy')
+        self.assertEquals(a.get_n_items(), 4)
+        self.assertEquals(a.get_item_vector(3), [0, 0, 1])
+        self.assertEquals(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
+
+    def test_prefault(self):
+        i = AnnoyIndex(10)
+        i.load('test/test.tree', prefault=True)
+        self.assertEqual(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])

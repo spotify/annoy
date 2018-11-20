@@ -16,6 +16,7 @@ import numpy
 import random
 from common import TestCase
 from annoy import AnnoyIndex
+from nose.plugins.skip import SkipTest
 
 
 class HammingIndexTest(TestCase):
@@ -83,3 +84,35 @@ class HammingIndexTest(TestCase):
             dists.append(ds[0])
         avg_dist = 1.0 * sum(dists) / len(dists)
         self.assertLessEqual(avg_dist, 0.42)
+
+    @SkipTest  # will fix later
+    def test_zero_vectors(self):
+        # Mentioned on the annoy-user list
+        bitstrings = [
+            '0000000000011000001110000011111000101110111110000100000100000000',
+            '0000000000011000001110000011111000101110111110000100000100000001',
+            '0000000000011000001110000011111000101110111110000100000100000010',
+            '0010010100011001001000010001100101011110000000110000011110001100',
+            '1001011010000110100101101001111010001110100001101000111000001110',
+            '0111100101111001011110010010001100010111000111100001101100011111',
+            '0011000010011101000011010010111000101110100101111000011101001011',
+            '0011000010011100000011010010111000101110100101111000011101001011',
+            '1001100000111010001010000010110000111100100101001001010000000111',
+            '0000000000111101010100010001000101101001000000011000001101000000',
+            '1000101001010001011100010111001100110011001100110011001111001100',
+            '1110011001001111100110010001100100001011000011010010111100100111',
+        ]
+        vectors = [[int(bit) for bit in bitstring] for bitstring in bitstrings]
+
+        f = 64
+        idx = AnnoyIndex(f, 'hamming')
+        for i, v in enumerate(vectors):
+            idx.add_item(i, v)
+
+        idx.build(10)
+        idx.save('idx.ann')
+        idx = AnnoyIndex(f, 'hamming')
+        idx.load('idx.ann')
+        js, ds = idx.get_nns_by_item(0, 5, include_distances=True)
+        self.assertEquals(js[0], 0)
+        self.assertEquals(ds[:4], [0, 1, 1, 22])

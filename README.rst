@@ -39,14 +39,14 @@ Annoy was built by `Erik Bernhardsson <http://www.erikbern.com>`__ in a couple o
 Summary of features
 -------------------
 
-* `Euclidean distance <https://en.wikipedia.org/wiki/Euclidean_distance>`__, `Manhattan distance <https://en.wikipedia.org/wiki/Taxicab_geometry>`__, `cosine distance <https://en.wikipedia.org/wiki/Cosine_similarity>`__, or `Hamming distance <https://en.wikipedia.org/wiki/Hamming_distance>`__
+* `Euclidean distance <https://en.wikipedia.org/wiki/Euclidean_distance>`__, `Manhattan distance <https://en.wikipedia.org/wiki/Taxicab_geometry>`__, `cosine distance <https://en.wikipedia.org/wiki/Cosine_similarity>`__, `Hamming distance <https://en.wikipedia.org/wiki/Hamming_distance>`__, or `Dot (Inner) Product distance <https://en.wikipedia.org/wiki/Dot_product>`__
 * Cosine distance is equivalent to Euclidean distance of normalized vectors = sqrt(2-2*cos(u, v))
 * Works better if you don't have too many dimensions (like <100) but seems to perform surprisingly well even up to 1,000 dimensions
 * Small memory usage
 * Lets you share memory between multiple processes
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
-* Native Python support, tested with 2.6, 2.7, 3.3, 3.4, 3.5
-* Build index on disk to enable indexing big datasets that won't fit into memory
+* Native Python support, tested with 2.7, 3.6, and 3.7.
+* Build index on disk to enable indexing big datasets that won't fit into memory (contributed by `Rene Hollander <https://github.com/ReneHollander>`__)
 
 Python code example
 -------------------
@@ -76,11 +76,11 @@ Right now it only accepts integers as identifiers for items. Note that it will a
 Full Python API
 ---------------
 
-* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, or ``"hamming"``.
+* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, ``"hamming"``, or ``"dot"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
-* ``a.save(fn)`` saves the index to disk.
-* ``a.load(fn)`` loads (mmaps) an index from disk.
+* ``a.save(fn, prefault=False)`` saves the index to disk and loads it (see next function). After saving, no more items can be added.
+* ``a.load(fn, prefault=False)`` loads (mmaps) an index from disk. If `prefault` is set to `True`, it will pre-read the entire file into memory (using mmap with `MAP_POPULATE`). Default is `False`.
 * ``a.unload()`` unloads.
 * ``a.get_nns_by_item(i, n, search_k=-1, include_distances=False)`` returns the ``n`` closest items. During the query it will inspect up to ``search_k`` nodes which defaults to ``n_trees * n`` if not provided. ``search_k`` gives you a run-time tradeoff between better accuracy and speed. If you set ``include_distances`` to ``True``, it will return a 2 element tuple with two lists in it: the second one containing all corresponding distances.
 * ``a.get_nns_by_vector(v, n, search_k=-1, include_distances=False)`` same but query by vector ``v``.
@@ -100,12 +100,15 @@ The C++ API is very similar: just ``#include "annoylib.h"`` to get access to it.
 Tradeoffs
 ---------
 
-There are just two parameters you can use to tune Annoy: the number of trees ``n_trees`` and the number of nodes to inspect during searching ``search_k``.
+There are just two main parameters needed to tune Annoy: the number of trees ``n_trees`` and the number of nodes to inspect during searching ``search_k``.
 
 * ``n_trees`` is provided during build time and affects the build time and the index size. A larger value will give more accurate results, but larger indexes.
 * ``search_k`` is provided in runtime and affects the search performance. A larger value will give more accurate results, but will take longer time to return.
 
-If ``search_k`` is not provided, it will default to ``n * n_trees`` where ``n`` is the number of approximate nearest neighbors. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
+If ``search_k`` is not provided, it will default to ``n * n_trees * D`` where ``n`` is the number of approximate nearest neighbors and ``D`` is a constant depending on the metric. Otherwise, ``search_k`` and ``n_trees`` are roughly independent, i.e. a the value of ``n_trees`` will not affect search time if ``search_k`` is held constant and vice versa. Basically it's recommended to set ``n_trees`` as large as possible given the amount of memory you can afford, and it's recommended to set ``search_k`` as large as possible given the time constraints you have for the queries.
+
+You can also accept slower search times in favour of reduced loading times, memory usage, and disk IO. On supported platforms the index is prefaulted during ``load`` and ``save``, causing the file to be pre-emptively read from disk into memory. If you set ``prefault`` to ``False``, pages of the mmapped index are instead read from disk and cached in memory on-demand, as necessary for a search to complete. This can significantly increase early search times but may be better suited for systems with low memory compared to index size, when few queries are executed against a loaded index, and/or when large areas of the index are unlikely to be relevant to search queries.
+
 
 How does it work
 ----------------
@@ -115,6 +118,10 @@ Using `random projections <http://en.wikipedia.org/wiki/Locality-sensitive_hashi
 We do this k times so that we get a forest of trees. k has to be tuned to your need, by looking at what tradeoff you have between precision and performance.
 
 Hamming distance (contributed by `Martin Aumüller <https://github.com/maumueller>`__) packs the data into 64-bit integers under the hood and uses built-in bit count primitives so it could be quite fast. All splits are axis-aligned.
+
+Dot Product distance (contributed by `Peter Sobot <https://github.com/psobot>`__) reduces the provided vectors from dot (or "inner-product") space to a more query-friendly cosine space using `a method by Bachrach et al., at Microsoft Research, published in 2014 <https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/XboxInnerProduct.pdf>`__.
+
+
 
 More info
 ---------
@@ -130,7 +137,7 @@ More info
 * Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
 
-.. figure:: https://raw.github.com/erikbern/ann-benchmarks/master/results/glove.png
+.. figure:: https://github.com/erikbern/ann-benchmarks/raw/master/results/glove-100-angular.png
    :alt: ANN benchmarks
    :align: center
    :target: https://github.com/erikbern/ann-benchmarks

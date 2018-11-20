@@ -34,7 +34,7 @@ func Round(f float64) float64 {
 
 func RoundPlus(f float64, places int) (float64) {
      shift := math.Pow(10, float64(places))
-     return Round(f * shift) / shift    
+     return Round(f * shift) / shift
 }
 
 func (suite *AnnoyTestSuite) SetupTest() {
@@ -63,9 +63,45 @@ func (suite *AnnoyTestSuite) TestFileHandling() {
      if ret := index.Load("go_test.ann"); ret == false {
         assert.Fail(suite.T(), "Failed to load file")
      }
-     annoyindex.DeleteAnnoyIndexAngular(index)
 
      os.Remove("go_test.ann")
+     index.Save("go_test2.ann", false)
+
+     info, err = os.Stat("go_test2.ann")
+     if err != nil {
+        assert.Fail(suite.T(), "Failed to create file without prefault, file not found")
+     }
+     if info.Size() == 0 {
+        assert.Fail(suite.T(), "Failed to create file without prefault, file size zero")
+     }
+
+     annoyindex.DeleteAnnoyIndexAngular(index)
+
+     index = annoyindex.NewAnnoyIndexAngular(3)
+     if ret := index.Load("go_test2.ann", false); ret == false {
+        assert.Fail(suite.T(), "Failed to load file without prefault")
+     }
+
+     os.Remove("go_test2.ann")
+     index.Save("go_test3.ann", true)
+
+     info, err = os.Stat("go_test3.ann")
+     if err != nil {
+        assert.Fail(suite.T(), "Failed to create file allowing prefault, file not found")
+     }
+     if info.Size() == 0 {
+        assert.Fail(suite.T(), "Failed to create file allowing prefault, file size zero")
+     }
+
+     annoyindex.DeleteAnnoyIndexAngular(index)
+
+     index = annoyindex.NewAnnoyIndexAngular(3)
+     if ret := index.Load("go_test3.ann", true); ret == false {
+        assert.Fail(suite.T(), "Failed to load file allowing prefault")
+     }
+     annoyindex.DeleteAnnoyIndexAngular(index)
+
+     os.Remove("go_test3.ann")
 }
 
 func (suite *AnnoyTestSuite) TestOnDiskBuild() {
@@ -174,8 +210,8 @@ func (suite *AnnoyTestSuite) TestLargeEuclideanIndex() {
      index := annoyindex.NewAnnoyIndexEuclidean(10)
 
      for j := 0; j < 10000; j += 2 {
-     	 p := make([]float32, 0, 10)
-     	 for i := 0; i < 10; i++ {
+         p := make([]float32, 0, 10)
+         for i := 0; i < 10; i++ {
 	     p = append(p, rand.Float32())
 	 }
 	 x := make([]float32, 0, 10)
@@ -194,11 +230,11 @@ func (suite *AnnoyTestSuite) TestLargeEuclideanIndex() {
          var result []int
 	 index.GetNnsByItem(j, 2, -1, &result)
 
-     	 assert.Equal(suite.T(), result, []int{j, j + 1})
-	 
+         assert.Equal(suite.T(), result, []int{j, j + 1})
+
 	 index.GetNnsByItem(j + 1, 2, -1, &result)
 	 assert.Equal(suite.T(), result, []int{j + 1, j})
-     }     
+     }
      annoyindex.DeleteAnnoyIndexEuclidean(index)
 }
 

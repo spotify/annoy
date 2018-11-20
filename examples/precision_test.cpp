@@ -14,7 +14,7 @@
 #include <chrono>
 #include <algorithm>
 #include <map>
-
+#include <random>
 
 
 int precision(int f=40, int n=1000000){

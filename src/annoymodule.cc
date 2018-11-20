@@ -46,7 +46,7 @@ class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
 private:
   int32_t _f_external, _f_internal;
   AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random> _index;
-  void _pack(const float* src, uint64_t* dst) {
+  void _pack(const float* src, uint64_t* dst) const {
     for (int32_t i = 0; i < _f_internal; i++) {
       dst[i] = 0;
       for (int32_t j = 0; j < 64 && i*64+j < _f_external; j++) {
@@ -54,7 +54,7 @@ private:
       }
     }
   };
-  void _unpack(const uint64_t* src, float* dst) {
+  void _unpack(const uint64_t* src, float* dst) const {
     for (int32_t i = 0; i < _f_external; i++) {
       dst[i] = (src[i / 64] >> (i % 64)) & 1;
     }
@@ -68,11 +68,11 @@ public:
   };
   void build(int q) { _index.build(q); };
   void unbuild() { _index.unbuild(); };
-  bool save(const char* filename) { return _index.save(filename); };
+  bool save(const char* filename, bool prefault) { return _index.save(filename, prefault); };
   void unload() { _index.unload(); };
-  bool load(const char* filename) { return _index.load(filename); };
-  float get_distance(int32_t i, int32_t j) { return _index.get_distance(i, j); };
-  void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
+  bool load(const char* filename, bool prefault) { return _index.load(filename, prefault); };
+  float get_distance(int32_t i, int32_t j) const { return _index.get_distance(i, j); };
+  void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) const {
     if (distances) {
       vector<uint64_t> distances_internal;
       _index.get_nns_by_item(item, n, search_k, result, &distances_internal);
@@ -81,7 +81,7 @@ public:
       _index.get_nns_by_item(item, n, search_k, result, NULL);
     }
   };
-  void get_nns_by_vector(const float* w, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) {
+  void get_nns_by_vector(const float* w, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) const {
     vector<uint64_t> w_internal(_f_internal, 0);
     _pack(w, &w_internal[0]);
     if (distances) {
@@ -92,9 +92,9 @@ public:
       _index.get_nns_by_vector(&w_internal[0], n, search_k, result, NULL);
     }
   };
-  int32_t get_n_items() { return _index.get_n_items(); };
+  int32_t get_n_items() const { return _index.get_n_items(); };
   void verbose(bool v) { _index.verbose(v); };
-  void get_item(int32_t item, float* v) {
+  void get_item(int32_t item, float* v) const {
     vector<uint64_t> v_internal(_f_internal, 0);
     _index.get_item(item, &v_internal[0]);
     _unpack(&v_internal[0], v);
@@ -130,6 +130,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
     self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
   } else if (!strcmp(metric, "hamming")) {
     self->ptr = new HammingWrapper(self->f);
+  } else if (!strcmp(metric, "dot")) {
+    self->ptr = new AnnoyIndex<int32_t, float, DotProduct, Kiss64Random>(self->f);
   } else {
     PyErr_SetString(PyExc_ValueError, "No such metric");
     return NULL;
@@ -146,7 +148,7 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int f;
   static char const * kwlist[] = {"f", "metric", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", (char**)kwlist, &f, &metric))
-    return NULL;
+    return (int) NULL;
   return 0;
 }
 
@@ -169,13 +171,14 @@ static PyObject *
 py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char* filename;
   bool res = false;
+  bool prefault = false;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"fn", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
+  static char const * kwlist[] = {"fn", "prefault", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->load(filename);
+  res = self->ptr->load(filename, prefault);
 
   if (!res) {
     PyErr_SetFromErrno(PyExc_IOError);
@@ -189,13 +192,14 @@ static PyObject *
 py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename;
   bool res = false;
+  bool prefault = false;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"fn", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
+  static char const * kwlist[] = {"fn", "prefault", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->save(filename);
+  res = self->ptr->save(filename, prefault);
 
   if (!res) {
     PyErr_SetFromErrno(PyExc_IOError);
@@ -264,8 +268,16 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 bool
 convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
+  if (PyObject_Size(v) == -1) {
+    char buf[256];
+    snprintf(buf, 256, "Expected an iterable, got an object of type \"%s\"", v->ob_type->tp_name);
+    PyErr_SetString(PyExc_ValueError, buf);
+    return false;
+  }
   if (PyObject_Size(v) != f) {
-    PyErr_SetString(PyExc_IndexError, "Vector has wrong length");
+    char buf[128];
+    snprintf(buf, 128, "Vector has wrong length (expected %d, got %ld)", f, PyObject_Size(v));
+    PyErr_SetString(PyExc_IndexError, buf);
     return false;
   }
   for (int z = 0; z < f; z++) {
