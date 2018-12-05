@@ -129,3 +129,31 @@ class IndexTest(TestCase):
         i = AnnoyIndex(10)
         i.load('test/test.tree', prefault=True)
         self.assertEqual(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
+
+    def test_truncate_index(self):
+        # Issue #335
+        f = 40
+
+        # Build the initial index
+        t = AnnoyIndex(f)
+        for i in range(1000):
+            v = [random.gauss(0, 1) for z in range(f)]
+            t.add_item(i, v)
+        t.build(10)
+        t.save('test.ann')
+
+        # Load index file
+        t2 = AnnoyIndex(f)
+        t2.load('test.ann')
+
+        # Overwrite index file
+        t3 = AnnoyIndex(f)
+        for i in range(500):
+            v = [random.gauss(0, 1) for z in range(f)]
+            t3.add_item(i, v)
+        t3.build(10)
+        t3.save('test.ann')
+
+        # Get nearest neighbors
+        v = [random.gauss(0, 1) for z in range(f)]
+        nns = t2.get_nns_by_vector(v, 1000)  # Should not crash

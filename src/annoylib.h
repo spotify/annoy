@@ -832,6 +832,9 @@ public:
   }
 
   bool save(const char* filename, bool prefault=false) {
+    // Delete file if it already exists (See issue #335)
+    unlink(filename);
+
     FILE *f = fopen(filename, "wb");
     if (f == NULL)
       return false;
