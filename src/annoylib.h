@@ -835,7 +835,8 @@ public:
     // Delete file if it already exists (See issue #335)
     struct stat buffer;
     if (stat(filename, &buffer) == 0)
-      unlink(filename);
+      if (unlink(filename) != 0)
+	return false;
 
     FILE *f = fopen(filename, "wb");
     if (f == NULL)

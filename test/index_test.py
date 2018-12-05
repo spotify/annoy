@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+import os
 import random
 from common import TestCase
 from annoy import AnnoyIndex
@@ -130,7 +131,12 @@ class IndexTest(TestCase):
         i.load('test/test.tree', prefault=True)
         self.assertEqual(i.get_nns_by_item(0, 10), [0, 85, 42, 11, 54, 38, 53, 66, 19, 31])
 
-    def test_truncate_index(self):
+    def test_fail_save(self):
+        t = AnnoyIndex(40)
+        with self.assertRaises(IOError):
+            t.save('')
+
+    def test_overwrite_index(self):
         # Issue #335
         f = 40
 
@@ -152,8 +158,12 @@ class IndexTest(TestCase):
             v = [random.gauss(0, 1) for z in range(f)]
             t3.add_item(i, v)
         t3.build(10)
-        t3.save('test.ann')
-
-        # Get nearest neighbors
-        v = [random.gauss(0, 1) for z in range(f)]
-        nns = t2.get_nns_by_vector(v, 1000)  # Should not crash
+        if os.name == 'nt':
+            # Can't overwrite on Windows
+            with self.assertRaises(IOError):
+                t3.save('test.ann')
+        else:
+            t3.save('test.ann')
+            # Get nearest neighbors
+            v = [random.gauss(0, 1) for z in range(f)]
+            nns = t2.get_nns_by_vector(v, 1000)  # Should not crash
