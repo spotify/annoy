@@ -833,10 +833,7 @@ public:
 
   bool save(const char* filename, bool prefault=false) {
     // Delete file if it already exists (See issue #335)
-    struct stat buffer;
-    if (stat(filename, &buffer) == 0)
-      if (unlink(filename) != 0)
-	return false;
+    unlink(filename);
 
     FILE *f = fopen(filename, "wb");
     if (f == NULL)
