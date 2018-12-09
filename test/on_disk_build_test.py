@@ -21,35 +21,36 @@ class OnDiskBuildTest(TestCase):
     def setup_func(self):
         if os.exists('test.ann'):
             os.remove('test.ann')
-    
-    def test_normal(self):
-        f = 2
-        i = AnnoyIndex(f, 'euclidean')
+
+    def add_items(self, i):
         i.add_item(0, [2, 2])
         i.add_item(1, [3, 2])
         i.add_item(2, [3, 3])
-        
-        i.build(10)
-        i.save('test.ann')
-        i.load('test.ann')
 
+    def check_nns(self, i):
         self.assertEqual(i.get_nns_by_vector([4, 4], 3), [2, 1, 0])
         self.assertEqual(i.get_nns_by_vector([1, 1], 3), [0, 1, 2])
         self.assertEqual(i.get_nns_by_vector([4, 2], 3), [1, 2, 0])
+
+    def test_normal(self):
+        f = 2
+        i = AnnoyIndex(f, 'euclidean')
+        self.add_items(i)
+        i.build(10)
+        i.save('test.ann')
+        i.load('test.ann')
+        self.check_nns(i)
 
     def test_on_disk(self):
         f = 2
         i = AnnoyIndex(f, 'euclidean')
         i.on_disk_build('test.ann')
-        i.add_item(0, [2, 2])
-        i.add_item(1, [3, 2])
-        i.add_item(2, [3, 3])
-
+        self.add_items(i)
         i.build(10)
+        self.check_nns(i)
         i.unload()
-        
         i.load('test.ann')
-
-        self.assertEqual(i.get_nns_by_vector([4, 4], 3), [2, 1, 0])
-        self.assertEqual(i.get_nns_by_vector([1, 1], 3), [0, 1, 2])
-        self.assertEqual(i.get_nns_by_vector([4, 2], 3), [1, 2, 0])
+        self.check_nns(i)
+        j = AnnoyIndex(f, 'euclidean')
+        j.load('test.ann')
+        self.check_nns(j)
