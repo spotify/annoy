@@ -19,8 +19,8 @@ import os
 
 class OnDiskBuildTest(TestCase):
     def setUp(self):
-        if os.path.exists('test.ann'):
-            os.remove('test.ann')
+        if os.path.exists('on_disk.ann'):
+            os.remove('on_disk.ann')
 
     def add_items(self, i):
         i.add_item(0, [2, 2])
@@ -32,25 +32,16 @@ class OnDiskBuildTest(TestCase):
         self.assertEqual(i.get_nns_by_vector([1, 1], 3), [0, 1, 2])
         self.assertEqual(i.get_nns_by_vector([4, 2], 3), [1, 2, 0])
 
-    def test_normal(self):
-        f = 2
-        i = AnnoyIndex(f, 'euclidean')
-        self.add_items(i)
-        i.build(10)
-        i.save('test.ann')
-        i.load('test.ann')
-        self.check_nns(i)
-
     def test_on_disk(self):
         f = 2
         i = AnnoyIndex(f, 'euclidean')
-        i.on_disk_build('test.ann')
+        i.on_disk_build('on_disk.ann')
         self.add_items(i)
         i.build(10)
         self.check_nns(i)
         i.unload()
-        i.load('test.ann')
+        i.load('on_disk.ann')
         self.check_nns(i)
         j = AnnoyIndex(f, 'euclidean')
-        j.load('test.ann')
+        j.load('on_disk.ann')
         self.check_nns(j)
