@@ -18,8 +18,8 @@ import os
 
 
 class OnDiskBuildTest(TestCase):
-    def setup_func(self):
-        if os.exists('test.ann'):
+    def setUp(self):
+        if os.path.exists('test.ann'):
             os.remove('test.ann')
 
     def add_items(self, i):
