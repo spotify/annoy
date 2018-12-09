@@ -17,7 +17,6 @@
 #define ANNOYLIB_H
 
 #include <stdio.h>
-#include <string>
 #include <sys/stat.h>
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -100,7 +99,6 @@ typedef unsigned __int64  uint64_t;
 
 
 using std::vector;
-using std::string;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
@@ -874,6 +872,9 @@ public:
     if (_on_disk) {
       return true;
     } else {
+      // Delete file if it already exists (See issue #335)
+      unlink(filename);
+
       FILE *f = fopen(filename, "wb");
       if (f == NULL)
         return false;
