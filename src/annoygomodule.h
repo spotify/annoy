@@ -60,6 +60,9 @@ class AnnoyIndex {
     v->resize(this->f);
     ptr->get_item(item, &v->front());
   };
+  bool onDiskBuild(const char* filename) {
+    return ptr->on_disk_build(filename);
+  };
 };
 
 class AnnoyIndexAngular : public AnnoyIndex 

@@ -125,6 +125,14 @@ public:
     return 1;
   }
 
+  static int on_disk_build(lua_State* L) {
+    Impl* self = getAnnoy(L, 1);
+    const char* filename = luaL_checkstring(L, 2);
+    self->on_disk_build(filename);
+    lua_pushboolean(L, true);
+    return 1;
+  }
+
   static int save(lua_State* L) {
     int nargs = lua_gettop(L);
     Impl* self = getAnnoy(L, 1);
@@ -255,6 +263,7 @@ public:
       {"get_item_vector", &ThisClass::get_item_vector},
       {"get_distance", &ThisClass::get_distance},
       {"get_n_items", &ThisClass::get_n_items},
+      {"on_disk_build", &ThisClass::on_disk_build},
       {NULL, NULL},
     };
     return funcs;

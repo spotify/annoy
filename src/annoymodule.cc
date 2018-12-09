@@ -100,6 +100,7 @@ public:
     _unpack(&v_internal[0], v);
   };
   void set_seed(int q) { _index.set_seed(q); };
+  bool on_disk_build(const char* filename) { return _index.on_disk_build(filename); };
 };
 
 // annoy python object
@@ -362,6 +363,24 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   Py_RETURN_NONE;
 }
 
+static PyObject *
+py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
+  char *filename;
+  bool res = false;
+  if (!self->ptr)
+    return NULL;
+  static char const * kwlist[] = {"fn", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
+    return NULL;
+
+  res = self->ptr->on_disk_build(filename);
+
+  if (!res) {
+    PyErr_SetFromErrno(PyExc_IOError);
+    return NULL;
+  }
+  Py_RETURN_TRUE;
+}
 
 static PyObject *
 py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
@@ -466,6 +485,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to vector `vector`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS | METH_KEYWORDS, "Adds item `i` (any nonnegative integer) with vector `v`.\n\nNote that it will allocate memory for `max(i)+1` items."},
+  {"on_disk_build",(PyCFunction)py_an_on_disk_build, METH_VARARGS | METH_KEYWORDS, "Build will be performed with storage on disk instead of RAM."},
   {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
   {"unbuild",(PyCFunction)py_an_unbuild, METH_NOARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
   {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},

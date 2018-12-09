@@ -505,6 +505,23 @@ describe("index test", function()
         j:load('x.tree')
         j:build(10)
     end)
+    
+    it("on_disk_build", function()
+        local f = 2
+        local i = AnnoyIndex(f, 'euclidean')
+        i:on_disk_build('x.tree')
+        i:add_item(0, {2, 2})
+        i:add_item(1, {3, 2})
+        i:add_item(2, {3, 3})
+        i:build(10)
+        
+        i:unload()
+        i:load('x.tree')
+        
+        assert.same({2, 1, 0}, i:get_nns_by_vector({4, 4}, 3))
+        assert.same({0, 1, 2}, i:get_nns_by_vector({1, 1}, 3))
+        assert.same({1, 2, 0}, i:get_nns_by_vector({4, 2}, 3))
+    end)
 end)
 
 describe("types test", function()

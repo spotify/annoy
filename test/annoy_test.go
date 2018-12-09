@@ -104,6 +104,38 @@ func (suite *AnnoyTestSuite) TestFileHandling() {
      os.Remove("go_test3.ann")
 }
 
+func (suite *AnnoyTestSuite) TestOnDiskBuild() {
+     index := annoyindex.NewAnnoyIndexAngular(3)
+     index.OnDiskBuild("go_test.ann");
+     
+     info, err := os.Stat("go_test.ann")
+     if err != nil {
+        assert.Fail(suite.T(), "Failed to create file, file not found")
+     }
+     
+     index.AddItem(0, []float32{0, 0, 1})
+     index.AddItem(1, []float32{0, 1, 0})
+     index.AddItem(2, []float32{1, 0, 0})
+     index.Build(10)
+     
+     index.Unload();
+     index.Load("go_test.ann");
+
+     var result []int
+     index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
+     assert.Equal(suite.T(), []int{2, 1, 0}, result)
+
+     index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
+     assert.Equal(suite.T(), []int{0, 1, 2}, result)
+
+     index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
+     assert.Equal(suite.T(), []int{2, 0, 1}, result)
+
+     annoyindex.DeleteAnnoyIndexAngular(index)
+     
+     os.Remove("go_test.ann")
+}
+
 func (suite *AnnoyTestSuite) TestGetNnsByVector() {
      index := annoyindex.NewAnnoyIndexAngular(3)
      index.AddItem(0, []float32{0, 0, 1})
