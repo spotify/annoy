@@ -12,16 +12,14 @@ matrix:
       dist: xenial
       env:
         - TOXENV=py37
-    - python: 3.6
-      os: osx
+    - os: osx
       osx_image: xcode10.1
       env:
-        - TOXENV=py36
-    - python: 3.6
-      os: osx
+        - TOXENV=py
+    - os: osx
       osx_image: xcode9.4
       env:
-        - TOXENV=py36
+        - TOXENV=py
 
 env:
   matrix:
