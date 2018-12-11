@@ -93,6 +93,7 @@ public:
     }
   };
   int32_t get_n_items() const { return _index.get_n_items(); };
+  int32_t get_n_trees() const { return _index.get_n_trees(); };
   void verbose(bool v) { _index.verbose(v); };
   void get_item(int32_t item, float* v) const {
     vector<uint64_t> v_internal(_f_internal, 0);
@@ -449,6 +450,14 @@ py_an_get_n_items(py_annoy *self) {
   return PyInt_FromLong(n);
 }
 
+static PyObject *
+py_an_get_n_trees(py_annoy *self) {
+  if (!self->ptr) 
+    return NULL;
+
+  int32_t n = self->ptr->get_n_trees();
+  return PyInt_FromLong(n);
+}
 
 static PyObject *
 py_an_verbose(py_annoy *self, PyObject *args) {
@@ -491,6 +500,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, "Returns the distance between items `i` and `j`."},
   {"get_n_items",(PyCFunction)py_an_get_n_items, METH_NOARGS, "Returns the number of items in the index."},
+  {"get_n_trees",(PyCFunction)py_an_get_n_trees, METH_NOARGS, "Returns the number of trees in the index."},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},
   {"set_seed",(PyCFunction)py_an_set_seed, METH_VARARGS, "Sets the seed of Annoy's random number generator."},
   {NULL, NULL, 0, NULL}		 /* Sentinel */
