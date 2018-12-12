@@ -87,6 +87,7 @@ Full Python API
 * ``a.get_item_vector(i)`` returns the vector for item ``i`` that was previously added.
 * ``a.get_distance(i, j)`` returns the distance between items ``i`` and ``j``. NOTE: this used to return the *squared* distance, but has been changed as of Aug 2016.
 * ``a.get_n_items()`` returns the number of items in the index.
+* ``a.get_n_trees()`` returns the number of trees in the index.
 * ``a.on_disk_build(fn)`` prepares annoy to build the index in the specified file instead of RAM (execute before adding items, no need to save after build)
 
 Notes:

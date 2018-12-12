@@ -726,6 +726,7 @@ class AnnoyIndexInterface {
   virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual S get_n_items() const = 0;
+  virtual S get_n_trees() const = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) const = 0;
   virtual void set_seed(int q) = 0;
@@ -967,9 +968,15 @@ public:
   void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
     _get_all_nns(w, n, search_k, result, distances);
   }
+
   S get_n_items() const {
     return _n_items;
   }
+
+  S get_n_trees() const {
+    return _roots.size();
+  }
+
   void verbose(bool v) {
     _verbose = v;
   }

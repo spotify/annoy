@@ -105,7 +105,7 @@ class IndexTest(TestCase):
         i.add_item(0, [1, 0])
         i.add_item(1, [9, 0])
         self.assertAlmostEqual(i.get_distance(0, 1), 8)
-        self.assertEquals(i.f, 2)
+        self.assertEqual(i.f, 2)
 
     def test_metric_f_kwargs(self):
         i = AnnoyIndex(f=3, metric='euclidean')
@@ -118,13 +118,13 @@ class IndexTest(TestCase):
         a.add_item(2, [0, 1, 0])
         a.add_item(3, [0, 0, 1])
         a.build(-1)
-        self.assertEquals(a.get_n_items(), 4)
-        self.assertEquals(a.get_item_vector(3), [0, 0, 1])
-        self.assertEquals(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
+        self.assertEqual(a.get_n_items(), 4)
+        self.assertEqual(a.get_item_vector(3), [0, 0, 1])
+        self.assertEqual(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
         a.save('something.annoy')
-        self.assertEquals(a.get_n_items(), 4)
-        self.assertEquals(a.get_item_vector(3), [0, 0, 1])
-        self.assertEquals(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
+        self.assertEqual(a.get_n_items(), 4)
+        self.assertEqual(a.get_item_vector(3), [0, 0, 1])
+        self.assertEqual(set(a.get_nns_by_item(1, 999)), set([1, 2, 3]))
 
     def test_prefault(self):
         i = AnnoyIndex(10)
@@ -167,3 +167,8 @@ class IndexTest(TestCase):
             # Get nearest neighbors
             v = [random.gauss(0, 1) for z in range(f)]
             nns = t2.get_nns_by_vector(v, 1000)  # Should not crash
+
+    def test_get_n_trees(self):
+        i = AnnoyIndex(10)
+        i.load('test/test.tree')
+        self.assertEqual(i.get_n_trees(), 10)
