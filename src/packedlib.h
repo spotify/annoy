@@ -211,6 +211,8 @@ public:
 
       auto iblock_avg_sz = total_size / double(iblocks);
 
+      (iblock_avg_sz)void;
+
       showUpdate("iblock avg sz=%zd waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
     }
 
@@ -272,7 +274,8 @@ protected:
   void _write_header( FILE *f, S nblocks ) {
     // write header only at tail of file to keep strict alignment in memory
     // for faster memory access
-    detail::Header hdr = { 0 };
+    detail::Header hdr;
+    hdr.version = 0;
     hdr.vlen = _f;
     hdr.idx_block_len = _K;
     hdr.nblocks = nblocks;
