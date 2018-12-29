@@ -7,6 +7,7 @@
  *      Contact: viper.craft@gmail.com
  */
 
+//#define __ERROR_PRINTER_OVERRIDE__(...) {}
 #include <iostream>
 #include "../src/kissrandom.h"
 #include "../src/packedlib.h"
@@ -35,12 +36,12 @@ static std::vector<float> GenerateVector( size_t n, float lo, float hi )
 
 #define CHECK_AND_THROW(eq) { if( eq ) throw std::runtime_error(#eq); }
 
-static int test(int f, int k, int count, int depth = 30)
+static int test(int f, int k, uint32_t count, int depth = 30)
 {
     // create indexer first
     {
         PackedAnnoyIndexer<uint32_t, float, Euclidean, Kiss32Random> indexer(f, k);
-        for( int i = 0; i < count; ++i )
+        for( uint32_t i = 0; i < count; ++i )
         {
             auto vec = GenerateVector(f, -1.f, +1.f);
             indexer.add_item(i, vec.data());
