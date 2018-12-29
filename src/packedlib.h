@@ -211,7 +211,7 @@ public:
 
       auto iblock_avg_sz = total_size / double(iblocks);
 
-      (iblock_avg_sz)void;
+      (void)iblock_avg_sz;
 
       showUpdate("iblock avg sz=%zd waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
     }
