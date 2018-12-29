@@ -18,48 +18,48 @@ static char const TMP_FNAME[] = { "packed_annoy.idx" };
 
 static float frand()
 {
-	return std::rand() / (float)RAND_MAX;
+    return std::rand() / (float)RAND_MAX;
 }
 
 static std::vector<float> GenerateVector( size_t n, float lo, float hi )
 {
-	std::vector<float> v(n);
-	std::transform
-	(
-		v.begin(), v.end(), v.begin(), 
-		[lo, hi]( float ) -> float { return lo +(hi - lo) * frand(); } 
-	);
+    std::vector<float> v(n);
+    std::transform
+    (
+        v.begin(), v.end(), v.begin(),
+        [lo, hi]( float ) -> float { return lo + (hi - lo) * frand(); }
+    );
 
-	return v;
+    return v;
 }
 
 #define CHECK_AND_THROW(eq) { if( eq ) throw std::runtime_error(#eq); }
 
 static int test(int f, int k, int count, int depth = 30)
 {
-	// create indexer first
-	{
-		PackedAnnoyIndexer<uint32_t, float, Euclidean, Kiss32Random> indexer(f, k);
-		for( int i = 0; i < count; ++i )
-		{
-			auto vec = GenerateVector(f, -1.f, +1.f);
-			indexer.add_item(i, vec.data());
-		}
-		std::cout << "build with depth=" << depth << " started." << std::endl;
-		indexer.build(depth);
-		std::cout << "building done, save into: \"" << TMP_FNAME << "\"" << std::endl;
-		indexer.save(TMP_FNAME);
-	}
+    // create indexer first
+    {
+        PackedAnnoyIndexer<uint32_t, float, Euclidean, Kiss32Random> indexer(f, k);
+        for( int i = 0; i < count; ++i )
+        {
+            auto vec = GenerateVector(f, -1.f, +1.f);
+            indexer.add_item(i, vec.data());
+        }
+        std::cout << "build with depth=" << depth << " started." << std::endl;
+        indexer.build(depth);
+        std::cout << "building done, save into: \"" << TMP_FNAME << "\"" << std::endl;
+        indexer.save(TMP_FNAME);
+    }
 
-	// and load from scratch
+    // and load from scratch
 
-	PackedAnnoySearcher<uint32_t, float, EuclideanPacked16> searcher;
+    PackedAnnoySearcher<uint32_t, float, EuclideanPacked16> searcher;
 
-	searcher.load(TMP_FNAME, false);
+    searcher.load(TMP_FNAME, false);
 
-	uint32_t nitems = searcher.get_n_items(), nfound = 0;
+    uint32_t nitems = searcher.get_n_items(), nfound = 0;
 
-	CHECK_AND_THROW( nitems != count );
+    CHECK_AND_THROW( nitems != count );
 
     std::vector<uint32_t> results;
 
@@ -67,7 +67,7 @@ static int test(int f, int k, int count, int depth = 30)
 
     uint32_t nitems_for_test = std::min(nitems, uint32_t(nitems * 0.2));
 
-	std::cout << "scan start, nitems_for_test=" << nitems_for_test << std::endl;
+    std::cout << "scan start, nitems_for_test=" << nitems_for_test << std::endl;
 
     for( uint32_t i = 0; i < nitems_for_test; ++i )
     {
@@ -78,38 +78,38 @@ static int test(int f, int k, int count, int depth = 30)
             ++nfound;
     }
 
-	double const qual = nfound / double(nitems_for_test);
+    double const qual = nfound / double(nitems_for_test);
 
-	std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
+    std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
 
-	return qual > 0.9 ? 0 : 1/*bad*/;
+    return qual > 0.9 ? 0 : 1/*bad*/;
 }
 
 int main(int argc, char **argv) {
-	int f, k, n, d;
+    int f, k, n, d;
 
-	try
-	{
-		if(argc == 1){
-			return test(64, 128, 100000);
-		}
-		else if(argc == 5){
+    try
+    {
+        if(argc == 1){
+            return test(64, 128, 100000);
+        }
+        else if(argc == 5){
 
-			f = atoi(argv[1]);
-			k = atoi(argv[2]);
-			n = atoi(argv[3]);
-			d = atoi(argv[4]);
-			return test(f, k, n, d);
-		}
+            f = atoi(argv[1]);
+            k = atoi(argv[2]);
+            n = atoi(argv[3]);
+            d = atoi(argv[4]);
+            return test(f, k, n, d);
+        }
 
-	}
-	catch(std::exception const &e)
-	{
-		std::cerr << e.what() << '\n';
+    }
+    catch(std::exception const &e)
+    {
+        std::cerr << e.what() << '\n';
 
-		return EXIT_FAILURE;
-	}
+        return EXIT_FAILURE;
+    }
 
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

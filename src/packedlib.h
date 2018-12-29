@@ -392,7 +392,7 @@ public:
   typedef Distance D;
   typedef typename Distance::PackedFloatType PackedFloatType;
   //typedef EuclideanPacked16 SD;
-  typedef typename D::template Node<S, T> Node; 
+  typedef typename D::template Node<S, T> Node;
 private:
   static constexpr S const _K_mask = S(1) << S(sizeof(S) * 8 - 1);
   static constexpr S const _K_mask_clear = _K_mask - 1;
@@ -519,7 +519,7 @@ public:
 private:
 
   S _init_header() {
-    detail::Header const *hdr = reinterpret_cast<detail::Header const*>((uint8_t const*)_mmaped 
+    detail::Header const *hdr = reinterpret_cast<detail::Header const*>((uint8_t const*)_mmaped
       + _size_of_mapping - sizeof(detail::Header));
 
     _f = hdr->vlen;

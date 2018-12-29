@@ -62,7 +62,7 @@ float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__re
   __builtin_prefetch((uint8_t const*)in + 192);
   __m128 m1 = _mm_set1_ps(_15BITS_DIVISOR);
   __m128 msum1 = _mm_setzero_ps(), msum2 = _mm_setzero_ps();
-  __m128 mx, my;    
+  __m128 mx, my;
   // every step decoded into 8 float at once!
   for( uint32_t i = 0; i < d; i += 8 )
   {
