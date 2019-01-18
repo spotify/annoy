@@ -62,7 +62,7 @@ protected:
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   vector<S> _roots;
   S _n_items;
-  S _nodes_size; // capacity of the write buffer
+  size_t _nodes_size; // capacity of the write buffer
   S _n_nodes; // number of nodes
   Random _random;
   bool _loaded;
@@ -178,7 +178,7 @@ public:
 
   bool save(const char* filename) {
     // calc size of packed node
-    S packed_size = offsetof(Node, v) + _f * sizeof(uint16_t);
+    size_t packed_size = offsetof(Node, v) + _f * sizeof(uint16_t);
     // allocate new buffer
     void *packed_nodes = malloc(packed_size * _n_nodes);
     std::unique_ptr<void, decltype( &free )> membuf_safer(packed_nodes, free);
@@ -191,7 +191,7 @@ public:
       pack_float_vector_i16(node->v, (uint16_t*)packed->v, _f);
     }
 
-    S const iblocks = _indices_lists.size();
+    size_t const iblocks = _indices_lists.size();
 
     if (_verbose) {
       // get indices stats?
@@ -211,7 +211,9 @@ public:
 
       auto iblock_avg_sz = total_size / double(iblocks);
 
-      showUpdate("iblock avg sz=%zd waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
+      (void)iblock_avg_sz;
+
+      showUpdate("iblock avg sz=%f waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
     }
 
     FILE *f = fopen(filename, "wb");
@@ -222,11 +224,17 @@ public:
     S index_write_block[_K];
     for( auto const &i : _indices_lists )
     {
-      S const isz = i.size();
+      size_t const isz = i.size();
       index_write_block[0] = isz;
       S *data_start = index_write_block + 1;
       memset(data_start, 0, sizeof(index_write_block) - sizeof(S));
       memcpy(data_start, i.data(), isz * sizeof(S));
+      if( isz < _K - 1 )
+      {
+        data_start += isz;
+        // zeroing bytes left for stability
+        memset(data_start, 0, sizeof(index_write_block) - ((isz + 1) * sizeof(S)));
+      }
       fwrite(index_write_block, sizeof(index_write_block), 1, f);
     }
     // and nodes data
@@ -267,24 +275,29 @@ public:
     _verbose = v;
   }
 
+  void preallocate(size_t n) {
+    _allocate_size(n);
+  }
+
 protected:
 
   void _write_header( FILE *f, S nblocks ) {
     // write header only at tail of file to keep strict alignment in memory
     // for faster memory access
-    detail::Header hdr = { 0 };
+    detail::Header hdr;
+    hdr.version = 0;
     hdr.vlen = _f;
     hdr.idx_block_len = _K;
     hdr.nblocks = nblocks;
     fwrite(&hdr, sizeof(hdr), 1, f);
   }
 
-  void _allocate_size(S n) {
+  void _allocate_size(size_t n) {
     if (n > _nodes_size) {
       const double reallocation_factor = 1.3;
-      S new_nodes_size = std::max(n,
-                  (S)((_nodes_size + 1) * reallocation_factor));
-      if (_verbose) showUpdate("Reallocating to %d nodes\n", new_nodes_size);
+      size_t new_nodes_size = std::max(n,
+                  (size_t)((_nodes_size + 1) * reallocation_factor));
+      if (_verbose) showUpdate("Reallocating to %zd nodes\n", new_nodes_size);
       _nodes = realloc(_nodes, _s * new_nodes_size);
       memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
       _nodes_size = new_nodes_size;
@@ -474,7 +487,7 @@ public:
 
     size_t sizeof_indices = nindices * sizeof(S);
 
-    S n_nodes = (S)((size - sizeof_indices)  / _s);
+    S n_nodes = (S)((size - sizeof_indices) / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     _roots.clear();
