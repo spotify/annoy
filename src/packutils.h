@@ -22,7 +22,7 @@
 
 static float const _15BITS_MULT = 32767.f, _15BITS_DIVISOR = 1.f / _15BITS_MULT;
 
-void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t const d )
+inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t const d )
 {
   __m128 m1 = _mm_set1_ps(_15BITS_MULT);
   for( uint32_t i = 0; i < d; i += 8 )
@@ -38,7 +38,7 @@ void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ 
   }
 }
 
-void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t const d )
+inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t const d )
 {
   __m128 m1 = _mm_set1_ps(_15BITS_DIVISOR);
   // every step decoded into 8 float at once!
@@ -54,7 +54,7 @@ void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__
   }
 }
 
-float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t const d )
+inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t const d )
 {
   // fetch couple of lines to trigger hardware prefetch
   __builtin_prefetch((uint8_t const*)in + 64);

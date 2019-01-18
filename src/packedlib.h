@@ -206,7 +206,7 @@ public:
         max_max_bit = std::max(max_max_bit, mb);
         total_bits += mb;
       }
-      showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\ntotal size of indices=%zd numbers of blocks=%zd\n",
+      showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\ntotal size of indices=%zd numbers of blocks=%d\n",
       _n_items, _n_nodes, iblocks * _K * sizeof(S), iblocks);
 
       auto iblock_avg_sz = total_size / double(iblocks);
