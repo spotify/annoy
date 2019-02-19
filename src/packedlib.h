@@ -547,13 +547,6 @@ private:
   }
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]; // alloc on stack!
-    Node* v_node = (Node *)node_alloc_buf;
-
-    D::template zero_value<Node>(v_node);
-    memcpy(v_node->v, v, sizeof(T) * _f);
-    D::init_node(v_node, _f);
-
     typedef std::pair<T, S> qpair_t;
     typedef std::vector<qpair_t> qvector_t;
 
@@ -610,6 +603,18 @@ private:
     std::sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
     nns_dist.reserve(nns.size());
+
+    // init node for comparsion from given vector(v)
+    // alloc space for that node on the stack!
+    // but node vector(v[1]) data is need to be aligned to 16 bytes
+    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
+         __attribute__((aligned(16)));
+    Node* v_node = (Node *)node_alloc_buf;
+
+    D::template zero_value<Node>(v_node);
+    memcpy(v_node->v, v, sizeof(T) * _f);
+    D::init_node(v_node, _f);
+
     S last = -1;
     for (S j : nns) {
       if (j == last)
