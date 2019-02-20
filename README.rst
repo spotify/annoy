@@ -21,7 +21,7 @@ Annoy (`Approximate Nearest Neighbors <http://en.wikipedia.org/wiki/Nearest_neig
 Install
 -------
 
-To install, simply do ``sudo pip install annoy`` to pull down the latest version from `PyPI <https://pypi.python.org/pypi/annoy>`_.
+To install, simply do ``pip install --user annoy`` to pull down the latest version from `PyPI <https://pypi.python.org/pypi/annoy>`_.
 
 For the C++ version, just clone the repo and ``#include "annoylib.h"``.
 
