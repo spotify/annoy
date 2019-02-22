@@ -18,6 +18,7 @@
 from setuptools import setup, Extension
 import codecs
 import os
+import platform
 import sys
 
 readme_note = """\
@@ -34,23 +35,26 @@ readme_note = """\
 with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
+# Various platform-dependent extras
+extra_compile_args = []
+extra_link_args = []
+
 if os.environ.get('TRAVIS') == 'true':
     # Resolving some annoying issue
-    travis_extra_compile_args = ['-mno-avx']
-else:
-    travis_extra_compile_args = []
+    extra_compile_args += ['-mno-avx']
 
 # Not all CPUs have march as a tuning parameter
-import platform
 cputune = ['-march=native',]
-if platform.machine() == "ppc64le":
-    cputune = ['-mcpu=native',]
+if platform.machine() == 'ppc64le':
+    extra_compile_args += ['-mcpu=native',]
 
 if os.name != 'nt':
-    compile_args = ['-O3', '-ffast-math', '-fno-associative-math']
-else:
-    compile_args = []
-    cputune = []
+    extra_compile_args += ['-O3', '-ffast-math', '-fno-associative-math']
+
+# #349: something with OS X Mojave causes libstd not to be found
+if platform.system() == 'Darwin':
+    extra_compile_args += ['-std=c++11', '-mmacosx-version-min=10.9']
+    extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 setup(name='annoy',
       version='1.15.0',
@@ -60,7 +64,8 @@ setup(name='annoy',
         Extension(
             'annoy.annoylib', ['src/annoymodule.cc'],
             depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=compile_args + cputune + travis_extra_compile_args
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
         )
       ],
       long_description=long_description,
