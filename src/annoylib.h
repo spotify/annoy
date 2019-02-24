@@ -67,11 +67,9 @@ typedef unsigned __int64  uint64_t;
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
-#elif _MSC_VER == 1500
+#else // See #293, #358
 #define isnan(x) _isnan(x)
 #define popcount cole_popcount
-#else
-#define popcount __popcnt64
 #endif
 
 #ifndef NO_MANUAL_VECTORIZATION
