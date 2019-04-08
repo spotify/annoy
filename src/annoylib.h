@@ -882,14 +882,14 @@ public:
 
       bool write_failed = false;
       size_t write_result = fwrite(_nodes, _s, _n_nodes, f);
-      if (write_result != _n_nodes) {
-        showUpdate("Unable to write %s\n", std::strerror(errno));
+      if (write_result != (size_t) _n_nodes) {
+        showUpdate("Unable to write %s\n", strerror(errno));
         write_failed = true;
       }
 
       int close_result = fclose(f);
       if (close_result == EOF) {
-        showUpdate("Unable to close %s\n", std::strerror(errno));
+        showUpdate("Unable to close %s\n", strerror(errno));
         write_failed = true;
       }
 

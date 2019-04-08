@@ -186,7 +186,11 @@ class IndexTest(TestCase):
 
         if sys.platform == "linux" or sys.platform == "linux2":
             # linux
-            self.assertFalse(true) # not implemented
+            try:
+                t.save("/dev/full") 
+                self.fail("didn't get expected exception")
+            except Exception as e:
+                self.assertTrue(str(e).find("No space left on device") > 0)
         elif sys.platform == "darwin":
             import os
             volume = "FULLDISK"
@@ -198,7 +202,7 @@ class IndexTest(TestCase):
                 self.fail("didn't get expected exception")
             except Exception as e:
                 self.assertTrue(str(e).find("No space left on device") > 0)
-
-            os.popen("hdiutil detach %s" % device)
+            finally:
+                os.popen("hdiutil detach %s" % device)
 
 
