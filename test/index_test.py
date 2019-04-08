@@ -17,7 +17,6 @@ import sys
 import random
 from common import TestCase
 from annoy import AnnoyIndex
-import subprocess
 
 class IndexTest(TestCase):
     def test_not_found_tree(self):
@@ -192,7 +191,6 @@ class IndexTest(TestCase):
             except Exception as e:
                 self.assertTrue(str(e).find("No space left on device") > 0)
         elif sys.platform == "darwin":
-            import os
             volume = "FULLDISK"
             device = os.popen('hdiutil attach -nomount ram://64').read()
             os.popen('diskutil erasevolume MS-DOS %s %s' % (volume, device))
