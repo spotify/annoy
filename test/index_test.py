@@ -13,10 +13,11 @@
 # the License.
 
 import os
+import sys
 import random
 from common import TestCase
 from annoy import AnnoyIndex
-
+import subprocess
 
 class IndexTest(TestCase):
     def test_not_found_tree(self):
@@ -172,3 +173,32 @@ class IndexTest(TestCase):
         i = AnnoyIndex(10)
         i.load('test/test.tree')
         self.assertEqual(i.get_n_trees(), 10)
+
+    def test_write_failed(self):
+        f = 40
+
+        # Build the initial index
+        t = AnnoyIndex(f)
+        for i in range(1000):
+            v = [random.gauss(0, 1) for z in range(f)]
+            t.add_item(i, v)
+        t.build(10)
+
+        if sys.platform == "linux" or sys.platform == "linux2":
+            # linux
+            self.assertFalse(true) # not implemented
+        elif sys.platform == "darwin":
+            import os
+            volume = "FULLDISK"
+            device = os.popen('hdiutil attach -nomount ram://64').read()
+            os.popen('diskutil erasevolume MS-DOS %s %s' % (volume, device))
+            os.popen('touch "/Volumes/%s/full"' % volume)
+            try:
+                t.save('/Volumes/%s/annoy.tree' % volume)
+                self.fail("didn't get expected exception")
+            except Exception as e:
+                self.assertTrue(str(e).find("No space left on device") > 0)
+
+            os.popen("hdiutil detach %s" % device)
+
+

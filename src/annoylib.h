@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stddef.h>
+
 #if defined(_MSC_VER) && _MSC_VER == 1500
 typedef unsigned char     uint8_t;
 typedef signed __int32    int32_t;
@@ -44,6 +45,7 @@ typedef unsigned __int64  uint64_t;
  #include <sys/mman.h>
 #endif
 
+#include <cerrno>
 #include <string.h>
 #include <math.h>
 #include <vector>
@@ -878,11 +880,25 @@ public:
       if (f == NULL)
         return false;
 
-      fwrite(_nodes, _s, _n_nodes, f);
-      fclose(f);
+      bool write_failed = false;
+      size_t write_result = fwrite(_nodes, _s, _n_nodes, f);
+      if (write_result != _n_nodes) {
+        showUpdate("Unable to write %s\n", std::strerror(errno));
+        write_failed = true;
+      }
 
-      unload();
-      return load(filename, prefault=false);
+      int close_result = fclose(f);
+      if (close_result == EOF) {
+        showUpdate("Unable to close %s\n", std::strerror(errno));
+        write_failed = true;
+      }
+
+      if (write_failed) {
+        return false;
+      } else {
+        unload();
+        return load(filename, prefault=false);
+      }
     }
   }
 
