@@ -931,7 +931,7 @@ public:
       return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
-    const int flags = MAP_SHARED;
+    int flags = MAP_SHARED;
     if (prefault) {
 #ifdef MAP_POPULATE
       flags |= MAP_POPULATE;
