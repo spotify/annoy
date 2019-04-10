@@ -880,25 +880,18 @@ public:
       if (f == NULL)
         return false;
 
-      bool write_failed = false;
-      size_t write_result = fwrite(_nodes, _s, _n_nodes, f);
-      if (write_result != (size_t) _n_nodes) {
+      if (fwrite(_nodes, _s, _n_nodes, f) != (size_t) _n_nodes) {
         showUpdate("Unable to write %s\n", strerror(errno));
-        write_failed = true;
+	return false;
       }
 
-      int close_result = fclose(f);
-      if (close_result == EOF) {
+      if (fclose(f) == EOF) {
         showUpdate("Unable to close %s\n", strerror(errno));
-        write_failed = true;
+	return false;
       }
 
-      if (write_failed) {
-        return false;
-      } else {
-        unload();
-        return load(filename, prefault=false);
-      }
+      unload();
+      return load(filename, prefault=false);
     }
   }
 
@@ -938,15 +931,15 @@ public:
       return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
+    int flags = MAP_SHARED;
+    if (prefault) {
 #ifdef MAP_POPULATE
-    const int populate = prefault ? MAP_POPULATE : 0;
-    _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED | populate, _fd, 0);
+      flags |= MAP_POPULATE;
 #else
-    _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED, _fd, 0);
+      showUpdate("prefault is set to true, but MAP_POPULATE is not defined on this platform");
 #endif
-
+    }
+    _nodes = (Node*)mmap(0, size, PROT_READ, flags, _fd, 0);
     _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
