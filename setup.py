@@ -57,7 +57,7 @@ if platform.system() == 'Darwin':
     extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 setup(name='annoy',
-      version='1.15.1',
+      version='1.15.2',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
