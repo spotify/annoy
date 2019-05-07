@@ -268,6 +268,7 @@ inline float dot<float>(const float* x, const float *y, int f) {
 template<>
 inline float manhattan_distance<float>(const float* x, const float* y, int f) {
   int result = 0;
+  int i = f;
   if (f > 15) {
     __m512i manhattan = _mm512_setzero_epi32();
     __m512i minus_zero = _mm512_set1_epi32(-0);
