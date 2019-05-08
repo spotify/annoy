@@ -82,7 +82,7 @@ typedef unsigned __int64  uint64_t;
 #endif
 #endif
 
-#ifdef USE_AVX
+#if defined(USE_AVX) || defined(USE_AVX512)
 #if defined(_MSC_VER)
 #include <intrin.h>
 #elif defined(__GNUC__)
@@ -273,7 +273,7 @@ inline float manhattan_distance<float>(const float* x, const float* y, int f) {
     __m512i manhattan = _mm512_setzero_epi32();
     __m512i minus_zero = _mm512_set1_epi32(-0);
     for (; i > 15; i -= 16) {
-      const __m512i x_minus_y = _mm512_sub_epi32(_mm512_loadu_epi32(x), _mm512_loadu_epi32(y));
+      const __m512i x_minus_y = _mm512_sub_epi32(_mm512_castps_si512(_mm512_loadu_ps(x)), _mm512_castps_si512(_mm512_loadu_ps(y)));
       const __m512i distance = _mm512_andnot_epi32(minus_zero, x_minus_y); //
       manhattan = _mm512_add_epi32(manhattan, distance);
       x += 16;
