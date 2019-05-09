@@ -267,20 +267,18 @@ inline float dot<float>(const float* x, const float *y, int f) {
 
 template<>
 inline float manhattan_distance<float>(const float* x, const float* y, int f) {
-  int result = 0;
+  float result = 0;
   int i = f;
   if (f > 15) {
-    __m512i manhattan = _mm512_setzero_epi32();
-    __m512i minus_zero = _mm512_set1_epi32(-0);
+    __m512 manhattan = _mm512_setzero_ps();
     for (; i > 15; i -= 16) {
-      const __m512i x_minus_y = _mm512_sub_epi32(_mm512_castps_si512(_mm512_loadu_ps(x)), _mm512_castps_si512(_mm512_loadu_ps(y)));
-      const __m512i distance = _mm512_andnot_epi32(minus_zero, x_minus_y); //
-      manhattan = _mm512_add_epi32(manhattan, distance);
+      const __m512 x_minus_y = _mm512_sub_ps(_mm512_loadu_ps(x), _mm512_loadu_ps(y));
+      manhattan = _mm512_add_ps(manhattan, _mm512_abs_ps(x_minus_y));
       x += 16;
       y += 16;
     }
     // Sum all floats in manhattan register.
-    result = _mm512_reduce_add_epi32(manhattan);
+    result = _mm512_reduce_add_ps(manhattan);
   }
   // Don't forget the remaining values.
   for (; i > 0; i--) {
