@@ -75,12 +75,14 @@ typedef unsigned __int64  uint64_t;
 #endif
 
 #ifndef NO_MANUAL_VECTORIZATION
-#if defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
+#if defined(__AVX512F__)
+#define USE_AVX512
+#elif defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
 #define USE_AVX
 #endif
 #endif
 
-#ifdef USE_AVX
+#if defined(USE_AVX) || defined(USE_AVX512)
 #if defined(_MSC_VER)
 #include <intrin.h>
 #elif defined(__GNUC__)
@@ -226,6 +228,80 @@ inline float euclidean_distance<float>(const float* x, const float* y, int f) {
     }
     // Sum all floats in dot register.
     result = hsum256_ps_avx(d);
+  }
+  // Don't forget the remaining values.
+  for (; f > 0; f--) {
+    float tmp = *x - *y;
+    result += tmp * tmp;
+    x++;
+    y++;
+  }
+  return result;
+}
+
+#endif
+
+#ifdef USE_AVX512
+template<>
+inline float dot<float>(const float* x, const float *y, int f) {
+  float result = 0;
+  if (f > 15) {
+    __m512 d = _mm512_setzero_ps();
+    for (; f > 15; f -= 16) {
+      //AVX512F includes FMA
+      d = _mm512_fmadd_ps(_mm512_loadu_ps(x), _mm512_loadu_ps(y), d);
+      x += 16;
+      y += 16;
+    }
+    // Sum all floats in dot register.
+    result += _mm512_reduce_add_ps(d);
+  }
+  // Don't forget the remaining values.
+  for (; f > 0; f--) {
+    result += *x * *y;
+    x++;
+    y++;
+  }
+  return result;
+}
+
+template<>
+inline float manhattan_distance<float>(const float* x, const float* y, int f) {
+  float result = 0;
+  int i = f;
+  if (f > 15) {
+    __m512 manhattan = _mm512_setzero_ps();
+    for (; i > 15; i -= 16) {
+      const __m512 x_minus_y = _mm512_sub_ps(_mm512_loadu_ps(x), _mm512_loadu_ps(y));
+      manhattan = _mm512_add_ps(manhattan, _mm512_abs_ps(x_minus_y));
+      x += 16;
+      y += 16;
+    }
+    // Sum all floats in manhattan register.
+    result = _mm512_reduce_add_ps(manhattan);
+  }
+  // Don't forget the remaining values.
+  for (; i > 0; i--) {
+    result += fabsf(*x - *y);
+    x++;
+    y++;
+  }
+  return result;
+}
+
+template<>
+inline float euclidean_distance<float>(const float* x, const float* y, int f) {
+  float result=0;
+  if (f > 15) {
+    __m512 d = _mm512_setzero_ps();
+    for (; f > 15; f -= 16) {
+      const __m512 diff = _mm512_sub_ps(_mm512_loadu_ps(x), _mm512_loadu_ps(y));
+      d = _mm512_fmadd_ps(diff, diff, d);
+      x += 16;
+      y += 16;
+    }
+    // Sum all floats in dot register.
+    result = _mm512_reduce_add_ps(d);
   }
   // Don't forget the remaining values.
   for (; f > 0; f--) {
