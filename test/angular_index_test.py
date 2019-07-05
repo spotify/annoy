@@ -117,16 +117,16 @@ class AngularIndexTest(TestCase):
         return 1.0 * found / (n * n_rounds)
 
     def test_precision_1(self):
-        self.assertTrue(self.precision(1) >= 0.98)
+        self.assertGreaterEqual(self.precision(1), 0.98)
 
     def test_precision_10(self):
-        self.assertTrue(self.precision(10) >= 0.98)
+        self.assertGreaterEqual(self.precision(10), 0.98)
 
     def test_precision_100(self):
-        self.assertTrue(self.precision(100) >= 0.98)
+        self.asserGreaterEqual(self.precision(100), 0.98)
 
     def test_precision_1000(self):
-        self.assertTrue(self.precision(1000) >= 0.98)
+        self.assertGreaterEqual(self.precision(1000), 0.98)
 
     def test_load_save_get_item_vector(self):
         f = 3
