@@ -25,7 +25,7 @@ class SeedTest(TestCase):
 
         indexes = []
         for i in range(2):
-            index = AnnoyIndex(f)
+            index = AnnoyIndex(f, 'angular')
             index.set_seed(42)
             for j in range(X.shape[0]):
                 index.add_item(j, X[j])

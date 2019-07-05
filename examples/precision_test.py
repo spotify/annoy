@@ -10,7 +10,7 @@ except NameError:
 
 n, f = 100000, 40
 
-t = AnnoyIndex(f)
+t = AnnoyIndex(f, 'angular')
 for i in xrange(n):
     v = []
     for z in xrange(f):
