@@ -95,7 +95,7 @@ class AngularIndexTest(TestCase):
             self.assertEqual(i.get_nns_by_item(j, 2), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2), [j+1, j])
 
-    def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
+    def precision(self, n, n_trees=10, n_points=10000, n_rounds=10, search_k=100000):
         found = 0
         for r in range(n_rounds):
             # create random points at distance x from (1000, 0, 0, ...)
@@ -109,7 +109,7 @@ class AngularIndexTest(TestCase):
 
             i.build(n_trees)
 
-            nns = i.get_nns_by_vector([1000] + [0] * (f-1), n)
+            nns = i.get_nns_by_vector([1000] + [0] * (f-1), n, search_k)
             self.assertEqual(nns, sorted(nns))  # should be in order
             # The number of gaps should be equal to the last item minus n-1
             found += len([x for x in nns if x < n])
@@ -123,7 +123,7 @@ class AngularIndexTest(TestCase):
         self.assertGreaterEqual(self.precision(10), 0.98)
 
     def test_precision_100(self):
-        self.asserGreaterEqual(self.precision(100), 0.98)
+        self.assertGreaterEqual(self.precision(100), 0.98)
 
     def test_precision_1000(self):
         self.assertGreaterEqual(self.precision(1000), 0.98)
