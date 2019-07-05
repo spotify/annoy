@@ -1016,7 +1016,26 @@ public:
 #endif
     }
     _nodes = (Node*)mmap(0, size, PROT_READ, flags, _fd, 0);
+    if (size % _s) {
+      // Something is fishy with this index!
+      showUpdate("Index size %llu is not a multiple of vector size %llu\n", size, _s);
+      return false;
+    }
     _n_nodes = (S)(size / _s);
+
+    // Do some more sanity checking that the index is not corrupt by checking the last item
+    // These are all heuristics to catch common user errors like loading an index with a different number of dimensions
+    Node *last = _get(_n_nodes - 1);
+    if (last->n_descendants < 0 || last->n_descendants >= _n_nodes-1) {
+      showUpdate("Corruption: last node has %llu descendants\n", last->n_descendants);
+      return false;
+    }
+    for (int child = 0; child < 2; child++) {
+      if (last->children[child] < 0 || last->children[child] >= _n_nodes-1) {
+	showUpdate("Corruption: last node child %d is %llu\n", child, last->children[child]);
+	return false;
+      }
+    }
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     _roots.clear();
@@ -1033,6 +1052,7 @@ public:
     // hacky fix: since the last root precedes the copy of all roots, delete it
     if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
       _roots.pop_back();
+    printf("root size: %d\n", _roots.size());
     _loaded = true;
     _n_items = m;
     if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);

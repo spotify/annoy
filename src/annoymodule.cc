@@ -187,7 +187,7 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   res = self->ptr->load(filename, prefault);
 
   if (!res) {
-    PyErr_SetFromErrno(PyExc_IOError);
+    PyErr_SetString(PyExc_IOError, "Was not able to load file!");
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -208,7 +208,7 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   res = self->ptr->save(filename, prefault);
 
   if (!res) {
-    PyErr_SetFromErrno(PyExc_IOError);
+    PyErr_SetString(PyExc_IOError, "Was not able to save file!");
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -382,7 +382,7 @@ py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   res = self->ptr->on_disk_build(filename);
 
   if (!res) {
-    PyErr_SetFromErrno(PyExc_IOError);
+    PyErr_SetString(PyExc_IOError, "Was not able to build file on disk!");
     return NULL;
   }
   Py_RETURN_TRUE;

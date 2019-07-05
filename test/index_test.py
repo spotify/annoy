@@ -202,3 +202,17 @@ class IndexTest(TestCase):
                 self.assertTrue(str(e).find("No space left on device") > 0)
             finally:
                 os.popen("hdiutil detach %s" % device)
+
+    def test_dimension_mismatch(self):
+        for f in range(20, 100):
+            t = AnnoyIndex(f, 'angular')
+            for i in range(100):
+                v = [random.gauss(0, 1) for z in range(f)]
+                t.add_item(i, v)
+            t.build(10)
+            t.save('test.annoy')
+            for g in range(10, 100):
+                u = AnnoyIndex(g, 'angular')
+                if f != g:
+                    print(f, '->', g)
+                    self.assertRaises(IOError, u.load, 'test.annoy')
