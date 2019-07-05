@@ -21,7 +21,7 @@ from annoy import AnnoyIndex
 class HolesTest(TestCase):
     def test_random_holes(self):
         f = 10
-        index = AnnoyIndex(f)
+        index = AnnoyIndex(f, 'angular')
         valid_indices = random.sample(range(2000), 1000) # leave holes
         for i in valid_indices:
             v = numpy.random.normal(size=(f,))
@@ -38,7 +38,7 @@ class HolesTest(TestCase):
                 self.assertTrue(j in valid_indices)
 
     def _test_holes_base(self, n, f=100, base_i=100000):
-        annoy = AnnoyIndex(f)
+        annoy = AnnoyIndex(f, 'angular')
         for i in range(n):
             annoy.add_item(base_i + i, numpy.random.normal(size=(f,)))
         annoy.build(100)

@@ -21,7 +21,7 @@ from annoy import AnnoyIndex
 class AngularIndexTest(TestCase):
     def test_get_nns_by_vector(self):
         f = 3
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [0, 0, 1])
         i.add_item(1, [0, 1, 0])
         i.add_item(2, [1, 0, 0])
@@ -33,7 +33,7 @@ class AngularIndexTest(TestCase):
 
     def test_get_nns_by_item(self):
         f = 3
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [2, 1, 0])
         i.add_item(1, [1, 2, 0])
         i.add_item(2, [0, 0, 1])
@@ -45,7 +45,7 @@ class AngularIndexTest(TestCase):
 
     def test_dist(self):
         f = 2
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
@@ -53,7 +53,7 @@ class AngularIndexTest(TestCase):
 
     def test_dist_2(self):
         f = 2
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [1000, 0])
         i.add_item(1, [10, 0])
 
@@ -61,7 +61,7 @@ class AngularIndexTest(TestCase):
 
     def test_dist_3(self):
         f = 2
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [97, 0])
         i.add_item(1, [42, 42])
 
@@ -71,7 +71,7 @@ class AngularIndexTest(TestCase):
 
     def test_dist_degen(self):
         f = 2
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [1, 0])
         i.add_item(1, [0, 0])
 
@@ -80,7 +80,7 @@ class AngularIndexTest(TestCase):
     def test_large_index(self):
         # Generate pairs of random points where the pair is super close
         f = 10
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         for j in range(0, 10000, 2):
             p = [random.gauss(0, 1) for z in range(f)]
             f1 = random.random() + 1
@@ -100,7 +100,7 @@ class AngularIndexTest(TestCase):
         for r in range(n_rounds):
             # create random points at distance x from (1000, 0, 0, ...)
             f = 10
-            i = AnnoyIndex(f, 'euclidean')
+            i = AnnoyIndex(f, 'angular')
             for j in range(n_points):
                 p = [random.gauss(0, 1) for z in range(f - 1)]
                 norm = sum([pi ** 2 for pi in p]) ** 0.5
@@ -130,7 +130,7 @@ class AngularIndexTest(TestCase):
 
     def test_load_save_get_item_vector(self):
         f = 3
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [1.1, 2.2, 3.3])
         i.add_item(1, [4.4, 5.5, 6.6])
         i.add_item(2, [7.7, 8.8, 9.9])
@@ -139,13 +139,13 @@ class AngularIndexTest(TestCase):
         self.assertTrue(i.build(10))
         self.assertTrue(i.save('blah.ann'))
         numpy.testing.assert_array_almost_equal(i.get_item_vector(1), [4.4, 5.5, 6.6])
-        j = AnnoyIndex(f)
+        j = AnnoyIndex(f, 'angular')
         self.assertTrue(j.load('blah.ann'))
         numpy.testing.assert_array_almost_equal(j.get_item_vector(2), [7.7, 8.8, 9.9])
 
     def test_get_nns_search_k(self):
         f = 3
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         i.add_item(0, [0, 0, 1])
         i.add_item(1, [0, 1, 0])
         i.add_item(2, [1, 0, 0])
@@ -157,7 +157,7 @@ class AngularIndexTest(TestCase):
     def test_include_dists(self):
         # Double checking issue 112
         f = 40
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         v = numpy.random.normal(size=f)
         i.add_item(0, v)
         i.add_item(1, -v)
@@ -170,7 +170,7 @@ class AngularIndexTest(TestCase):
 
     def test_include_dists_check_ranges(self):
         f = 3
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         for j in range(100000):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
@@ -180,7 +180,7 @@ class AngularIndexTest(TestCase):
 
     def test_distance_consistency(self):
         n, f = 1000, 3
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f, 'angular')
         for j in range(n):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
@@ -199,27 +199,27 @@ class AngularIndexTest(TestCase):
 
     def test_only_one_item(self):
         # reported to annoy-user by Kireet Reddy
-        idx = AnnoyIndex(100)
+        idx = AnnoyIndex(100, 'angular')
         idx.add_item(0, numpy.random.randn(100))
         idx.build(n_trees=10)
         idx.save('foo.idx')
-        idx = AnnoyIndex(100)
+        idx = AnnoyIndex(100, 'angular')
         idx.load('foo.idx')
         self.assertEquals(idx.get_n_items(), 1)
         self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [0])
 
     def test_no_items(self):
-        idx = AnnoyIndex(100)
+        idx = AnnoyIndex(100, 'angular')
         idx.build(n_trees=10)
         idx.save('foo.idx')
-        idx = AnnoyIndex(100)
+        idx = AnnoyIndex(100, 'angular')
         idx.load('foo.idx')
         self.assertEquals(idx.get_n_items(), 0)
         self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
 
     def test_single_vector(self):
         # https://github.com/spotify/annoy/issues/194
-        a = AnnoyIndex(3)
+        a = AnnoyIndex(3, 'angular')
         a.add_item(0, [1, 0, 0])
         a.build(10)
         a.save('1.ann')
