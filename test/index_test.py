@@ -204,15 +204,13 @@ class IndexTest(TestCase):
                 os.popen("hdiutil detach %s" % device)
 
     def test_dimension_mismatch(self):
-        for f in range(20, 100):
-            t = AnnoyIndex(f, 'angular')
-            for i in range(100):
-                v = [random.gauss(0, 1) for z in range(f)]
-                t.add_item(i, v)
-            t.build(10)
-            t.save('test.annoy')
-            for g in range(10, 100):
-                u = AnnoyIndex(g, 'angular')
-                if f != g:
-                    print(f, '->', g)
-                    self.assertRaises(IOError, u.load, 'test.annoy')
+        t = AnnoyIndex(100, 'angular')
+        for i in range(1000):
+            t.add_item(i, [random.gauss(0, 1) for z in range(100)])
+        t.build(10)
+        t.save('test.annoy')
+        
+        u = AnnoyIndex(200, 'angular')
+        self.assertRaises(IOError, u.load, 'test.annoy')
+        u = AnnoyIndex(50, 'angular')
+        self.assertRaises(IOError, u.load, 'test.annoy')
