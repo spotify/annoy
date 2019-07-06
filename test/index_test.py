@@ -178,6 +178,7 @@ class IndexTest(TestCase):
 
         # Build the initial index
         t = AnnoyIndex(f, 'angular')
+        t.verbose(True)
         for i in range(1000):
             v = [random.gauss(0, 1) for z in range(f)]
             t.add_item(i, v)
