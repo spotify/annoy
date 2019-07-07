@@ -943,7 +943,12 @@ public:
     
     if (_on_disk) {
       _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * _n_nodes);
-      ftruncate(_fd, _s * _n_nodes);
+      if (ftruncate(_fd, _s * _n_nodes)) {
+	// TODO: this probably creates an index in a corrupt state... not sure what to do
+	showUpdate("Error truncating file: %s\n", strerror(errno));
+	if (error) *error = strerror(errno);
+	return false;
+      }
       _nodes_size = _n_nodes;
     }
     return true;
