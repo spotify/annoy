@@ -666,7 +666,7 @@ struct Hamming : Base {
       for (; j < dim; j++) {
         n->v[0] = j;
         cur_size = 0;
-	for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+        for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
           if (margin(n, (*it)->v, f)) {
             cur_size++;
           }
@@ -914,7 +914,7 @@ public:
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
-	      if (_get(i)->n_descendants >= 1) // Issue #223
+        if (_get(i)->n_descendants >= 1) // Issue #223
           indices.push_back(i);
       }
 
@@ -956,21 +956,21 @@ public:
 
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
-	showUpdate("Unable to open %s\n", strerror(errno));
-	if (error) *error = strerror(errno);
+        showUpdate("Unable to open: %s\n", strerror(errno));
+        if (error) *error = strerror(errno);
         return false;
       }
 
       if (fwrite(_nodes, _s, _n_nodes, f) != (size_t) _n_nodes) {
-        showUpdate("Unable to write %s\n", strerror(errno));
-	if (error) *error = strerror(errno);
-	return false;
+        showUpdate("Unable to write: %s\n", strerror(errno));
+        if (error) *error = strerror(errno);
+        return false;
       }
 
       if (fclose(f) == EOF) {
-        showUpdate("Unable to close %s\n", strerror(errno));
-	if (error) *error = strerror(errno);
-	return false;
+        showUpdate("Unable to close: %s\n", strerror(errno));
+        if (error) *error = strerror(errno);
+        return false;
       }
 
       unload();
@@ -1030,8 +1030,8 @@ public:
     _nodes = (Node*)mmap(0, size, PROT_READ, flags, _fd, 0);
     if (size % _s) {
       // Something is fishy with this index!
-      showUpdate("Error: index size %llu is not a multiple of vector size %llu\n", size, _s);
-      if (error) *error = "Index size is not a multiple of vector size";
+      showUpdate("Error: index size %llu is not a multiple of vector size %zu\n", size, _s);
+      if (error) *error = (char *)"Index size is not a multiple of vector size";
       return false;
     }
     _n_nodes = (S)(size / _s);
