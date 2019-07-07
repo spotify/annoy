@@ -886,7 +886,11 @@ public:
       return false;
     }
     _nodes_size = 1;
-    ftruncate(_fd, _s * _nodes_size);
+    if (ftruncate(_fd, _s * _nodes_size) == -1) {
+      showUpdate("Error truncating file: %s\n", strerror(errno));
+      if (error) *error = strerror(errno);
+      return false;
+    }
 #ifdef MAP_POPULATE
     _nodes = (Node*) mmap(0, _s * _nodes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
