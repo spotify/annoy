@@ -61,13 +61,13 @@ private:
   };
 public:
   HammingWrapper(int f) : _f_external(f), _f_internal((f + 63) / 64), _index((f + 63) / 64) {};
-  void add_item(int32_t item, const float* w) {
+  bool add_item(int32_t item, const float* w, char**error) {
     vector<uint64_t> w_internal(_f_internal, 0);
     _pack(w, &w_internal[0]);
-    _index.add_item(item, &w_internal[0]);
+    return _index.add_item(item, &w_internal[0], error);
   };
-  void build(int q) { _index.build(q); };
-  void unbuild() { _index.unbuild(); };
+  bool build(int q, char** error) { return _index.build(q, error); };
+  bool unbuild(char** error) { return _index.unbuild(error); };
   bool save(const char* filename, bool prefault, char** error) { return _index.save(filename, prefault, error); };
   void unload() { _index.unload(); };
   bool load(const char* filename, bool prefault, char** error) { return _index.load(filename, prefault, error); };
@@ -176,7 +176,6 @@ static PyMemberDef py_annoy_members[] = {
 static PyObject *
 py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename, *error;
-  bool res = false;
   bool prefault = false;
   if (!self->ptr) 
     return NULL;
@@ -184,9 +183,7 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->load(filename, prefault, &error);
-
-  if (!res) {
+  if (!self->ptr->load(filename, prefault, &error)) {
     PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
@@ -197,7 +194,6 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
 static PyObject *
 py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename, *error;
-  bool res = false;
   bool prefault = false;
   if (!self->ptr) 
     return NULL;
@@ -205,9 +201,7 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->save(filename, prefault, &error);
-
-  if (!res) {
+  if (!self->ptr->save(filename, prefault, &error)) {
     PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
@@ -364,7 +358,11 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   if (!convert_list_to_vector(v, self->f, &w)) {
     return NULL;
   }
-  self->ptr->add_item(item, &w[0]);
+  char* error;
+  if (!self->ptr->add_item(item, &w[0], &error)) {
+    PyErr_SetString(PyExc_Exception, error);
+    return NULL;
+  }
 
   Py_RETURN_NONE;
 }
@@ -372,16 +370,13 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
 static PyObject *
 py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   char *filename, *error;
-  bool res = false;
   if (!self->ptr)
     return NULL;
   static char const * kwlist[] = {"fn", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
     return NULL;
 
-  res = self->ptr->on_disk_build(filename, &error);
-
-  if (!res) {
+  if (!self->ptr->on_disk_build(filename, &error)) {
     PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
@@ -397,9 +392,15 @@ py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q))
     return NULL;
 
+  bool res;
+  char* error;
   Py_BEGIN_ALLOW_THREADS;
-  self->ptr->build(q);
+  res = self->ptr->build(q, &error);
   Py_END_ALLOW_THREADS;
+  if (!res) {
+    PyErr_SetString(PyExc_Exception, error);
+    return NULL;
+  }
 
   Py_RETURN_TRUE;
 }
@@ -409,10 +410,12 @@ static PyObject *
 py_an_unbuild(py_annoy *self) {
   if (!self->ptr) 
     return NULL;
-  
-  Py_BEGIN_ALLOW_THREADS;
-  self->ptr->unbuild();
-  Py_END_ALLOW_THREADS;
+
+  char* error;
+  if (!self->ptr->unbuild(&error)) {
+    PyErr_SetString(PyExc_Exception, error);
+    return NULL;
+  }
 
   Py_RETURN_TRUE;
 }
