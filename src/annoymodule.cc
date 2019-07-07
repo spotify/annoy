@@ -68,9 +68,9 @@ public:
   };
   void build(int q) { _index.build(q); };
   void unbuild() { _index.unbuild(); };
-  bool save(const char* filename, bool prefault) { return _index.save(filename, prefault); };
+  bool save(const char* filename, bool prefault, char** error) { return _index.save(filename, prefault, error); };
   void unload() { _index.unload(); };
-  bool load(const char* filename, bool prefault) { return _index.load(filename, prefault); };
+  bool load(const char* filename, bool prefault, char** error) { return _index.load(filename, prefault, error); };
   float get_distance(int32_t i, int32_t j) const { return _index.get_distance(i, j); };
   void get_nns_by_item(int32_t item, size_t n, size_t search_k, vector<int32_t>* result, vector<float>* distances) const {
     if (distances) {
@@ -101,7 +101,7 @@ public:
     _unpack(&v_internal[0], v);
   };
   void set_seed(int q) { _index.set_seed(q); };
-  bool on_disk_build(const char* filename) { return _index.on_disk_build(filename); };
+  bool on_disk_build(const char* filename, char** error) { return _index.on_disk_build(filename, error); };
 };
 
 // annoy python object
@@ -175,7 +175,7 @@ static PyMemberDef py_annoy_members[] = {
 
 static PyObject *
 py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
-  char* filename;
+  char *filename, *error;
   bool res = false;
   bool prefault = false;
   if (!self->ptr) 
@@ -184,10 +184,10 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->load(filename, prefault);
+  res = self->ptr->load(filename, prefault, &error);
 
   if (!res) {
-    PyErr_SetFromErrno(PyExc_IOError);
+    PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -196,7 +196,7 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 static PyObject *
 py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
-  char *filename;
+  char *filename, *error;
   bool res = false;
   bool prefault = false;
   if (!self->ptr) 
@@ -205,10 +205,10 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s|b", (char**)kwlist, &filename, &prefault))
     return NULL;
 
-  res = self->ptr->save(filename, prefault);
+  res = self->ptr->save(filename, prefault, &error);
 
   if (!res) {
-    PyErr_SetFromErrno(PyExc_IOError);
+    PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -371,7 +371,7 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
 
 static PyObject *
 py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
-  char *filename;
+  char *filename, *error;
   bool res = false;
   if (!self->ptr)
     return NULL;
@@ -379,10 +379,10 @@ py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", (char**)kwlist, &filename))
     return NULL;
 
-  res = self->ptr->on_disk_build(filename);
+  res = self->ptr->on_disk_build(filename, &error);
 
   if (!res) {
-    PyErr_SetFromErrno(PyExc_IOError);
+    PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
   Py_RETURN_TRUE;

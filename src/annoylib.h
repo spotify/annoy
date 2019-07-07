@@ -666,7 +666,7 @@ struct Hamming : Base {
       for (; j < dim; j++) {
         n->v[0] = j;
         cur_size = 0;
-	for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+        for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
           if (margin(n, (*it)->v, f)) {
             cur_size++;
           }
@@ -795,9 +795,9 @@ class AnnoyIndexInterface {
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
   virtual void unbuild() = 0;
-  virtual bool save(const char* filename, bool prefault=false) = 0;
+  virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
-  virtual bool load(const char* filename, bool prefault=false) = 0;
+  virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -806,7 +806,7 @@ class AnnoyIndexInterface {
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) const = 0;
   virtual void set_seed(int q) = 0;
-  virtual bool on_disk_build(const char* filename) = 0;
+  virtual bool on_disk_build(const char* filename, char** error=NULL) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random>
@@ -876,15 +876,21 @@ public:
       _n_items = item + 1;
   }
     
-  bool on_disk_build(const char* file) {
+  bool on_disk_build(const char* file, char** error=NULL) {
     _on_disk = true;
     _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
     if (_fd == -1) {
+      showUpdate("Error: file descriptor is -1\n");
+      if (error) *error = strerror(errno);
       _fd = 0;
       return false;
     }
     _nodes_size = 1;
-    ftruncate(_fd, _s * _nodes_size);
+    if (ftruncate(_fd, _s * _nodes_size) == -1) {
+      showUpdate("Error truncating file: %s\n", strerror(errno));
+      if (error) *error = strerror(errno);
+      return false;
+    }
 #ifdef MAP_POPULATE
     _nodes = (Node*) mmap(0, _s * _nodes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
@@ -912,7 +918,7 @@ public:
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
-	      if (_get(i)->n_descendants >= 1) // Issue #223
+        if (_get(i)->n_descendants >= 1) // Issue #223
           indices.push_back(i);
       }
 
@@ -945,7 +951,7 @@ public:
     _n_nodes = _n_items;
   }
 
-  bool save(const char* filename, bool prefault=false) {
+  bool save(const char* filename, bool prefault=false, char** error=NULL) {
     if (_on_disk) {
       return true;
     } else {
@@ -953,21 +959,26 @@ public:
       unlink(filename);
 
       FILE *f = fopen(filename, "wb");
-      if (f == NULL)
+      if (f == NULL) {
+        showUpdate("Unable to open: %s\n", strerror(errno));
+        if (error) *error = strerror(errno);
         return false;
+      }
 
       if (fwrite(_nodes, _s, _n_nodes, f) != (size_t) _n_nodes) {
-        showUpdate("Unable to write %s\n", strerror(errno));
-	return false;
+        showUpdate("Unable to write: %s\n", strerror(errno));
+        if (error) *error = strerror(errno);
+        return false;
       }
 
       if (fclose(f) == EOF) {
-        showUpdate("Unable to close %s\n", strerror(errno));
-	return false;
+        showUpdate("Unable to close: %s\n", strerror(errno));
+        if (error) *error = strerror(errno);
+        return false;
       }
 
       unload();
-      return load(filename, prefault=false);
+      return load(filename, prefault, error);
     }
   }
 
@@ -1000,13 +1011,18 @@ public:
     if (_verbose) showUpdate("unloaded\n");
   }
 
-  bool load(const char* filename, bool prefault=false) {
+  bool load(const char* filename, bool prefault=false, char** error=NULL) {
     _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1) {
+      showUpdate("Error: file descriptor is -1\n");
+      if (error) *error = strerror(errno);
       _fd = 0;
       return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
+    if (size <= 0) {
+      showUpdate("Warning: index size %zu\n", (size_t)size);
+    }
     int flags = MAP_SHARED;
     if (prefault) {
 #ifdef MAP_POPULATE
@@ -1016,6 +1032,12 @@ public:
 #endif
     }
     _nodes = (Node*)mmap(0, size, PROT_READ, flags, _fd, 0);
+    if (size % _s) {
+      // Something is fishy with this index!
+      showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
+      if (error) *error = (char *)"Index size is not a multiple of vector size";
+      return false;
+    }
     _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
