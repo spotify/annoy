@@ -84,12 +84,12 @@ class IndexTest(TestCase):
         i.save('x.tree')
         j = AnnoyIndex(10, 'angular')
         j.load('x.tree')
-        j.build(10)
+        self.assertRaises(Exception, j.build, 10)
         
     def test_unbuild_with_loaded_tree(self):
         i = AnnoyIndex(10, 'angular')
         i.load('test/test.tree')
-        i.unbuild()
+        self.assertRaises(Exception, i.unbuild)
 
     def test_seed(self):
         i = AnnoyIndex(10, 'angular')
@@ -215,3 +215,15 @@ class IndexTest(TestCase):
         self.assertRaises(IOError, u.load, 'test.annoy')
         u = AnnoyIndex(50, 'angular')
         self.assertRaises(IOError, u.load, 'test.annoy')
+
+    def test_add_after_save(self):
+        # 398
+        t = AnnoyIndex(100, 'angular')
+        for i in range(1000):
+            t.add_item(i, [random.gauss(0, 1) for z in range(100)])
+        t.build(10)
+        t.save('test.annoy')
+
+        # Used to segfault
+        v = [random.gauss(0, 1) for z in range(100)]
+        self.assertRaises(Exception, t.add_item, i, v)

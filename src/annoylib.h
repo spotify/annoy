@@ -792,9 +792,9 @@ template<typename S, typename T>
 class AnnoyIndexInterface {
  public:
   virtual ~AnnoyIndexInterface() {};
-  virtual void add_item(S item, const T* w) = 0;
-  virtual void build(int q) = 0;
-  virtual void unbuild() = 0;
+  virtual bool add_item(S item, const T* w, char** error=NULL) = 0;
+  virtual bool build(int q, char** error=NULL) = 0;
+  virtual bool unbuild(char** error=NULL) = 0;
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
@@ -852,12 +852,17 @@ public:
     return _f;
   }
 
-  void add_item(S item, const T* w) {
-    add_item_impl(item, w);
+  bool add_item(S item, const T* w, char** error=NULL) {
+    return add_item_impl(item, w, error);
   }
 
   template<typename W>
-  void add_item_impl(S item, const W& w) {
+  bool add_item_impl(S item, const W& w, char** error=NULL) {
+    if (_loaded) {
+      showUpdate("You can't add an item to a loaded index\n");
+      if (error) *error = (char *)"You can't add an item to a loaded index";
+      return false;
+    }
     _allocate_size(item + 1);
     Node* n = _get(item);
 
@@ -874,6 +879,8 @@ public:
 
     if (item >= _n_items)
       _n_items = item + 1;
+
+    return true;
   }
     
   bool on_disk_build(const char* file, char** error=NULL) {
@@ -899,11 +906,11 @@ public:
     return true;
   }
     
-  void build(int q) {
+  bool build(int q, char** error=NULL) {
     if (_loaded) {
-      // TODO: throw exception
       showUpdate("You can't build a loaded index\n");
-      return;
+      if (error) *error = (char *)"You can't build a loaded index";
+      return false;
     }
 
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
@@ -939,16 +946,20 @@ public:
       ftruncate(_fd, _s * _n_nodes);
       _nodes_size = _n_nodes;
     }
+    return true;
   }
   
-  void unbuild() {
+  bool unbuild(char** error=NULL) {
     if (_loaded) {
       showUpdate("You can't unbuild a loaded index\n");
-      return;
+      if (error) *error = (char *)"You can't unbuild a loaded index";
+      return false;
     }
 
     _roots.clear();
     _n_nodes = _n_items;
+
+    return true;
   }
 
   bool save(const char* filename, bool prefault=false, char** error=NULL) {
@@ -1066,6 +1077,7 @@ public:
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
+    // TODO: handle OOB
     const Node* m = _get(item);
     _get_all_nns(m->v, n, search_k, result, distances);
   }
@@ -1087,6 +1099,7 @@ public:
   }
 
   void get_item(S item, T* v) const {
+    // TODO: handle OOB
     Node* m = _get(item);
     memcpy(v, m->v, (_f) * sizeof(T));
   }
