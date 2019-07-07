@@ -1017,7 +1017,7 @@ public:
     }
     off_t size = lseek(_fd, 0, SEEK_END);
     if (size <= 0) {
-      showUpdate("Warning: index size %llu\n", size);
+      showUpdate("Warning: index size %zu\n", (size_t)size);
     }
     int flags = MAP_SHARED;
     if (prefault) {
@@ -1030,7 +1030,7 @@ public:
     _nodes = (Node*)mmap(0, size, PROT_READ, flags, _fd, 0);
     if (size % _s) {
       // Something is fishy with this index!
-      showUpdate("Error: index size %llu is not a multiple of vector size %zu\n", size, _s);
+      showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
       if (error) *error = (char *)"Index size is not a multiple of vector size";
       return false;
     }

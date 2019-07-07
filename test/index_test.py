@@ -190,7 +190,7 @@ class IndexTest(TestCase):
                 t.save("/dev/full") 
                 self.fail("didn't get expected exception")
             except Exception as e:
-                self.assertTrue(str(e).find("No space left on device") > 0)
+                self.assertTrue('No space left on device' in str(e))
         elif sys.platform == "darwin":
             volume = "FULLDISK"
             device = os.popen('hdiutil attach -nomount ram://64').read()
@@ -200,7 +200,7 @@ class IndexTest(TestCase):
                 t.save('/Volumes/%s/annoy.tree' % volume)
                 self.fail("didn't get expected exception")
             except Exception as e:
-                self.assertTrue(str(e).find("No space left on device") > 0)
+                self.assertTrue('No space left on device' in str(e))
             finally:
                 os.popen("hdiutil detach %s" % device)
 
