@@ -57,7 +57,7 @@ Python code example
   import random
 
   f = 40
-  t = AnnoyIndex(f)  # Length of item vector that will be indexed
+  t = AnnoyIndex(f, 'angular')  # Length of item vector that will be indexed
   for i in xrange(1000):
       v = [random.gauss(0, 1) for z in xrange(f)]
       t.add_item(i, v)
@@ -67,7 +67,7 @@ Python code example
 
   # ...
 
-  u = AnnoyIndex(f)
+  u = AnnoyIndex(f, 'angular')
   u.load('test.ann') # super fast, will just mmap the file
   print(u.get_nns_by_item(0, 1000)) # will find the 1000 nearest neighbors
 
@@ -76,7 +76,7 @@ Right now it only accepts integers as identifiers for items. Note that it will a
 Full Python API
 ---------------
 
-* ``AnnoyIndex(f, metric='angular')`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, ``"hamming"``, or ``"dot"``.
+* ``AnnoyIndex(f, metric)`` returns a new index that's read-write and stores vector of ``f`` dimensions. Metric can be ``"angular"``, ``"euclidean"``, ``"manhattan"``, ``"hamming"``, or ``"dot"``.
 * ``a.add_item(i, v)`` adds item ``i`` (any nonnegative integer) with vector ``v``. Note that it will allocate memory for ``max(i)+1`` items.
 * ``a.build(n_trees)`` builds a forest of ``n_trees`` trees. More trees gives higher precision when querying. After calling ``build``, no more items can be added.
 * ``a.save(fn, prefault=False)`` saves the index to disk and loads it (see next function). After saving, no more items can be added.
