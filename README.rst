@@ -58,8 +58,8 @@ Python code example
 
   f = 40
   t = AnnoyIndex(f, 'angular')  # Length of item vector that will be indexed
-  for i in xrange(1000):
-      v = [random.gauss(0, 1) for z in xrange(f)]
+  for i in range(1000):
+      v = [random.gauss(0, 1) for z in range(f)]
       t.add_item(i, v)
 
   t.build(10) # 10 trees
