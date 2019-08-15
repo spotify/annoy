@@ -1259,7 +1259,7 @@ protected:
 
     // Get distances for all items
     // To avoid calculating distance multiple times for any items, sort by id
-    sort(nns.begin(), nns.end());
+    std::sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
     S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
