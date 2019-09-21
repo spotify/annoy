@@ -1121,7 +1121,7 @@ protected:
       void *old = _nodes;
       
       if (_on_disk) {
-        ftruncate(_fd, _s * new_nodes_size);
+        int rc = ftruncate(_fd, _s * new_nodes_size);
         _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * new_nodes_size);
       } else {
         _nodes = realloc(_nodes, _s * new_nodes_size);
