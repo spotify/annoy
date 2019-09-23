@@ -1122,6 +1122,7 @@ protected:
       
       if (_on_disk) {
         int rc = ftruncate(_fd, _s * new_nodes_size);
+        if (_verbose && rc) showUpdate("File truncation error\n");
         _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * new_nodes_size);
       } else {
         _nodes = realloc(_nodes, _s * new_nodes_size);
