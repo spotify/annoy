@@ -155,4 +155,4 @@ class DotIndexTest(TestCase):
                     i.get_item_vector(a),
                     i.get_item_vector(b)
                 ))
-                self.assertEqual(dist, i.get_distance(a, b))
+                self.assertAlmostEqual(dist, i.get_distance(a, b))
