@@ -224,6 +224,15 @@ class IndexTest(TestCase):
         t.build(10)
         t.save('test.annoy')
 
-        # Used to segfault
+        # Used to segfault:
         v = [random.gauss(0, 1) for z in range(100)]
         self.assertRaises(Exception, t.add_item, i, v)
+
+    def test_build_twice(self):
+        # 420
+        t = AnnoyIndex(100, 'angular')
+        for i in range(1000):
+            t.add_item(i, [random.gauss(0, 1) for z in range(100)])
+        t.build(10)
+        # Used to segfault:
+        self.assertRaises(Exception, t.build, 10)

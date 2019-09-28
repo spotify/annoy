@@ -836,11 +836,13 @@ protected:
   bool _verbose;
   int _fd;
   bool _on_disk;
+  bool _built;
 public:
 
-  AnnoyIndex(int f) : _f(f), _random() {
+   AnnoyIndex(int f) : _f(f), _random() {
     _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
+    _built = false;
     _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S)); // Max number of descendants to fit into node
     reinitialize(); // Reset everything
   }
@@ -903,6 +905,7 @@ public:
 #else
     _nodes = (Node*) mmap(0, _s * _nodes_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
 #endif
+    _built = true;
     return true;
   }
     
@@ -910,6 +913,12 @@ public:
     if (_loaded) {
       showUpdate("You can't build a loaded index\n");
       if (error) *error = (char *)"You can't build a loaded index";
+      return false;
+    }
+
+    if (_built) {
+      showUpdate("You can't build a built index\n");
+      if (error) *error = (char *)"You can't build a built index";
       return false;
     }
 
@@ -951,6 +960,7 @@ public:
       }
       _nodes_size = _n_nodes;
     }
+    _built = true;
     return true;
   }
   
