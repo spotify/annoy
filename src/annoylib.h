@@ -978,6 +978,11 @@ public:
   }
 
   bool save(const char* filename, bool prefault=false, char** error=NULL) {
+    if (!_built) {
+      showUpdate("You can't save an index that hasn't been built\n");
+      if (error) *error = (char *)"You can't save an index that hasn't been built";
+      return false;
+    }
     if (_on_disk) {
       return true;
     } else {
@@ -1090,6 +1095,7 @@ public:
     if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
       _roots.pop_back();
     _loaded = true;
+    _built = true;
     _n_items = m;
     if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
     return true;
