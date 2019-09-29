@@ -1036,9 +1036,23 @@ public:
       return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
-    if (size <= 0) {
-      showUpdate("Warning: index size %zu\n", (size_t)size);
+    if (size == -1) {
+      showUpdate("lseek returned -1\n");
+      if (error) *error = strerror(errno);
+      return false;
+    } else if (size == 0) {
+      showUpdate("Size of file is zero\n");
+      // TODO(erikbern): there is some weird test case failure because of this
+      // Let's fix separately!
+      // if (error) *error = (char *)"Size of file is zero";
+      // return false;
+    } else if (size % _s) {
+      // Something is fishy with this index!
+      showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
+      if (error) *error = (char *)"Index size is not a multiple of vector size";
+      return false;
     }
+
     int flags = MAP_SHARED;
     if (prefault) {
 #ifdef MAP_POPULATE
@@ -1048,12 +1062,6 @@ public:
 #endif
     }
     _nodes = (Node*)mmap(0, size, PROT_READ, flags, _fd, 0);
-    if (size % _s) {
-      // Something is fishy with this index!
-      showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
-      if (error) *error = (char *)"Index size is not a multiple of vector size";
-      return false;
-    }
     _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
