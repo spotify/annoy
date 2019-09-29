@@ -496,16 +496,6 @@ describe("index test", function()
         assert.same(u, y)
     end)
 
-    it("save_without_build", function()
-        -- Issue #61
-        local i = AnnoyIndex(10)
-        i:add_item(1000, randomVector(10, 0, 1))
-        i:save('x.tree')
-        local j = AnnoyIndex(10)
-        j:load('x.tree')
-        j:build(10)
-    end)
-    
     it("on_disk_build", function()
         local f = 2
         local i = AnnoyIndex(f, 'euclidean')
