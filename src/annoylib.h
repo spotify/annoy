@@ -836,11 +836,13 @@ protected:
   bool _verbose;
   int _fd;
   bool _on_disk;
+  bool _built;
 public:
 
-  AnnoyIndex(int f) : _f(f), _random() {
+   AnnoyIndex(int f) : _f(f), _random() {
     _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
+    _built = false;
     _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S)); // Max number of descendants to fit into node
     reinitialize(); // Reset everything
   }
@@ -913,6 +915,12 @@ public:
       return false;
     }
 
+    if (_built) {
+      showUpdate("You can't build a built index\n");
+      if (error) *error = (char *)"You can't build a built index";
+      return false;
+    }
+
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
@@ -951,6 +959,7 @@ public:
       }
       _nodes_size = _n_nodes;
     }
+    _built = true;
     return true;
   }
   
@@ -963,6 +972,7 @@ public:
 
     _roots.clear();
     _n_nodes = _n_items;
+    _built = false;
 
     return true;
   }
