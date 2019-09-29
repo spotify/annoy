@@ -905,7 +905,6 @@ public:
 #else
     _nodes = (Node*) mmap(0, _s * _nodes_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
 #endif
-    _built = true;
     return true;
   }
     
@@ -973,6 +972,7 @@ public:
 
     _roots.clear();
     _n_nodes = _n_items;
+    _built = false;
 
     return true;
   }
