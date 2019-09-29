@@ -978,6 +978,11 @@ public:
   }
 
   bool save(const char* filename, bool prefault=false, char** error=NULL) {
+    if (!_built) {
+      showUpdate("You can't save an index that hasn't been built\n");
+      if (error) *error = (char *)"You can't save an index that hasn't been built";
+      return false;
+    }
     if (_on_disk) {
       return true;
     } else {
@@ -1052,10 +1057,8 @@ public:
       return false;
     } else if (size == 0) {
       showUpdate("Size of file is zero\n");
-      // TODO(erikbern): there is some weird test case failure because of this
-      // Let's fix separately!
-      // if (error) *error = (char *)"Size of file is zero";
-      // return false;
+      if (error) *error = (char *)"Size of file is zero";
+      return false;
     } else if (size % _s) {
       // Something is fishy with this index!
       showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
@@ -1090,6 +1093,7 @@ public:
     if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
       _roots.pop_back();
     _loaded = true;
+    _built = true;
     _n_items = m;
     if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
     return true;

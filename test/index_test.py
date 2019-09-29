@@ -50,6 +50,9 @@ class IndexTest(TestCase):
     def test_save_twice(self):
         # Issue #100
         t = AnnoyIndex(10, 'angular')
+        for i in range(100):
+            t.add_item(i, [random.gauss(0, 1) for z in range(10)])
+        t.build(10)
         t.save("t.ann")
         t.save("t.ann")
 
@@ -78,13 +81,11 @@ class IndexTest(TestCase):
         self.assertEqual(u, y)
 
     def test_save_without_build(self):
-        # Issue #61
-        i = AnnoyIndex(10, 'angular')
-        i.add_item(1000, [random.gauss(0, 1) for z in range(10)])
-        i.save('x.tree')
-        j = AnnoyIndex(10, 'angular')
-        j.load('x.tree')
-        self.assertRaises(Exception, j.build, 10)
+        t = AnnoyIndex(10, 'angular')
+        for i in range(100):
+            t.add_item(i, [random.gauss(0, 1) for z in range(10)])
+        # Note: in earlier version, this was allowed (see eg #61)
+        self.assertRaises(Exception, t.save, 'x.tree')
         
     def test_unbuild_with_loaded_tree(self):
         i = AnnoyIndex(10, 'angular')
