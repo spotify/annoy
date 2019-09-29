@@ -1057,10 +1057,8 @@ public:
       return false;
     } else if (size == 0) {
       showUpdate("Size of file is zero\n");
-      // TODO(erikbern): there is some weird test case failure because of this
-      // Let's fix separately!
-      // if (error) *error = (char *)"Size of file is zero";
-      // return false;
+      if (error) *error = (char *)"Size of file is zero";
+      return false;
     } else if (size % _s) {
       // Something is fishy with this index!
       showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
