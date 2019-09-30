@@ -175,7 +175,7 @@ class AngularIndexTest(TestCase):
             i.add_item(j, numpy.random.normal(size=f))
         i.build(10)
         indices, dists = i.get_nns_by_item(0, 100000, include_distances=True)
-        self.assertTrue(max(dists) < 2.0)
+        self.assertLessEqual(max(dists), 2.0)
         self.assertAlmostEqual(min(dists), 0.0)
 
     def test_distance_consistency(self):
