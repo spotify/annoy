@@ -53,8 +53,8 @@ class IndexTest(TestCase):
         for i in range(100):
             t.add_item(i, [random.gauss(0, 1) for z in range(10)])
         t.build(10)
-        t.save("t.ann")
-        t.save("t.ann")
+        t.save('t1.ann')
+        t.save('t2.ann')
 
     def test_load_save(self):
         # Issue #61
