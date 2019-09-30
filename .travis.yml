@@ -9,9 +9,12 @@ matrix:
       env:
         - TOXENV=py36
     - python: 3.7
-      dist: xenial
       env:
         - TOXENV=py37
+    - os: osx
+      language: generic
+      env:
+        - TOXENV=py36
 
 env:
   matrix:
