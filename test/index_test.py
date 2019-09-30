@@ -185,25 +185,11 @@ class IndexTest(TestCase):
             t.add_item(i, v)
         t.build(10)
 
-        if sys.platform == "linux" or sys.platform == "linux2":
-            # linux
-            try:
-                t.save("/dev/full") 
-                self.fail("didn't get expected exception")
-            except Exception as e:
-                self.assertTrue('No space left on device' in str(e))
-        elif sys.platform == "darwin":
-            volume = "FULLDISK"
-            device = os.popen('hdiutil attach -nomount ram://64').read()
-            os.popen('diskutil erasevolume MS-DOS %s %s' % (volume, device))
-            os.popen('touch "/Volumes/%s/full"' % volume)
-            try:
-                t.save('/Volumes/%s/annoy.tree' % volume)
-                self.fail("didn't get expected exception")
-            except Exception as e:
-                self.assertTrue('No space left on device' in str(e))
-            finally:
-                os.popen("hdiutil detach %s" % device)
+        if os.name == 'nt':
+            path = 'Z:\\xyz.annoy'
+        else:
+            path = '/x/y/z.annoy'
+        self.assertRaises(Exception, t.save, path)
 
     def test_dimension_mismatch(self):
         t = AnnoyIndex(100, 'angular')
