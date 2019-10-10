@@ -75,9 +75,11 @@ typedef unsigned __int64  uint64_t;
 #endif
 
 #ifndef NO_MANUAL_VECTORIZATION
-#if defined(__AVX512F__)
+#if defined(__GNUC__) && (__GNUC__ >6) && defined(__AVX512F__)  // See #402
+#pragma message "Using 512-bit AVX instructions"
 #define USE_AVX512
 #elif defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
+#pragma message "Using 128-bit AVX instructions"
 #define USE_AVX
 #endif
 #endif
@@ -988,6 +990,8 @@ public:
     } else {
       // Delete file if it already exists (See issue #335)
       unlink(filename);
+
+      printf("path: %s\n", filename);
 
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
