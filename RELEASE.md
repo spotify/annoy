@@ -7,7 +7,7 @@ How to release
 1. `git tag -a v1.2.3 -m "version 1.2.3"`
 1. `git push --tags origin master` to push the last version to Github
 1. Go to https://github.com/spotify/annoy/releases and click "Draft a new release"
-1. `twine upload dist/*`
+1. `twine upload dist/annoy-1.2.3*`
 
 TODO
 ----
