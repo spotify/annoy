@@ -39,10 +39,6 @@ with codecs.open('README.rst', encoding='utf-8') as fobj:
 extra_compile_args = []
 extra_link_args = []
 
-if os.environ.get('TRAVIS') == 'true':
-    # Resolving some annoying issue
-    extra_compile_args += ['-mno-avx']
-
 # Not all CPUs have march as a tuning parameter
 cputune = ['-march=native',]
 if platform.machine() == 'ppc64le':
