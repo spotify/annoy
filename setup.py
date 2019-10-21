@@ -19,7 +19,6 @@ from setuptools import setup, Extension
 import codecs
 import os
 import platform
-import sys
 
 readme_note = """\
 .. note::
@@ -55,17 +54,25 @@ if platform.system() == 'Darwin':
     extra_compile_args += ['-std=c++11', '-mmacosx-version-min=10.9']
     extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
+# Manual configuration, you're on your own here.
+manual_compiler_args = os.environ.get('ANNOY_COMPILER_ARGS', None)
+if manual_compiler_args:
+    extra_compile_args = manual_compiler_args.split(',')
+manual_linker_args = os.environ.get('ANNOY_LINKER_ARGS', None)
+if manual_linker_args:
+    extra_link_args = manual_linker_args.split(',')
+
 setup(name='annoy',
       version='1.16.1',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
-        Extension(
-            'annoy.annoylib', ['src/annoymodule.cc'],
-            depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-        )
+          Extension(
+              'annoy.annoylib', ['src/annoymodule.cc'],
+              depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
+              extra_compile_args=extra_compile_args,
+              extra_link_args=extra_link_args,
+          )
       ],
       long_description=long_description,
       author='Erik Bernhardsson',
@@ -84,4 +91,4 @@ setup(name='annoy',
       ],
       keywords='nns, approximate nearest neighbor search',
       setup_requires=['nose>=1.0']
-    )
+      )
