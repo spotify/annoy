@@ -193,9 +193,9 @@ class AngularIndexTest(TestCase):
                 u_norm = numpy.array(u) * numpy.dot(u, u)**-0.5
                 v_norm = numpy.array(v) * numpy.dot(v, v)**-0.5
                 # cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
-                self.assertAlmostEqual(dist, numpy.dot(u_norm - v_norm, u_norm - v_norm) ** 0.5)
+                self.assertAlmostEqual(dist ** 2, numpy.dot(u_norm - v_norm, u_norm - v_norm))
                 # self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
-                self.assertAlmostEqual(dist, sum([(x-y)**2 for x, y in zip(u_norm, v_norm)])**0.5)
+                self.assertAlmostEqual(dist ** 2, sum([(x-y)**2 for x, y in zip(u_norm, v_norm)]))
 
     def test_only_one_item(self):
         # reported to annoy-user by Kireet Reddy
@@ -223,5 +223,7 @@ class AngularIndexTest(TestCase):
         a.add_item(0, [1, 0, 0])
         a.build(10)
         a.save('1.ann')
-        self.assertEquals(a.get_nns_by_vector([1, 0, 0], 3, include_distances=True), ([0], [0.0]))
+        indices, dists = a.get_nns_by_vector([1, 0, 0], 3, include_distances=True)
+        self.assertEquals(indices, [0])
+        self.assertAlmostEqual(dists[0] ** 2, 0.0)
     
