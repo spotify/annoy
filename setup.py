@@ -19,7 +19,6 @@ from setuptools import setup, Extension
 import codecs
 import os
 import platform
-from setuptools.command.install import install as _install
 
 readme_note = """\
 .. note::
@@ -32,61 +31,48 @@ readme_note = """\
 
 """
 
-extension_name = 'annoy.annoylib'
 with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
+# Various platform-dependent extras
+extra_compile_args = []
+extra_link_args = []
 
-class install(_install):
-    '''
-    Install options for pip.
-    Ex: `pip3 install annoy --install-option="--march=haswell"`
-    '''
-    user_options = _install.user_options + [('march=', None, None)]
+# Not all CPUs have march as a tuning parameter
+cputune = ['-march=native',]
+if platform.machine() == 'ppc64le':
+    extra_compile_args += ['-mcpu=native',]
 
-    def initialize_options(self):
-        _install.initialize_options(self)
-        self.march = None
+if platform.machine() == 'x86_64':
+    extra_compile_args += cputune
 
-    def finalize_options(self):
-        _install.finalize_options(self)
-        compile_args, link_args = [], []
+if os.name != 'nt':
+    extra_compile_args += ['-O3', '-ffast-math', '-fno-associative-math']
 
-        # Not all CPUs have march as a tuning parameter
-        if self.march:
-            compile_args += ['-march={}'.format(self.march),]
-        elif platform.machine() == 'x86_64':
-            compile_args += ['-march=native',]
+# #349: something with OS X Mojave causes libstd not to be found
+if platform.system() == 'Darwin':
+    extra_compile_args += ['-std=c++11', '-mmacosx-version-min=10.9']
+    extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
-        if platform.machine() == 'ppc64le':
-            compile_args += ['-mcpu=native',]
-
-        if os.name != 'nt':
-            compile_args += ['-O3', '-ffast-math', '-fno-associative-math']
-
-        # #349: something with OS X Mojave causes libstd not to be found
-        if platform.system() == 'Darwin':
-            compile_args += ['-std=c++11', '-mmacosx-version-min=10.9']
-            link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
-
-        for ext in self.distribution.ext_modules:
-            if ext.name == extension_name:
-                ext.extra_compile_args = compile_args
-                ext.extra_link_args = link_args
-
-    def run(self):
-        _install.run(self)
-
+# Manual configuration, you're on your own here.
+manual_compiler_args = os.environ.get('ANNOY_COMPILER_ARGS', default=None)
+if manual_compiler_args:
+    extra_compile_args = manual_compiler_args.split(',')
+manual_linker_args = os.environ.get('ANNOY_LINKER_ARGS', default=None)
+if manual_linker_args:
+    extra_link_args = manual_linker_args.split(',')
 
 setup(name='annoy',
       version='1.16.1',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
-        Extension(
-            extension_name, ['src/annoymodule.cc'],
-            depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
-        )
+          Extension(
+              'annoy.annoylib', ['src/annoymodule.cc'],
+              depends=['src/annoylib.h', 'src/kissrandom.h', 'src/mman.h'],
+              extra_compile_args=extra_compile_args,
+              extra_link_args=extra_link_args,
+          )
       ],
       long_description=long_description,
       author='Erik Bernhardsson',
@@ -104,6 +90,5 @@ setup(name='annoy',
           'Programming Language :: Python :: 3.6',
       ],
       keywords='nns, approximate nearest neighbor search',
-      setup_requires=['nose>=1.0'],
-      cmdclass={"install": install}
-    )
+      setup_requires=['nose>=1.0']
+      )
