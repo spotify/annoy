@@ -446,14 +446,12 @@ struct Angular : Base {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* p = (Node<S, T>*)alloca(s);
+    Node<S, T>* q = (Node<S, T>*)alloca(s);
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
     Base::normalize<T, Node<S, T> >(n, f);
-    free(p);
-    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -519,8 +517,8 @@ struct DotProduct : Angular {
 
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* p = (Node<S, T>*)alloca(s);
+    Node<S, T>* q = (Node<S, T>*)alloca(s);
     DotProduct::zero_value(p); 
     DotProduct::zero_value(q);
     two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
@@ -528,8 +526,6 @@ struct DotProduct : Angular {
       n->v[z] = p->v[z] - q->v[z];
     n->dot_factor = p->dot_factor - q->dot_factor;
     DotProduct::normalize<T, Node<S, T> >(n, f);
-    free(p);
-    free(q);
   }
 
   template<typename T, typename Node>
@@ -732,8 +728,8 @@ struct Euclidean : Minkowski {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* p = (Node<S, T>*)alloca(s);
+    Node<S, T>* q = (Node<S, T>*)alloca(s);
     two_means<T, Random, Euclidean, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
@@ -742,8 +738,6 @@ struct Euclidean : Minkowski {
     n->a = 0.0;
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
-    free(p);
-    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -765,8 +759,8 @@ struct Manhattan : Minkowski {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
-    Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
-    Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
+    Node<S, T>* p = (Node<S, T>*)alloca(s);
+    Node<S, T>* q = (Node<S, T>*)alloca(s);
     two_means<T, Random, Manhattan, Node<S, T> >(nodes, f, random, false, p, q);
 
     for (int z = 0; z < f; z++)
@@ -775,8 +769,6 @@ struct Manhattan : Minkowski {
     n->a = 0.0;
     for (int z = 0; z < f; z++)
       n->a += -n->v[z] * (p->v[z] + q->v[z]) / 2;
-    free(p);
-    free(q);
   }
   template<typename T>
   static inline T normalized_distance(T distance) {
@@ -1197,7 +1189,7 @@ protected:
     }
 
     vector<S> children_indices[2];
-    Node* m = (Node*)malloc(_s); // TODO: avoid
+    Node* m = (Node*)alloca(_s);
     D::create_split(children, _f, _s, _random, m);
 
     for (size_t i = 0; i < indices.size(); i++) {
@@ -1244,13 +1236,12 @@ protected:
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
     memcpy(_get(item), m, _s);
-    free(m);
 
     return item;
   }
 
   void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-    Node* v_node = (Node *)malloc(_s); // TODO: avoid
+    Node* v_node = (Node *)alloca(_s);
     D::template zero_value<Node>(v_node);
     memcpy(v_node->v, v, sizeof(T) * _f);
     D::init_node(v_node, _f);
@@ -1306,7 +1297,6 @@ protected:
         distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
-    free(v_node);
   }
 };
 
