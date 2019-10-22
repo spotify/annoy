@@ -12,8 +12,8 @@ MANIFEST
 *.idea
 
 # testing
-blah.ann
-t.ann
-x.tree
-test.tree
-foo.idx
+*.ann
+*.tree
+*.annoy
+*.idx
+*.hdf5
