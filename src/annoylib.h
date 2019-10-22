@@ -449,9 +449,10 @@ struct Angular : Base {
     Node<S, T>* p = (Node<S, T>*)malloc(s); // TODO: avoid
     Node<S, T>* q = (Node<S, T>*)malloc(s); // TODO: avoid
     two_means<T, Random, Angular, Node<S, T> >(nodes, f, random, true, p, q);
+    Base::normalize<T, Node<S, T> >(p, f);
+    Base::normalize<T, Node<S, T> >(q, f);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
-    Base::normalize<T, Node<S, T> >(n, f);
     free(p);
     free(q);
   }
