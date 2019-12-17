@@ -983,8 +983,6 @@ public:
       // Delete file if it already exists (See issue #335)
       unlink(filename);
 
-      printf("path: %s\n", filename);
-
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
         showUpdate("Unable to open: %s\n", strerror(errno));
