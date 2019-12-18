@@ -1044,7 +1044,11 @@ public:
       _fd = 0;
       return false;
     }
+#ifndef _MSC_VER
     off_t size = lseek(_fd, 0, SEEK_END);
+#else
+    off_t size = _lseeki64(_fd, 0, SEEK_END);
+#endif
     if (size == -1) {
       showUpdate("lseek returned -1\n");
       if (error) *error = strerror(errno);
