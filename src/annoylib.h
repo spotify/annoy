@@ -75,8 +75,7 @@ typedef signed __int64    int64_t;
 void set_error_from_errno(char **error, const char* msg) {
   showUpdate("%s: %s (%d)\n", msg, strerror(errno), errno);
   if (error) {
-    size_t needed = snprintf(NULL, 0, "%s: %s (%d)", msg, strerror(errno), errno) + 1;
-    *error = (char *)malloc(needed);
+    *error = (char *)malloc(256);  // TODO: win doesn't support snprintf
     sprintf(*error, "%s: %s (%d)", msg, strerror(errno), errno);
   }
 }
