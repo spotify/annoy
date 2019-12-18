@@ -1222,7 +1222,7 @@ protected:
 
       // Set the vector to 0.0
       for (int z = 0; z < _f; z++)
-        m->v[z] = 0.0;
+        m->v[z] = 0;
 
       for (size_t i = 0; i < indices.size(); i++) {
         S j = indices[i];
