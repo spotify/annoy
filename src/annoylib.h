@@ -31,11 +31,16 @@
 typedef unsigned char     uint8_t;
 typedef signed __int32    int32_t;
 typedef unsigned __int64  uint64_t;
+typedef signed __int64    int64_t;
 #else
 #include <stdint.h>
 #endif
 
+
 #if defined(_MSC_VER) || defined(__MINGW32__)
+ // a bit hacky, but override some definitions to support 64 bit
+ #define off_t int64_t
+ #define lseek_getsize(fd) _lseeki64(fd, 0, SEEK_END)
  #ifndef NOMINMAX
   #define NOMINMAX
  #endif
@@ -43,6 +48,7 @@ typedef unsigned __int64  uint64_t;
  #include <windows.h>
 #else
  #include <sys/mman.h>
+ #define lseek_getsize(fd) lseek(fd, 0, SEEK_END)
 #endif
 
 #include <cerrno>
@@ -983,8 +989,6 @@ public:
       // Delete file if it already exists (See issue #335)
       unlink(filename);
 
-      printf("path: %s\n", filename);
-
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
         showUpdate("Unable to open: %s\n", strerror(errno));
@@ -1046,7 +1050,7 @@ public:
       _fd = 0;
       return false;
     }
-    off_t size = lseek(_fd, 0, SEEK_END);
+    off_t size = lseek_getsize(_fd);
     if (size == -1) {
       showUpdate("lseek returned -1\n");
       if (error) *error = strerror(errno);

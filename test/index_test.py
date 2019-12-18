@@ -223,3 +223,25 @@ class IndexTest(TestCase):
         t.build(10)
         # Used to segfault:
         self.assertRaises(Exception, t.build, 10)
+
+    def test_very_large_index(self):
+        # 388
+        f = 3
+        dangerous_size = 2**31
+        size_per_vector = 4*(f+3)
+        n_vectors = int(dangerous_size / size_per_vector)
+        m = AnnoyIndex(3, 'angular')
+        m.verbose(True)
+        for i in range(100):
+            m.add_item(n_vectors+i, [random.gauss(0, 1) for z in range(f)])
+        n_trees = 10
+        m.build(n_trees)
+        path = 'test_big.annoy'
+        m.save(path)  # Raises on Windows
+
+        # Sanity check size of index
+        self.assertGreaterEqual(os.path.getsize(path), dangerous_size)
+        self.assertLess(os.path.getsize(path), dangerous_size + 100e3)
+
+        # Sanity check number of trees
+        self.assertEquals(m.get_n_trees(), n_trees)
