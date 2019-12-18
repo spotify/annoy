@@ -31,11 +31,14 @@
 typedef unsigned char     uint8_t;
 typedef signed __int32    int32_t;
 typedef unsigned __int64  uint64_t;
+typedef signed __int64    int64_t;
 #else
 #include <stdint.h>
 #endif
 
+
 #if defined(_MSC_VER) || defined(__MINGW32__)
+ #define off_t int64_t  // override definition
  #ifndef NOMINMAX
   #define NOMINMAX
  #endif
