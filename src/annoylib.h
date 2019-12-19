@@ -72,6 +72,22 @@ typedef signed __int64    int64_t;
   #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
 #endif
 
+void set_error_from_errno(char **error, const char* msg) {
+  showUpdate("%s: %s (%d)\n", msg, strerror(errno), errno);
+  if (error) {
+    *error = (char *)malloc(256);  // TODO: win doesn't support snprintf
+    sprintf(*error, "%s: %s (%d)", msg, strerror(errno), errno);
+  }
+}
+
+void set_error_from_string(char **error, const char* msg) {
+  showUpdate("%s\n", msg);
+  if (error) {
+    *error = (char *)malloc(strlen(msg) + 1);
+    strcpy(*error, msg);
+  }
+}
+
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
@@ -356,7 +372,7 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     size_t k = random.index(count);
     T di = ic * Distance::distance(p, nodes[k], f),
       dj = jc * Distance::distance(q, nodes[k], f);
-    T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+    T norm = cosine ? get_norm(nodes[k]->v, f) : 1;
     if (!(norm > T(0))) {
       continue;
     }
@@ -448,7 +464,7 @@ struct Angular : Base {
     if (dot != 0)
       return (dot > 0);
     else
-      return random.flip();
+      return (bool)random.flip();
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
@@ -555,7 +571,7 @@ struct DotProduct : Angular {
     if (dot != 0)
       return (dot > 0);
     else
-      return random.flip();
+      return (bool)random.flip();
   }
 
   template<typename T>
@@ -712,7 +728,7 @@ struct Minkowski : Base {
     if (dot != 0)
       return (dot > 0);
     else
-      return random.flip();
+      return (bool)random.flip();
   }
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
@@ -791,6 +807,7 @@ struct Manhattan : Minkowski {
 template<typename S, typename T>
 class AnnoyIndexInterface {
  public:
+  // Note that the methods with an **error argument will allocate memory and write the pointer to that string if error is non-NULL
   virtual ~AnnoyIndexInterface() {};
   virtual bool add_item(S item, const T* w, char** error=NULL) = 0;
   virtual bool build(int q, char** error=NULL) = 0;
@@ -861,8 +878,7 @@ public:
   template<typename W>
   bool add_item_impl(S item, const W& w, char** error=NULL) {
     if (_loaded) {
-      showUpdate("You can't add an item to a loaded index\n");
-      if (error) *error = (char *)"You can't add an item to a loaded index";
+      set_error_from_string(error, "You can't add an item to a loaded index");
       return false;
     }
     _allocate_size(item + 1);
@@ -889,15 +905,13 @@ public:
     _on_disk = true;
     _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
     if (_fd == -1) {
-      showUpdate("Error: file descriptor is -1\n");
-      if (error) *error = strerror(errno);
+      set_error_from_errno(error, "Unable to open");
       _fd = 0;
       return false;
     }
     _nodes_size = 1;
     if (ftruncate(_fd, _s * _nodes_size) == -1) {
-      showUpdate("Error truncating file: %s\n", strerror(errno));
-      if (error) *error = strerror(errno);
+      set_error_from_errno(error, "Unable to truncate");
       return false;
     }
 #ifdef MAP_POPULATE
@@ -910,14 +924,12 @@ public:
     
   bool build(int q, char** error=NULL) {
     if (_loaded) {
-      showUpdate("You can't build a loaded index\n");
-      if (error) *error = (char *)"You can't build a loaded index";
+      set_error_from_string(error, "You can't build a loaded index");
       return false;
     }
 
     if (_built) {
-      showUpdate("You can't build a built index\n");
-      if (error) *error = (char *)"You can't build a built index";
+      set_error_from_string(error, "You can't build a built index");
       return false;
     }
 
@@ -953,8 +965,7 @@ public:
       _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * _n_nodes);
       if (ftruncate(_fd, _s * _n_nodes)) {
 	// TODO: this probably creates an index in a corrupt state... not sure what to do
-	showUpdate("Error truncating file: %s\n", strerror(errno));
-	if (error) *error = strerror(errno);
+	set_error_from_errno(error, "Unable to truncate");
 	return false;
       }
       _nodes_size = _n_nodes;
@@ -965,8 +976,7 @@ public:
   
   bool unbuild(char** error=NULL) {
     if (_loaded) {
-      showUpdate("You can't unbuild a loaded index\n");
-      if (error) *error = (char *)"You can't unbuild a loaded index";
+      set_error_from_string(error, "You can't unbuild a loaded index");
       return false;
     }
 
@@ -979,8 +989,7 @@ public:
 
   bool save(const char* filename, bool prefault=false, char** error=NULL) {
     if (!_built) {
-      showUpdate("You can't save an index that hasn't been built\n");
-      if (error) *error = (char *)"You can't save an index that hasn't been built";
+      set_error_from_string(error, "You can't save an index that hasn't been built");
       return false;
     }
     if (_on_disk) {
@@ -991,20 +1000,17 @@ public:
 
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
-        showUpdate("Unable to open: %s\n", strerror(errno));
-        if (error) *error = strerror(errno);
+	set_error_from_errno(error, "Unable to open");
         return false;
       }
 
       if (fwrite(_nodes, _s, _n_nodes, f) != (size_t) _n_nodes) {
-        showUpdate("Unable to write: %s\n", strerror(errno));
-        if (error) *error = strerror(errno);
+	set_error_from_errno(error, "Unable to write");
         return false;
       }
 
       if (fclose(f) == EOF) {
-        showUpdate("Unable to close: %s\n", strerror(errno));
-        if (error) *error = strerror(errno);
+	set_error_from_errno(error, "Unable to close");
         return false;
       }
 
@@ -1045,24 +1051,20 @@ public:
   bool load(const char* filename, bool prefault=false, char** error=NULL) {
     _fd = open(filename, O_RDONLY, (int)0400);
     if (_fd == -1) {
-      showUpdate("Error: file descriptor is -1\n");
-      if (error) *error = strerror(errno);
+      set_error_from_errno(error, "Unable to open");
       _fd = 0;
       return false;
     }
     off_t size = lseek_getsize(_fd);
     if (size == -1) {
-      showUpdate("lseek returned -1\n");
-      if (error) *error = strerror(errno);
+      set_error_from_errno(error, "Unable to get size");
       return false;
     } else if (size == 0) {
-      showUpdate("Size of file is zero\n");
-      if (error) *error = (char *)"Size of file is zero";
+      set_error_from_errno(error, "Size of file is zero");
       return false;
     } else if (size % _s) {
       // Something is fishy with this index!
-      showUpdate("Error: index size %zu is not a multiple of vector size %zu\n", (size_t)size, _s);
-      if (error) *error = (char *)"Index size is not a multiple of vector size";
+      set_error_from_errno(error, "Index size is not a multiple of vector size");
       return false;
     }
 
@@ -1118,7 +1120,7 @@ public:
   }
 
   S get_n_trees() const {
-    return _roots.size();
+    return (S)_roots.size();
   }
 
   void verbose(bool v) {
@@ -1220,7 +1222,7 @@ protected:
 
       // Set the vector to 0.0
       for (int z = 0; z < _f; z++)
-        m->v[z] = 0.0;
+        m->v[z] = 0;
 
       for (size_t i = 0; i < indices.size(); i++) {
         S j = indices[i];

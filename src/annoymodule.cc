@@ -185,6 +185,7 @@ py_an_load(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
   if (!self->ptr->load(filename, prefault, &error)) {
     PyErr_SetString(PyExc_IOError, error);
+    free(error);
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -203,6 +204,7 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
   if (!self->ptr->save(filename, prefault, &error)) {
     PyErr_SetString(PyExc_IOError, error);
+    free(error);
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -361,6 +363,7 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   char* error;
   if (!self->ptr->add_item(item, &w[0], &error)) {
     PyErr_SetString(PyExc_Exception, error);
+    free(error);
     return NULL;
   }
 
@@ -378,6 +381,7 @@ py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
   if (!self->ptr->on_disk_build(filename, &error)) {
     PyErr_SetString(PyExc_IOError, error);
+    free(error);
     return NULL;
   }
   Py_RETURN_TRUE;
@@ -399,6 +403,7 @@ py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   Py_END_ALLOW_THREADS;
   if (!res) {
     PyErr_SetString(PyExc_Exception, error);
+    free(error);
     return NULL;
   }
 
@@ -414,6 +419,7 @@ py_an_unbuild(py_annoy *self) {
   char* error;
   if (!self->ptr->unbuild(&error)) {
     PyErr_SetString(PyExc_Exception, error);
+    free(error);
     return NULL;
   }
 
