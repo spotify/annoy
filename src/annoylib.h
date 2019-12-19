@@ -83,7 +83,7 @@ void set_error_from_errno(char **error, const char* msg) {
 void set_error_from_string(char **error, const char* msg) {
   showUpdate("%s\n", msg);
   if (error) {
-    *error = (char *)malloc(strlen(msg));
+    *error = (char *)malloc(strlen(msg) + 1);
     strcpy(*error, msg);
   }
 }
@@ -372,7 +372,7 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     size_t k = random.index(count);
     T di = ic * Distance::distance(p, nodes[k], f),
       dj = jc * Distance::distance(q, nodes[k], f);
-    T norm = cosine ? get_norm(nodes[k]->v, f) : 1.0;
+    T norm = cosine ? get_norm(nodes[k]->v, f) : 1;
     if (!(norm > T(0))) {
       continue;
     }
@@ -464,7 +464,7 @@ struct Angular : Base {
     if (dot != 0)
       return (dot > 0);
     else
-      return random.flip();
+      return (bool)random.flip();
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
@@ -571,7 +571,7 @@ struct DotProduct : Angular {
     if (dot != 0)
       return (dot > 0);
     else
-      return random.flip();
+      return (bool)random.flip();
   }
 
   template<typename T>
@@ -728,7 +728,7 @@ struct Minkowski : Base {
     if (dot != 0)
       return (dot > 0);
     else
-      return random.flip();
+      return (bool)random.flip();
   }
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
@@ -1120,7 +1120,7 @@ public:
   }
 
   S get_n_trees() const {
-    return _roots.size();
+    return (S)_roots.size();
   }
 
   void verbose(bool v) {
