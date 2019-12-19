@@ -964,9 +964,9 @@ public:
     if (_on_disk) {
       _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * _n_nodes);
       if (ftruncate(_fd, _s * _n_nodes)) {
-	// TODO: this probably creates an index in a corrupt state... not sure what to do
-	set_error_from_errno(error, "Unable to truncate");
-	return false;
+        // TODO: this probably creates an index in a corrupt state... not sure what to do
+        set_error_from_errno(error, "Unable to truncate");
+        return false;
       }
       _nodes_size = _n_nodes;
     }
@@ -1000,17 +1000,17 @@ public:
 
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
-	set_error_from_errno(error, "Unable to open");
+        set_error_from_errno(error, "Unable to open");
         return false;
       }
 
       if (fwrite(_nodes, _s, _n_nodes, f) != (size_t) _n_nodes) {
-	set_error_from_errno(error, "Unable to write");
+        set_error_from_errno(error, "Unable to write");
         return false;
       }
 
       if (fclose(f) == EOF) {
-	set_error_from_errno(error, "Unable to close");
+        set_error_from_errno(error, "Unable to close");
         return false;
       }
 
