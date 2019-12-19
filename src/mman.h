@@ -210,7 +210,7 @@ inline int munlock(const void *addr, size_t len)
 }
 
 #if !defined(__MINGW32__)
-int ftruncate(int fd, unsigned int size) {
+inline int ftruncate(int fd, unsigned int size) {
     if (fd < 0) {
         errno = EBADF;
         return -1;
