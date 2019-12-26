@@ -776,7 +776,7 @@ public:
       memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
     _n_nodes += nroots;
 
-    if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
+    if (_verbose) showUpdate("has %ld nodes\n", _n_nodes);
   }
   
   void unbuild() {
@@ -859,7 +859,7 @@ public:
       _roots.pop_back();
     _loaded = true;
     _n_items = m;
-    if (_verbose) showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
+    if (_verbose) showUpdate("found %lu roots with degree %ld\n", _roots.size(), m);
     return true;
   }
 
