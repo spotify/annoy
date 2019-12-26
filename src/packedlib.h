@@ -428,6 +428,7 @@ public:
     , _K(0)
     , _n_items(0)
     , _nodes(nullptr)
+    , _mapper(mapper)
   {
     // check size of node must be multiply of 16
     if( _s % 16 )
