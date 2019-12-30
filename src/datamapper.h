@@ -41,16 +41,23 @@ public:
     if (fd == -1) {
       return Mapping{ nullptr, 0 };
     }
-    off_t size = lseek(fd, 0, SEEK_END);
-    void *mmaped = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+
+    struct stat fd_stat;
+    if (fstat(fd, &fd_stat)) {
+        return Mapping{ nullptr, 0 };
+    }
+
+    void *mmaped = mmap(0, fd_stat.st_size, PROT_READ, MAP_SHARED, fd, 0);
     close(fd);
     if (mmaped == MAP_FAILED) {
       return Mapping{ nullptr, 0 };
     }
+
     if (need_mlock) {
-      mlock(mmaped, size);
+      mlock(mmaped, fd_stat.st_size);
     }
-    return Mapping{ mmaped, (size_t)size };
+
+    return Mapping{ mmaped, (size_t)fd_stat.st_size };
   }
 
   void unmap(const Mapping & mapping) {
@@ -60,7 +67,9 @@ public:
   }
 };
 
-
+// Anonymous HugeTLB mapping.
+// Allocates memory from pool and populates it by file data from disk.
+// It may be better to consider HugeTLB FS instead. In that case you will get instant data loading.
 class HugePagesDataMapper {
 public:
     typedef detail::DataMapping Mapping;
@@ -72,13 +81,17 @@ public:
       return Mapping{ nullptr, 0 };
     }
 
+    struct stat fd_stat;
+    if (fstat(fd, &fd_stat)) {
+        return Mapping{ nullptr, 0 };
+    }
+
     Mapping mapping;
-    mapping.size = lseek(fd, 0, SEEK_END);
+    mapping.size = fd_stat.st_size;
     mapping.data = mmap(0, mapping.size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
     if (mapping.data == MAP_FAILED) {
       return Mapping{ nullptr, 0 };
     }
-    lseek(fd, 0, SEEK_SET);
 
     size_t bytes_left = mapping.size;
     void *bytes = const_cast<void *>(mapping.data);
