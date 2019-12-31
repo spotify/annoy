@@ -19,6 +19,7 @@
 
 #include "packutils.h"
 #include "annoylib.h"
+#include "datamapper.h"
 #include <stdexcept>
 #include <deque>
 #include <memory>
@@ -391,7 +392,7 @@ protected:
 };
 
 
-template<typename S, typename T, typename Distance>
+template<typename S, typename T, typename Distance, typename DataMapper = MMapDataMapper>
 class PackedAnnoySearcher {
     /*
      This is AnnoyIndex class divided into indexer and searcher
@@ -406,6 +407,7 @@ public:
   typedef typename Distance::PackedFloatType PackedFloatType;
   //typedef EuclideanPacked16 SD;
   typedef typename D::template Node<S, T> Node;
+  typedef typename DataMapper::Mapping DataMapping;
 private:
   static constexpr S const _K_mask = S(1) << S(sizeof(S) * 8 - 1);
   static constexpr S const _K_mask_clear = _K_mask - 1;
@@ -415,21 +417,18 @@ protected:
   S _K; // Max number of descendants to fit into node
   S _n_items; // number of ordinal nodes(i.e leaf)
   void const *_nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
-  void const *_mmaped;
   std::vector<S> _roots;
-  size_t _size_of_mapping;
-  int _fd;
+  DataMapper _mapper;
+  DataMapping _mapping;
 public:
 
-  PackedAnnoySearcher()
+  PackedAnnoySearcher(const DataMapper & mapper = DataMapper())
     : _f(0)
     , _s(0)
     , _K(0)
     , _n_items(0)
     , _nodes(nullptr)
-    , _mmaped(nullptr)
-    , _size_of_mapping(0)
-    , _fd(0)
+    , _mapper(mapper)
   {
     // check size of node must be multiply of 16
     if( _s % 16 )
@@ -438,15 +437,7 @@ public:
 
   ~PackedAnnoySearcher()
   {
-    if( _fd )
-    {
-      close(_fd);
-      if( _mmaped != MAP_FAILED )
-      {
-        // INFO: no need to call munlock, it will be automatically
-        munmap(const_cast<void*>(_mmaped), _size_of_mapping);
-      }
-    }
+    _mapper.unmap(_mapping);
   }
 
   void get_item(S item, T* v) const {
@@ -455,29 +446,12 @@ public:
   }
 
   bool load(const char* filename, bool need_mlock) {
-    if( _fd )
-      return false; // already opened!
-    _fd = open(filename, O_RDONLY, (int)0400);
-    if (_fd == -1) {
-      _fd = 0;
+    _mapping = _mapper.map(filename, need_mlock);
+    if (!_mapping.data) {
       return false;
     }
-    off_t size = lseek(_fd, 0, SEEK_END);
-    _mmaped = mmap(0, size, PROT_READ, MAP_SHARED, _fd, 0);
-    if( _mmaped == MAP_FAILED )
-      return false;
 
-    // keep size only for dtor()
-    _size_of_mapping = size;
-
-    if( need_mlock )
-    {
-      mlock(_mmaped, size);
-    }
-
-    _size_of_mapping = size;
-
-    S const *index_start = static_cast<S const*>(_mmaped);
+    S const *index_start = static_cast<S const*>(_mapping.data);
 
     // read pseudo-header
     S nindices = _init_header();
@@ -487,7 +461,7 @@ public:
 
     size_t sizeof_indices = nindices * sizeof(S);
 
-    S n_nodes = (S)((size - sizeof_indices) / _s);
+    S n_nodes = (S)((_mapping.size - sizeof_indices) / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     _roots.clear();
@@ -532,8 +506,8 @@ public:
 private:
 
   S _init_header() {
-    detail::Header const *hdr = reinterpret_cast<detail::Header const*>((uint8_t const*)_mmaped
-      + _size_of_mapping - sizeof(detail::Header));
+    detail::Header const *hdr = reinterpret_cast<detail::Header const*>((uint8_t const*)_mapping.data
+      + _mapping.size - sizeof(detail::Header));
 
     _f = hdr->vlen;
     _s = offsetof(Node, v) + _f * sizeof(PackedFloatType);
@@ -591,7 +565,7 @@ private:
       else
       {
         // index only node
-        S const *idx = (S const*)_mmaped + i * _K;
+        S const *idx = (S const*)_mapping.data + i * _K;
         S const *dst = idx + 1;
         nns.insert(nns.end(), dst, dst + *idx);
       }
