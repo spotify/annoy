@@ -558,8 +558,8 @@ private:
         } else {
           // split node
           T margin = D::margin(nd, v, _f);
-          q.emplace(D::pq_distance(d, margin, 1), nd->children[1]);
-          q.emplace(D::pq_distance(d, margin, 0), nd->children[0]);
+          q.emplace(D::pq_distance(d, margin, 1), S(nd->children[1]));
+          q.emplace(D::pq_distance(d, margin, 0), S(nd->children[0]));
         }
       }
       else
