@@ -90,7 +90,7 @@ void set_error_from_string(char **error, const char* msg) {
 
 // This is a mostly insignificant number that defines the size of the array v in each node.
 // Compilers need *some* size defined for the v array, and some memory checking tools will flag for buffer overruns if this is set too low.
-#define MAX_ARRAY_SIZE (1<<30)
+#define V_ARRAY_SIZE 65536
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
@@ -443,7 +443,7 @@ struct Angular : Base {
       S children[2]; // Will possibly store more than 2
       T norm;
     };
-    T v[MAX_ARRAY_SIZE]; // We let this one overflow intentionally. This has to be defined to some number to make compilers happy.
+    T v[V_ARRAY_SIZE]; // We let this one overflow intentionally. This has to be defined to some number to make compilers happy.
   };
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
