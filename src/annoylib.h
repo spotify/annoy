@@ -88,6 +88,9 @@ void set_error_from_string(char **error, const char* msg) {
   }
 }
 
+// We let the v array in the Node struct take whatever space is needed, so this is a mostly insignificant number.
+// Compilers need *some* size defined for the v array, and some memory checking tools will flag for buffer overruns if this is set too low.
+#define V_ARRAY_SIZE 65536
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
@@ -97,13 +100,13 @@ void set_error_from_string(char **error, const char* msg) {
 #endif
 
 #if !defined(NO_MANUAL_VECTORIZATION) && defined(__GNUC__) && (__GNUC__ >6) && defined(__AVX512F__)  // See #402
-#pragma message "Using 512-bit AVX instructions"
+#pragma message "Just for your information: using 512-bit AVX instructions"
 #define USE_AVX512
 #elif !defined(NO_MANUAL_VECTORIZATION) && defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
-#pragma message "Using 128-bit AVX instructions"
+#pragma message "Just for your information: using 128-bit AVX instructions"
 #define USE_AVX
 #else
-#pragma message "Using no AVX instructions"
+#pragma message "Just for your information: using no AVX instructions"
 #endif
 
 #if defined(USE_AVX) || defined(USE_AVX512)
@@ -440,7 +443,7 @@ struct Angular : Base {
       S children[2]; // Will possibly store more than 2
       T norm;
     };
-    T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
+    T v[V_ARRAY_SIZE];
   };
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
@@ -511,7 +514,7 @@ struct DotProduct : Angular {
     S n_descendants;
     S children[2]; // Will possibly store more than 2
     T dot_factor;
-    T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
+    T v[V_ARRAY_SIZE];
   };
 
   static const char* name() {
@@ -619,7 +622,7 @@ struct Hamming : Base {
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     S children[2];
-    T v[1];
+    T v[V_ARRAY_SIZE];
   };
 
   static const size_t max_iterations = 20;
@@ -716,7 +719,7 @@ struct Minkowski : Base {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
-    T v[1];
+    T v[V_ARRAY_SIZE];
   };
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
