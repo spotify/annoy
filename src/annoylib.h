@@ -649,11 +649,13 @@ struct Hamming : Base {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     size_t dist = 0;
+    // As a dumb workaround to #456 we copy it to an address that's guaranteed to be aligned
+    T* x_v = (T*)alloca(sizeof(T)*f);
+    T* y_v = (T*)alloca(sizeof(T)*f);
+    memcpy(x_v, x->v, sizeof(T)*f);
+    memcpy(y_v, y->v, sizeof(T)*f);
     for (int i = 0; i < f; i++) {
-      T x_vi, y_vi;
-      memcpy(&x_vi, &x->v[i], sizeof(T));  // #456
-      memcpy(&y_vi, &y->v[i], sizeof(T));  // #456
-      dist += popcount(x_vi ^ y_vi);
+      dist += popcount(x_v[i] ^ y_v[i]);
     }
     return dist;
   }
