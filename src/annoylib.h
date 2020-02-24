@@ -626,7 +626,6 @@ struct Hamming : Base {
   };
 
   static const size_t max_iterations = 20;
-
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
     return distance - (margin != (unsigned int) child_nr);
@@ -651,15 +650,20 @@ struct Hamming : Base {
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     size_t dist = 0;
     for (int i = 0; i < f; i++) {
-      dist += popcount(x->v[i] ^ y->v[i]);
+      T x_vi, y_vi;
+      memcpy(&x_vi, &x->v[i], sizeof(T));  // #456
+      memcpy(&y_vi, &y->v[i], sizeof(T));  // #456
+      dist += popcount(x_vi ^ y_vi);
     }
     return dist;
   }
   template<typename S, typename T>
   static inline bool margin(const Node<S, T>* n, const T* y, int f) {
     static const size_t n_bits = sizeof(T) * 8;
-    T chunk = n->v[0] / n_bits;
-    return (y[chunk] & (static_cast<T>(1) << (n_bits - 1 - (n->v[0] % n_bits)))) != 0;
+    T index;
+    memcpy(&index, &n->v[0], sizeof(T));
+    T chunk = index / n_bits, offset = index % n_bits;
+    return (y[chunk] & (static_cast<T>(1) << (n_bits - 1 - offset))) != 0;
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
@@ -672,7 +676,8 @@ struct Hamming : Base {
     int dim = f * 8 * sizeof(T);
     for (; i < max_iterations; i++) {
       // choose random position to split at
-      n->v[0] = random.index(dim);
+      T index = random.index(dim);
+      memcpy(&n->v[0], &index, sizeof(T));  // #456, equivalent to n->v[0] = index
       cur_size = 0;
       for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
         if (margin(n, (*it)->v, f)) {
@@ -687,7 +692,7 @@ struct Hamming : Base {
     if (i == max_iterations) {
       int j = 0;
       for (; j < dim; j++) {
-        n->v[0] = j;
+        memcpy(&n->v[0], &j, sizeof(T));  // #456, equivalent to n->v[0] = j;
         cur_size = 0;
         for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
           if (margin(n, (*it)->v, f)) {
