@@ -663,9 +663,11 @@ struct Hamming : Base {
   static inline bool margin(const Node<S, T>* n, const T* y, int f) {
     static const size_t n_bits = sizeof(T) * 8;
     T index;
-    memcpy(&index, &n->v[0], sizeof(T));
+    memcpy(&index, &n->v[0], sizeof(T));  // # 456, equivalent to index = n->v[0]
     T chunk = index / n_bits, offset = index % n_bits;
-    return (y[chunk] & (static_cast<T>(1) << (n_bits - 1 - offset))) != 0;
+    T y_chunk;
+    memcpy(&y_chunk, &y[chunk], sizeof(T));  // #456
+    return (y_chunk & (static_cast<T>(1) << (n_bits - 1 - offset))) != 0;
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
