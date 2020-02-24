@@ -88,7 +88,7 @@ void set_error_from_string(char **error, const char* msg) {
   }
 }
 
-// This is a mostly insignificant number that defines the size of the array v in each node.
+// We let the v array in the Node struct take whatever space is needed, so this is a mostly insignificant number.
 // Compilers need *some* size defined for the v array, and some memory checking tools will flag for buffer overruns if this is set too low.
 #define V_ARRAY_SIZE 65536
 
@@ -443,7 +443,7 @@ struct Angular : Base {
       S children[2]; // Will possibly store more than 2
       T norm;
     };
-    T v[V_ARRAY_SIZE]; // We let this one overflow intentionally. This has to be defined to some number to make compilers happy.
+    T v[V_ARRAY_SIZE];
   };
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
@@ -514,7 +514,7 @@ struct DotProduct : Angular {
     S n_descendants;
     S children[2]; // Will possibly store more than 2
     T dot_factor;
-    T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
+    T v[V_ARRAY_SIZE];
   };
 
   static const char* name() {
@@ -622,7 +622,7 @@ struct Hamming : Base {
   struct ANNOY_NODE_ATTRIBUTE Node {
     S n_descendants;
     S children[2];
-    T v[1];
+    T v[V_ARRAY_SIZE];
   };
 
   static const size_t max_iterations = 20;
@@ -719,7 +719,7 @@ struct Minkowski : Base {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
-    T v[1];
+    T v[V_ARRAY_SIZE];
   };
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
