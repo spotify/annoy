@@ -36,7 +36,6 @@ typedef signed __int64    int64_t;
 #include <stdint.h>
 #endif
 
-
 #if defined(_MSC_VER) || defined(__MINGW32__)
  // a bit hacky, but override some definitions to support 64 bit
  #define off_t int64_t
@@ -70,6 +69,16 @@ typedef signed __int64    int64_t;
   #define showUpdate(...) { fprintf(stderr, __VA_ARGS__ ); }
 #else
   #define showUpdate(...) { __ERROR_PRINTER_OVERRIDE__( __VA_ARGS__ ); }
+#endif
+
+// Portable alloc definition, cf Writing R Extensions, Section 1.6.4
+#ifdef __GNUC__
+  // Includes GCC, clang and Intel compilers
+  # undef alloca
+  # define alloca(x) __builtin_alloca((x))
+#elif defined(__sun) || defined(_AIX)
+  // this is necessary (and sufficient) for Solaris 10 and AIX 6:
+  # include <alloca.h>
 #endif
 
 void set_error_from_errno(char **error, const char* msg) {
