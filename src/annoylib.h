@@ -828,8 +828,8 @@ class AnnoyIndexInterface {
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
-  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
-  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const = 0;
+  virtual void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual S get_n_items() const = 0;
   virtual S get_n_trees() const = 0;
   virtual void verbose(bool v) = 0;
@@ -1117,13 +1117,13 @@ public:
     return D::normalized_distance(D::distance(_get(i), _get(j), _f));
   }
 
-  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
+  void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {
     // TODO: handle OOB
     const Node* m = _get(item);
     _get_all_nns(m->v, n, search_k, result, distances);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
+  void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {
     _get_all_nns(w, n, search_k, result, distances);
   }
 
@@ -1258,7 +1258,7 @@ protected:
     return item;
   }
 
-  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
+  void _get_all_nns(const T* v, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {
     Node* v_node = (Node *)alloca(_s);
     D::template zero_value<Node>(v_node);
     memcpy(v_node->v, v, sizeof(T) * _f);
@@ -1266,7 +1266,7 @@ protected:
 
     std::priority_queue<pair<T, S> > q;
 
-    if (search_k == (size_t)-1) {
+    if (search_k == -1) {
       search_k = n * _roots.size();
     }
 
@@ -1275,7 +1275,7 @@ protected:
     }
 
     std::vector<S> nns;
-    while (nns.size() < search_k && !q.empty()) {
+    while (nns.size() < (size_t)search_k && !q.empty()) {
       const pair<T, S>& top = q.top();
       T d = top.first;
       S i = top.second;
