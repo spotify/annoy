@@ -36,7 +36,7 @@ class AccuracyTest(unittest.TestCase):
             print('downloading', url, '->', vectors_fn)
             urlretrieve(url, vectors_fn)
 
-        dataset_f = h5py.File(vectors_fn)
+        dataset_f = h5py.File(vectors_fn, 'r')
         distance = dataset_f.attrs['distance']
         f = dataset_f['train'].shape[1]
         annoy = AnnoyIndex(f, distance)

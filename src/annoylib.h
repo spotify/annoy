@@ -109,13 +109,10 @@ inline void set_error_from_string(char **error, const char* msg) {
 #endif
 
 #if !defined(NO_MANUAL_VECTORIZATION) && defined(__GNUC__) && (__GNUC__ >6) && defined(__AVX512F__)  // See #402
-#pragma message "Just for your information: using 512-bit AVX instructions"
 #define USE_AVX512
 #elif !defined(NO_MANUAL_VECTORIZATION) && defined(__AVX__) && defined (__SSE__) && defined(__SSE2__) && defined(__SSE3__)
-#pragma message "Just for your information: using 128-bit AVX instructions"
 #define USE_AVX
 #else
-#pragma message "Just for your information: using no AVX instructions"
 #endif
 
 #if defined(USE_AVX) || defined(USE_AVX512)
@@ -124,15 +121,6 @@ inline void set_error_from_string(char **error, const char* msg) {
 #elif defined(__GNUC__)
 #include <x86intrin.h>
 #endif
-#endif
-
-#ifndef ANNOY_NODE_ATTRIBUTE
-    #ifndef _MSC_VER
-        #define ANNOY_NODE_ATTRIBUTE __attribute__((__packed__))
-        // TODO: this is turned on by default, but may not work for all architectures! Need to investigate.
-    #else
-        #define ANNOY_NODE_ATTRIBUTE
-    #endif
 #endif
 
 
@@ -432,7 +420,7 @@ struct Base {
 
 struct Angular : Base {
   template<typename S, typename T>
-  struct ANNOY_NODE_ATTRIBUTE Node {
+  struct Node {
     /*
      * We store a binary tree where each node has two things
      * - A vector associated with it
@@ -516,7 +504,7 @@ struct Angular : Base {
 
 struct DotProduct : Angular {
   template<typename S, typename T>
-  struct ANNOY_NODE_ATTRIBUTE Node {
+  struct Node {
     /*
      * This is an extension of the Angular node with an extra attribute for the scaled norm.
      */
@@ -628,7 +616,7 @@ struct DotProduct : Angular {
 
 struct Hamming : Base {
   template<typename S, typename T>
-  struct ANNOY_NODE_ATTRIBUTE Node {
+  struct Node {
     S n_descendants;
     S children[2];
     T v[V_ARRAY_SIZE];
@@ -724,7 +712,7 @@ struct Hamming : Base {
 
 struct Minkowski : Base {
   template<typename S, typename T>
-  struct ANNOY_NODE_ATTRIBUTE Node {
+  struct Node {
     S n_descendants;
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];

@@ -24,6 +24,24 @@ typedef signed __int32    int32_t;
 #endif
 
 
+#if defined(USE_AVX512)
+#define AVX_INFO "Using 512-bit AVX instructions"
+#elif defined(USE_AVX128)
+#define AVX_INFO "Using 128-bit AVX instructions"
+#else
+#define AVX_INFO "Not using AVX instructions"
+#endif
+
+#if defined(_MSC_VER)
+#define COMPILER_INFO "Compiled using MSC"
+#elif defined(__GNUC__)
+#define COMPILER_INFO "Compiled on GCC"
+#else
+#define COMPILER_INFO "Compiled on unknown platform"
+#endif
+
+#define ANNOY_DOC (COMPILER_INFO ". " AVX_INFO ".")
+
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
 #endif
@@ -542,7 +560,7 @@ static PyTypeObject PyAnnoyType = {
   0,                      /*tp_setattro*/
   0,                      /*tp_as_buffer*/
   Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-  "annoy objects",        /* tp_doc */
+  ANNOY_DOC,              /* tp_doc */
   0,                      /* tp_traverse */
   0,                      /* tp_clear */
   0,                      /* tp_richcompare */
@@ -570,7 +588,7 @@ static PyMethodDef module_methods[] = {
   static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
     "annoylib",          /* m_name */
-    "",                  /* m_doc */
+    ANNOY_DOC,           /* m_doc */
     -1,                  /* m_size */
     module_methods,      /* m_methods */
     NULL,                /* m_reload */
