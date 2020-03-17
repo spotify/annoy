@@ -89,6 +89,7 @@ Full Python API
 * ``a.get_n_items()`` returns the number of items in the index.
 * ``a.get_n_trees()`` returns the number of trees in the index.
 * ``a.on_disk_build(fn)`` prepares annoy to build the index in the specified file instead of RAM (execute before adding items, no need to save after build)
+* ``a.set_seed(seed)`` will initialize the random number generator with the given seed.  Only used for building up the tree, i. e. only necessary to pass this before adding the items.  Will have no effect after calling `a.build(n_trees)` or `a.load(fn)`.
 
 Notes:
 
