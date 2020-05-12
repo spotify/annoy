@@ -136,7 +136,7 @@ More info
 * During part of Spotify Hack Week 2016 (and a bit afterward), `Jim Kang <https://github.com/jimkang>`__ wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
 * `Min-Seok Kim <https://github.com/mskimm>`__ built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
-* Radim Řehůřek's blog posts comparing Annoy to a couple of other similar Python libraries: `Intro <http://radimrehurek.com/2013/11/performance-shootout-of-nearest-neighbours-intro/>`__, `Contestants <http://radimrehurek.com/2013/12/performance-shootout-of-nearest-neighbours-contestants/>`__, `Querying <http://radimrehurek.com/2014/01/performance-shootout-of-nearest-neighbours-querying/>`__
+* Annoy is available as a `conda package <https://anaconda.org/conda-forge/python-annoy>`__ on Linux, OS X, and Windows.
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
 
 .. figure:: https://github.com/erikbern/ann-benchmarks/raw/master/results/glove-100-angular.png
