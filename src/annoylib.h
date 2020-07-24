@@ -123,6 +123,12 @@ inline void set_error_from_string(char **error, const char* msg) {
 #endif
 #endif
 
+#if !defined(__MINGW32__)
+#define FTRUNCATE_SIZE(x) static_cast<int64_t>(x)
+#else
+#define FTRUNCATE_SIZE(x) (x)
+#endif
+
 
 using std::vector;
 using std::pair;
@@ -910,7 +916,7 @@ public:
       return false;
     }
     _nodes_size = 1;
-    if (ftruncate(_fd, _s * _nodes_size) == -1) {
+    if (ftruncate(_fd, FTRUNCATE_SIZE(_s) * FTRUNCATE_SIZE(_nodes_size)) == -1) {
       set_error_from_errno(error, "Unable to truncate");
       return false;
     }
@@ -963,7 +969,7 @@ public:
     
     if (_on_disk) {
       _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * _n_nodes);
-      if (ftruncate(_fd, _s * _n_nodes)) {
+      if (ftruncate(_fd, FTRUNCATE_SIZE(_s) * FTRUNCATE_SIZE(_n_nodes))) {
         // TODO: this probably creates an index in a corrupt state... not sure what to do
         set_error_from_errno(error, "Unable to truncate");
         return false;
@@ -1145,7 +1151,7 @@ protected:
       void *old = _nodes;
       
       if (_on_disk) {
-        int rc = ftruncate(_fd, _s * new_nodes_size);
+        int rc = ftruncate(_fd, FTRUNCATE_SIZE(_s) * FTRUNCATE_SIZE(new_nodes_size));
         if (_verbose && rc) showUpdate("File truncation error\n");
         _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * new_nodes_size);
       } else {

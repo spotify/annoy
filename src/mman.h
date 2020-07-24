@@ -210,27 +210,31 @@ inline int munlock(const void *addr, size_t len)
 }
 
 #if !defined(__MINGW32__)
-inline int ftruncate(int fd, unsigned int size) {
+inline int ftruncate(const int fd, const int64_t size) {
     if (fd < 0) {
         errno = EBADF;
         return -1;
     }
 
-    HANDLE h = (HANDLE)_get_osfhandle(fd);
-    unsigned int cur = SetFilePointer(h, 0, NULL, FILE_CURRENT);
-    if (cur == ~0 || SetFilePointer(h, size, NULL, FILE_BEGIN) == ~0 || !SetEndOfFile(h)) {
-        int error = GetLastError();
-        switch (GetLastError()) {
-            case ERROR_INVALID_HANDLE:
-                errno = EBADF;
-                break;
-            default:
-                errno = EIO;
-                break;
+    HANDLE h = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+    LARGE_INTEGER li_start, li_size;
+    li_start.QuadPart = static_cast<int64_t>(0);
+    li_size.QuadPart = size;
+    if (SetFilePointerEx(h, li_start, nullptr, FILE_CURRENT) == ~0 ||
+        SetFilePointerEx(h, li_size, nullptr, FILE_BEGIN) || 
+        !SetEndOfFile(h)) {
+	    const auto error = GetLastError();
+        fprintf(stderr, "I/O error while truncating: %lu\n", error);
+        switch (error) {
+	        case ERROR_INVALID_HANDLE:
+	            errno = EBADF;
+	            break;
+	        default:
+	            errno = EIO;
+	            break;
         }
         return -1;
     }
-
     return 0;
 }
 #endif
