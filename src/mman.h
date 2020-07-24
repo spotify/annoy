@@ -220,21 +220,21 @@ inline int ftruncate(const int fd, const int64_t size) {
     LARGE_INTEGER li_start, li_size;
     li_start.QuadPart = static_cast<int64_t>(0);
     li_size.QuadPart = size;
-    if (SetFilePointerEx(h, li_start, nullptr, FILE_CURRENT) == ~0 ||
-        SetFilePointerEx(h, li_size, nullptr, FILE_BEGIN) || 
+    if (SetFilePointerEx(h, li_start, NULL, FILE_CURRENT) == ~0 ||
+        SetFilePointerEx(h, li_size, NULL, FILE_BEGIN) == ~0 ||
         !SetEndOfFile(h)) {
-	    const auto error = GetLastError();
+        unsigned long error = GetLastError();
         fprintf(stderr, "I/O error while truncating: %lu\n", error);
         switch (error) {
-	        case ERROR_INVALID_HANDLE:
-	            errno = EBADF;
-	            break;
-	        default:
-	            errno = EIO;
-	            break;
+            case ERROR_INVALID_HANDLE:
+                errno = EBADF;
+                break;
+            default:
+                errno = EIO;
+                break;
         }
         return -1;
-    }
+    }        
     return 0;
 }
 #endif
