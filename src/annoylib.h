@@ -123,24 +123,31 @@ inline void set_error_from_string(char **error, const char* msg) {
 #endif
 #endif
 
+#if !defined(__MINGW32__)
+#define FTRUNCATE_SIZE(x) static_cast<int64_t>(x)
+#else
+#define FTRUNCATE_SIZE(x) (x)
+#endif
 
 using std::vector;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
 
-inline void* remap_memory(void* _ptr, int _fd, size_t old_size, size_t new_size) {
+inline bool remap_memory_and_truncate(void** _ptr, int _fd, size_t old_size, size_t new_size) {
 #ifdef __linux__
-  _ptr = mremap(_ptr, old_size, new_size, MREMAP_MAYMOVE);
+    *_ptr = mremap(*_ptr, old_size, new_size, MREMAP_MAYMOVE);
+    bool ok = ftruncate(_fd, new_size) != -1;
 #else
-  munmap(_ptr, old_size);
+    munmap(*_ptr, old_size);
+    bool ok = ftruncate(_fd, FTRUNCATE_SIZE(new_size)) != -1;
 #ifdef MAP_POPULATE
-  _ptr = mmap(_ptr, new_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, _fd, 0);
+    *_ptr = mmap(*_ptr, new_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, _fd, 0);
 #else
-  _ptr = mmap(_ptr, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
+    *_ptr = mmap(*_ptr, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
 #endif
 #endif
-  return _ptr;
+    return ok;
 }
 
 namespace {
@@ -910,7 +917,7 @@ public:
       return false;
     }
     _nodes_size = 1;
-    if (ftruncate(_fd, _s * _nodes_size) == -1) {
+    if (ftruncate(_fd, FTRUNCATE_SIZE(_s) * FTRUNCATE_SIZE(_nodes_size)) == -1) {
       set_error_from_errno(error, "Unable to truncate");
       return false;
     }
@@ -962,8 +969,9 @@ public:
     if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
     
     if (_on_disk) {
-      _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * _n_nodes);
-      if (ftruncate(_fd, _s * _n_nodes)) {
+      if (!remap_memory_and_truncate(&_nodes, _fd,
+          static_cast<size_t>(_s) * static_cast<size_t>(_nodes_size),
+          static_cast<size_t>(_s) * static_cast<size_t>(_n_nodes))) {
         // TODO: this probably creates an index in a corrupt state... not sure what to do
         set_error_from_errno(error, "Unable to truncate");
         return false;
@@ -1145,9 +1153,11 @@ protected:
       void *old = _nodes;
       
       if (_on_disk) {
-        int rc = ftruncate(_fd, _s * new_nodes_size);
-        if (_verbose && rc) showUpdate("File truncation error\n");
-        _nodes = remap_memory(_nodes, _fd, _s * _nodes_size, _s * new_nodes_size);
+        if (!remap_memory_and_truncate(&_nodes, _fd, 
+            static_cast<size_t>(_s) * static_cast<size_t>(_nodes_size), 
+            static_cast<size_t>(_s) * static_cast<size_t>(new_nodes_size)) && 
+            _verbose)
+            showUpdate("File truncation error\n");
       } else {
         _nodes = realloc(_nodes, _s * new_nodes_size);
         memset((char *) _nodes + (_nodes_size * _s) / sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
