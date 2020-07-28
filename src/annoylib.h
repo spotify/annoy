@@ -1276,7 +1276,7 @@ protected:
           }
         }
 
-        mempcpy(_get(_n_nodes), split_node, _s);
+        memcpy(_get(_n_nodes), split_node, _s);
         free(split_node);
 
         _n_nodes += 1;
