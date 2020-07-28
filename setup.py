@@ -35,7 +35,7 @@ with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
 # Various platform-dependent extras
-extra_compile_args = ['-D_CRT_SECURE_NO_WARNINGS']
+extra_compile_args = ['-D_CRT_SECURE_NO_WARNINGS', '-std=c++11']
 extra_link_args = []
 
 # Not all CPUs have march as a tuning parameter
@@ -51,7 +51,7 @@ if os.name != 'nt':
 
 # #349: something with OS X Mojave causes libstd not to be found
 if platform.system() == 'Darwin':
-    extra_compile_args += ['-std=c++11', '-mmacosx-version-min=10.9']
+    extra_compile_args += ['-mmacosx-version-min=10.9']
     extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 # Manual configuration, you're on your own here.
