@@ -106,9 +106,7 @@ inline void set_error_from_string(char **error, const char* msg) {
 
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
-#define isnan(x) std::isnan(x)
 #else // See #293, #358
-#define isnan(x) _isnan(x)
 #define popcount cole_popcount
 #endif
 
@@ -600,8 +598,8 @@ struct DotProduct : Angular {
     // Step one: compute the norm of each vector and store that in its extra dimension (f-1)
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
-      T norm = sqrt(dot(node->v, node->v, f));
-      if (isnan(norm)) norm = 0;
+      T d = dot(node->v, node->v, f);
+      T norm = d < 0 ? 0 : sqrt(d);
       node->dot_factor = norm;
     }
 
@@ -618,9 +616,8 @@ struct DotProduct : Angular {
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T node_norm = node->dot_factor;
-
-      T dot_factor = sqrt(pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0)));
-      if (isnan(dot_factor)) dot_factor = 0;
+      T squared_norm_diff = pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0));
+      T dot_factor = squared_norm_diff < 0 ? 0 : sqrt(squared_norm_diff);
 
       node->dot_factor = dot_factor;
     }
