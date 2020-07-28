@@ -600,7 +600,7 @@ struct DotProduct : Angular {
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T norm = sqrt(dot(node->v, node->v, f));
-      if (isnan(norm)) norm = 0;
+      if (std::isnan(norm)) norm = 0;
       node->dot_factor = norm;
     }
 
@@ -619,7 +619,7 @@ struct DotProduct : Angular {
       T node_norm = node->dot_factor;
 
       T dot_factor = sqrt(pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0)));
-      if (isnan(dot_factor)) dot_factor = 0;
+      if (std::isnan(dot_factor)) dot_factor = 0;
 
       node->dot_factor = dot_factor;
     }
