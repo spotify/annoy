@@ -57,6 +57,9 @@ typedef signed __int64    int64_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
+#include <mutex>
+#include <thread>
+#include <condition_variable>
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -133,6 +136,8 @@ using std::vector;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
+using std::mutex;
+using std::thread;
 
 inline bool remap_memory_and_truncate(void** _ptr, int _fd, size_t old_size, size_t new_size) {
 #ifdef __linux__
@@ -811,13 +816,32 @@ struct Manhattan : Minkowski {
   }
 };
 
+class ThreadBarrier {
+public:
+  explicit ThreadBarrier(std::size_t count) : _count(count) { }
+
+  void wait() {
+    std::unique_lock<std::mutex> lock(_mutex);
+    if (--_count == 0) {
+      _cv.notify_all();
+    } else {
+      _cv.wait(lock, [this] { return _count == 0; });
+    }
+  }
+
+private:
+  std::mutex _mutex;
+  std::condition_variable _cv;
+  std::size_t _count;
+};
+
 template<typename S, typename T>
 class AnnoyIndexInterface {
  public:
   // Note that the methods with an **error argument will allocate memory and write the pointer to that string if error is non-NULL
   virtual ~AnnoyIndexInterface() {};
   virtual bool add_item(S item, const T* w, char** error=NULL) = 0;
-  virtual bool build(int q, char** error=NULL) = 0;
+  virtual bool build(int q, int n_threads=1, char** error=NULL) = 0;
   virtual bool unbuild(char** error=NULL) = 0;
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
@@ -850,12 +874,13 @@ protected:
   const int _f;
   size_t _s;
   S _n_items;
-  Random _random;
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   S _n_nodes;
   S _nodes_size;
   vector<S> _roots;
   S _K;
+  bool _is_seeded;
+  int _seed;
   bool _loaded;
   bool _verbose;
   int _fd;
@@ -863,7 +888,7 @@ protected:
   bool _built;
 public:
 
-   AnnoyIndex(int f) : _f(f), _random() {
+   AnnoyIndex(int f) : _f(f) {
     _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
     _built = false;
@@ -929,7 +954,7 @@ public:
     return true;
   }
     
-  bool build(int q, char** error=NULL) {
+  bool build(int q, int n_threads=1, char** error=NULL) {
     if (_loaded) {
       set_error_from_string(error, "You can't build a loaded index");
       return false;
@@ -940,23 +965,32 @@ public:
       return false;
     }
 
+    if (n_threads < 1) {
+      set_error_from_string(error, "You can't build an index with less than 1 thread");
+      return false;
+    }
+
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
-    while (1) {
-      if (q == -1 && _n_nodes >= _n_items * 2)
-        break;
-      if (q != -1 && _roots.size() >= (size_t)q)
-        break;
-      if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
-      vector<S> indices;
-      for (S i = 0; i < _n_items; i++) {
-        if (_get(i)->n_descendants >= 1) // Issue #223
-          indices.push_back(i);
+    std::mutex _nodes_mutex;
+    ThreadBarrier barrier(n_threads);
+    vector<std::thread> threads(n_threads);
+    int work_per_thread = (int)floor(q / (double)n_threads);
+    int work_remainder = q % n_threads;
+    for (int i = 0; i < n_threads; i++) {
+      int trees_per_thread = -1;
+      if (q > -1) {
+        // First thread picks up the remainder of the work
+        trees_per_thread = i == 0 ? work_per_thread + work_remainder : work_per_thread;
       }
 
-      _roots.push_back(_make_tree(indices, true));
+      threads[i] = std::thread(&AnnoyIndex<S, T, D, Random>::_thread_build, this, trees_per_thread, i, std::ref(barrier), std::ref(_nodes_mutex));
+    }
+
+    for (auto& thread : threads) {
+      thread.join();
     }
 
     // Also, copy the roots into the last segment of the array
@@ -1035,6 +1069,7 @@ public:
     _n_nodes = 0;
     _nodes_size = 0;
     _on_disk = false;
+    _is_seeded = false;
     _roots.clear();
   }
 
@@ -1142,7 +1177,8 @@ public:
   }
 
   void set_seed(int seed) {
-    _random.set_seed(seed);
+    _is_seeded = true;
+    _seed = seed;
   }
 
 protected:
@@ -1172,7 +1208,87 @@ protected:
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  S _make_tree(const vector<S >& indices, bool is_root) {
+  void _thread_build(int q, int thread_idx, ThreadBarrier& barrier, std::mutex& _nodes_mutex) {
+    Random _random;
+    // Each thread needs its own seed, otherwise each thread would be building the same tree(s)
+    int seed = _is_seeded ? _seed + thread_idx : thread_idx;
+    _random.set_seed(seed);
+
+    vector<vector<Node*> > thread_trees;
+    vector<S> thread_roots;
+    while (1) {
+      if (q == -1) {
+        size_t thread_n_nodes = 0;
+        for (size_t tree_idx = 0; tree_idx < thread_trees.size(); tree_idx++) {
+          thread_n_nodes += thread_trees[tree_idx].size();
+        }
+        if (thread_n_nodes >= 2 * (size_t)_n_items) {
+          break;
+        }
+      } else {
+        if (thread_roots.size() >= (size_t)q) {
+          break;
+        }
+      }
+
+      if (_verbose) showUpdate("pass %zd...\n", thread_roots.size());
+
+      vector<S> indices;
+      for (S i = 0; i < _n_items; i++) {
+        if (_get(i)->n_descendants >= 1) // Issue #223
+          indices.push_back(i);
+      }
+
+      vector<Node*> split_nodes;
+      // Each thread is essentially pretending to build only one tree that will get inserted
+      // right after the already inserted items. Indices of split nodes start with _n_items, n_items + 1, ...
+      // We do not want to mutate the _nodes array during tree construction due to reallocation issues. That is
+      // why each thread stores the trees locally until all threads are ready to insert them into _nodes.
+      S root_node = _make_tree(indices, split_nodes, true, _random);
+      thread_roots.push_back(root_node);
+      thread_trees.push_back(split_nodes);
+    }
+
+    // Wait for all threads to finish before we can start inserting tree nodes into global _nodes array
+    barrier.wait();
+
+    _nodes_mutex.lock();
+    // When a thread wants to insert local tree nodes into global _nodes it has to stop pretending that there is
+    // going to be only one tree. Each thread has to update all split nodes children that are pointing to other split nodes
+    // because their indices will change once inserted into global _nodes.
+    for (size_t tree_idx = 0; tree_idx < thread_trees.size(); tree_idx++) {
+      vector<Node*> split_nodes = thread_trees[tree_idx];
+      // Offset from _n_items where split nodes will get inserted
+      S split_nodes_offset = _n_nodes - _n_items;
+      _allocate_size(_n_nodes + split_nodes.size());
+
+      for (size_t node_idx = 0; node_idx < split_nodes.size(); node_idx++) {
+        Node* split_node = split_nodes[node_idx];
+        bool is_root = (size_t)thread_roots[tree_idx] == (_n_items + node_idx);
+
+        // Inverted condition from _make_tree to detect split nodes
+        if ((split_node->n_descendants > _K) || (is_root && (size_t)_n_items > (size_t)_K && split_node->n_descendants > 1)) {
+          for (size_t child_idx = 0; child_idx < 2; child_idx++) {
+            // Update children offset if it is pointing to a split node
+            if (split_node->children[child_idx] >= _n_items) {
+              split_node->children[child_idx] += split_nodes_offset;
+            }
+          }
+        }
+
+        mempcpy(_get(_n_nodes), split_node, _s);
+        free(split_node);
+
+        _n_nodes += 1;
+      }
+
+      thread_roots[tree_idx] += split_nodes_offset;
+    }
+    _roots.insert(_roots.end(), thread_roots.begin(), thread_roots.end());
+    _nodes_mutex.unlock();
+  }
+
+  S _make_tree(const vector<S >& indices, vector<Node* >& split_nodes, bool is_root, Random& _random) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -1182,9 +1298,8 @@ protected:
       return indices[0];
 
     if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
-      _allocate_size(_n_nodes + 1);
-      S item = _n_nodes++;
-      Node* m = _get(item);
+      Node* m = (Node*)malloc(_s);
+      memset(m, 0, _s);
       m->n_descendants = is_root ? _n_items : (S)indices.size();
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
@@ -1193,7 +1308,9 @@ protected:
       // Only copy when necessary to avoid crash in MSVC 9. #293
       if (!indices.empty())
         memcpy(m->children, &indices[0], indices.size() * sizeof(S));
-      return item;
+
+      split_nodes.push_back(m);
+      return _n_items + (split_nodes.size() - 1);
     }
 
     vector<Node*> children;
@@ -1205,7 +1322,8 @@ protected:
     }
 
     vector<S> children_indices[2];
-    Node* m = (Node*)alloca(_s);
+    Node* m = (Node*)malloc(_s);
+    memset(m, 0, _s);
     D::create_split(children, _f, _s, _random, m);
 
     for (size_t i = 0; i < indices.size(); i++) {
@@ -1246,14 +1364,11 @@ protected:
     m->n_descendants = is_root ? _n_items : (S)indices.size();
     for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(children_indices[side^flip], false);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], split_nodes, false, _random);
     }
 
-    _allocate_size(_n_nodes + 1);
-    S item = _n_nodes++;
-    memcpy(_get(item), m, _s);
-
-    return item;
+    split_nodes.push_back(m);
+    return _n_items + (split_nodes.size() - 1);
   }
 
   void _get_all_nns(const T* v, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {

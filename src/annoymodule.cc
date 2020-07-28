@@ -84,7 +84,7 @@ public:
     _pack(w, &w_internal[0]);
     return _index.add_item(item, &w_internal[0], error);
   };
-  bool build(int q, char** error) { return _index.build(q, error); };
+  bool build(int q, int n_threads, char** error) { return _index.build(q, n_threads, error); };
   bool unbuild(char** error) { return _index.unbuild(error); };
   bool save(const char* filename, bool prefault, char** error) { return _index.save(filename, prefault, error); };
   void unload() { _index.unload(); };
@@ -408,16 +408,17 @@ py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
 static PyObject *
 py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int q;
+  int n_threads = 1;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"n_trees", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q))
+  static char const * kwlist[] = {"n_trees", "n_threads", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i", (char**)kwlist, &q, &n_threads))
     return NULL;
 
   bool res;
   char* error;
   Py_BEGIN_ALLOW_THREADS;
-  res = self->ptr->build(q, &error);
+  res = self->ptr->build(q, n_threads, &error);
   Py_END_ALLOW_THREADS;
   if (!res) {
     PyErr_SetString(PyExc_Exception, error);

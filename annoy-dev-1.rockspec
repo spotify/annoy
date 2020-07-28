@@ -44,14 +44,14 @@ build = {
         unix = {
             modules = {
                 ['annoy'] = {
-                    libraries = {"stdc++"},
+                    libraries = {"stdc++", "pthread"},
                 },
             },
         },
         mingw32 = {
             modules = {
                 ['annoy'] = {
-                    libraries = {"stdc++"},
+                    libraries = {"stdc++", "pthread"},
                 },
             },
         },

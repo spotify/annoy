@@ -16,8 +16,8 @@ class AnnoyIndex {
   void addItem(int item, const float* w) {
     ptr->add_item(item, w);
   };
-  void build(int q) {
-    ptr->build(q);
+  void build(int q, int n_threads=1) {
+    ptr->build(q, n_threads);
   };
   bool save(const char* filename, bool prefault) {
     return ptr->save(filename, prefault);
