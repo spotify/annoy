@@ -47,7 +47,7 @@ if platform.machine() == 'x86_64':
     extra_compile_args += cputune
 
 if os.name != 'nt':
-    extra_compile_args += ['-std=c++11', '-O3', '-ffast-math', '-fno-associative-math']
+    extra_compile_args += ['-std=c++14', '-O3', '-ffast-math', '-fno-associative-math']
 
 # #349: something with OS X Mojave causes libstd not to be found
 if platform.system() == 'Darwin':

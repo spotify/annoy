@@ -57,9 +57,9 @@ typedef signed __int64    int64_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
-#include <mutex>
 #include <thread>
-#include <condition_variable>
+#include <mutex>
+#include <shared_mutex>
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -814,32 +814,13 @@ struct Manhattan : Minkowski {
   }
 };
 
-class ThreadBarrier {
-public:
-  explicit ThreadBarrier(std::size_t count) : _count(count) { }
-
-  void wait() {
-    std::unique_lock<std::mutex> lock(_mutex);
-    if (--_count == 0) {
-      _cv.notify_all();
-    } else {
-      _cv.wait(lock, [this] { return _count == 0; });
-    }
-  }
-
-private:
-  std::mutex _mutex;
-  std::condition_variable _cv;
-  std::size_t _count;
-};
-
 template<typename S, typename T>
 class AnnoyIndexInterface {
  public:
   // Note that the methods with an **error argument will allocate memory and write the pointer to that string if error is non-NULL
   virtual ~AnnoyIndexInterface() {};
   virtual bool add_item(S item, const T* w, char** error=NULL) = 0;
-  virtual bool build(int q, int n_threads=1, char** error=NULL) = 0;
+  virtual bool build(int q, int n_threads=-1, char** error=NULL) = 0;
   virtual bool unbuild(char** error=NULL) = 0;
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
@@ -952,7 +933,7 @@ public:
     return true;
   }
     
-  bool build(int q, int n_threads=1, char** error=NULL) {
+  bool build(int q, int n_threads=-1, char** error=NULL) {
     if (_loaded) {
       set_error_from_string(error, "You can't build a loaded index");
       return false;
@@ -963,21 +944,33 @@ public:
       return false;
     }
 
-    if (n_threads < 1) {
-      set_error_from_string(error, "You can't build an index with less than 1 thread");
-      return false;
+    if (n_threads == -1) {
+      // If the hardware_concurrency() value is not well defined or not computable, it returns ​0.
+      // We guard against this by using at least 1 thread.
+      n_threads = std::max(1, (int)std::thread::hardware_concurrency());
     }
 
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
 
-    std::mutex nodes_mutex;
-    ThreadBarrier barrier(n_threads);
+    std::shared_timed_mutex nodes_mutex;
+    std::mutex n_nodes_mutex;
+    std::mutex roots_mutex;
+    std::mutex nodes_size_mutex;
     vector<std::thread> threads(n_threads);
-    for (int i = 0; i < n_threads; i++) {
-      int trees_per_thread = q == -1 ? -1 : (int)floor((q + i) / n_threads);
-      threads[i] = std::thread(&AnnoyIndex<S, T, D, Random>::_thread_build, this, trees_per_thread, i, std::ref(barrier), std::ref(nodes_mutex));
+    for (int thread_idx = 0; thread_idx < n_threads; thread_idx++) {
+      int trees_per_thread = q == -1 ? -1 : (int)floor((q + thread_idx) / n_threads);
+      threads[thread_idx] = std::thread(
+        &AnnoyIndex<S, T, D, Random>::_thread_build,
+        this,
+        trees_per_thread,
+        thread_idx,
+        std::ref(nodes_mutex),
+        std::ref(n_nodes_mutex),
+        std::ref(nodes_size_mutex),
+        std::ref(roots_mutex)
+      );
     }
 
     for (auto& thread : threads) {
@@ -1173,49 +1166,61 @@ public:
   }
 
 protected:
+  void _reallocate_nodes(S n) {
+    const double reallocation_factor = 1.3;
+    S new_nodes_size = std::max(n, (S) ((_nodes_size + 1) * reallocation_factor));
+    void *old = _nodes;
+    
+    if (_on_disk) {
+      if (!remap_memory_and_truncate(&_nodes, _fd, 
+          static_cast<size_t>(_s) * static_cast<size_t>(_nodes_size), 
+          static_cast<size_t>(_s) * static_cast<size_t>(new_nodes_size)) && 
+          _verbose)
+          showUpdate("File truncation error\n");
+    } else {
+      _nodes = realloc(_nodes, _s * new_nodes_size);
+      memset((char *) _nodes + (_nodes_size * _s) / sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
+    }
+    
+    _nodes_size = new_nodes_size;
+    if (_verbose) showUpdate("Reallocating to %d nodes: old_address=%p, new_address=%p\n", new_nodes_size, old, _nodes);
+  }
+
   void _allocate_size(S n) {
     if (n > _nodes_size) {
-      const double reallocation_factor = 1.3;
-      S new_nodes_size = std::max(n, (S) ((_nodes_size + 1) * reallocation_factor));
-      void *old = _nodes;
-      
-      if (_on_disk) {
-        if (!remap_memory_and_truncate(&_nodes, _fd, 
-            static_cast<size_t>(_s) * static_cast<size_t>(_nodes_size), 
-            static_cast<size_t>(_s) * static_cast<size_t>(new_nodes_size)) && 
-            _verbose)
-            showUpdate("File truncation error\n");
-      } else {
-        _nodes = realloc(_nodes, _s * new_nodes_size);
-        memset((char *) _nodes + (_nodes_size * _s) / sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
-      }
-      
-      _nodes_size = new_nodes_size;
-      if (_verbose) showUpdate("Reallocating to %d nodes: old_address=%p, new_address=%p\n", new_nodes_size, old, _nodes);
+      _reallocate_nodes(n);
     }
+  }
+
+  void _allocate_size(S n, std::shared_timed_mutex& nodes_mutex, std::mutex& nodes_size_mutex) {
+    nodes_size_mutex.lock();
+    if (n > _nodes_size) {
+      nodes_mutex.lock();
+      _reallocate_nodes(n);
+      nodes_mutex.unlock();
+    }
+    nodes_size_mutex.unlock();
   }
 
   inline Node* _get(const S i) const {
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  void _thread_build(int q, int thread_idx, ThreadBarrier& barrier, std::mutex& nodes_mutex) {
+  void _thread_build(int q, int thread_idx, std::shared_timed_mutex& nodes_mutex, std::mutex& n_nodes_mutex, std::mutex& nodes_size_mutex, std::mutex& roots_mutex) {
     Random _random;
     // Each thread needs its own seed, otherwise each thread would be building the same tree(s)
     int seed = _is_seeded ? _seed + thread_idx : thread_idx;
     _random.set_seed(seed);
 
-    vector<vector<Node*> > thread_trees;
     vector<S> thread_roots;
     while (1) {
       if (q == -1) {
-        size_t thread_n_nodes = 0;
-        for (size_t tree_idx = 0; tree_idx < thread_trees.size(); tree_idx++) {
-          thread_n_nodes += thread_trees[tree_idx].size();
-        }
-        if (thread_n_nodes >= 2 * (size_t)_n_items) {
+        n_nodes_mutex.lock();
+        if (_n_nodes >= 2 * _n_items) {
+          n_nodes_mutex.unlock();
           break;
         }
+        n_nodes_mutex.unlock();
       } else {
         if (thread_roots.size() >= (size_t)q) {
           break;
@@ -1226,60 +1231,22 @@ protected:
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
-        if (_get(i)->n_descendants >= 1) // Issue #223
+        nodes_mutex.lock_shared();
+        if (_get(i)->n_descendants >= 1) { // Issue #223
           indices.push_back(i);
-      }
-
-      vector<Node*> split_nodes;
-      // Each thread is essentially pretending to build only one tree that will get inserted
-      // right after the already inserted items. Indices of split nodes start with _n_items, n_items + 1, ...
-      // We do not want to mutate the _nodes array during tree construction due to reallocation issues. That is
-      // why each thread stores the trees locally until all threads are ready to insert them into _nodes.
-      S root_node = _make_tree(indices, split_nodes, true, _random);
-      thread_roots.push_back(root_node);
-      thread_trees.push_back(split_nodes);
-    }
-
-    // Wait for all threads to finish before we can start inserting tree nodes into global _nodes array
-    barrier.wait();
-
-    nodes_mutex.lock();
-    // When a thread wants to insert local tree nodes into global _nodes it has to stop pretending that there is
-    // going to be only one tree. Each thread has to update all split nodes children that are pointing to other split nodes
-    // because their indices will change once inserted into global _nodes.
-    for (size_t tree_idx = 0; tree_idx < thread_trees.size(); tree_idx++) {
-      vector<Node*> split_nodes = thread_trees[tree_idx];
-      // Offset from _n_items where split nodes will get inserted
-      S split_nodes_offset = _n_nodes - _n_items;
-      _allocate_size(_n_nodes + split_nodes.size());
-
-      for (size_t node_idx = 0; node_idx < split_nodes.size(); node_idx++) {
-        Node* split_node = split_nodes[node_idx];
-        bool is_root = (size_t)thread_roots[tree_idx] == (_n_items + node_idx);
-
-        // Inverted condition from _make_tree to detect split nodes
-        if ((split_node->n_descendants > _K) || (is_root && (size_t)_n_items > (size_t)_K && split_node->n_descendants > 1)) {
-          for (size_t child_idx = 0; child_idx < 2; child_idx++) {
-            // Update children offset if it is pointing to a split node
-            if (split_node->children[child_idx] >= _n_items) {
-              split_node->children[child_idx] += split_nodes_offset;
-            }
-          }
         }
-
-        memcpy(_get(_n_nodes), split_node, _s);
-        free(split_node);
-
-        _n_nodes += 1;
+        nodes_mutex.unlock_shared();
       }
 
-      thread_roots[tree_idx] += split_nodes_offset;
+      thread_roots.push_back(_make_tree(indices, true, _random, nodes_mutex, n_nodes_mutex, nodes_size_mutex));
     }
+
+    roots_mutex.lock();
     _roots.insert(_roots.end(), thread_roots.begin(), thread_roots.end());
-    nodes_mutex.unlock();
+    roots_mutex.unlock();
   }
 
-  S _make_tree(const vector<S >& indices, vector<Node* >& split_nodes, bool is_root, Random& _random) {
+  S _make_tree(const vector<S >& indices, bool is_root, Random& _random, std::shared_timed_mutex& nodes_mutex, std::mutex& n_nodes_mutex, std::mutex& nodes_size_mutex) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -1289,8 +1256,13 @@ protected:
       return indices[0];
 
     if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
-      Node* m = (Node*)malloc(_s);
-      memset(m, 0, _s);
+      n_nodes_mutex.lock();
+      _allocate_size(_n_nodes + 1, nodes_mutex, nodes_size_mutex);
+      S item = _n_nodes++;
+      n_nodes_mutex.unlock();
+
+      nodes_mutex.lock_shared();
+      Node* m = _get(item);
       m->n_descendants = is_root ? _n_items : (S)indices.size();
 
       // Using std::copy instead of a loop seems to resolve issues #3 and #13,
@@ -1300,10 +1272,14 @@ protected:
       if (!indices.empty())
         memcpy(m->children, &indices[0], indices.size() * sizeof(S));
 
-      split_nodes.push_back(m);
-      return _n_items + (split_nodes.size() - 1);
+      nodes_mutex.unlock_shared();
+      return item;
     }
 
+    vector<S> children_indices[2];
+    Node* m = (Node*)alloca(_s);
+
+    nodes_mutex.lock_shared();
     vector<Node*> children;
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
@@ -1312,9 +1288,6 @@ protected:
         children.push_back(n);
     }
 
-    vector<S> children_indices[2];
-    Node* m = (Node*)malloc(_s);
-    memset(m, 0, _s);
     D::create_split(children, _f, _s, _random, m);
 
     for (size_t i = 0; i < indices.size(); i++) {
@@ -1327,6 +1300,7 @@ protected:
         showUpdate("No node for index %d?\n", j);
       }
     }
+    nodes_mutex.unlock_shared();
 
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
@@ -1355,11 +1329,19 @@ protected:
     m->n_descendants = is_root ? _n_items : (S)indices.size();
     for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(children_indices[side^flip], split_nodes, false, _random);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], false, _random, nodes_mutex, n_nodes_mutex, nodes_size_mutex);
     }
 
-    split_nodes.push_back(m);
-    return _n_items + (split_nodes.size() - 1);
+    n_nodes_mutex.lock();
+    _allocate_size(_n_nodes + 1, nodes_mutex, nodes_size_mutex);
+    S item = _n_nodes++;
+    n_nodes_mutex.unlock();
+
+    nodes_mutex.lock_shared();
+    memcpy(_get(item), m, _s);
+    nodes_mutex.unlock_shared();
+
+    return item;
   }
 
   void _get_all_nns(const T* v, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {

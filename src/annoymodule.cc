@@ -408,17 +408,17 @@ py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
 static PyObject *
 py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int q;
-  int n_threads = 1;
+  int n_jobs = -1;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"n_trees", "n_threads", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i", (char**)kwlist, &q, &n_threads))
+  static char const * kwlist[] = {"n_trees", "n_jobs", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i", (char**)kwlist, &q, &n_jobs))
     return NULL;
 
   bool res;
   char* error;
   Py_BEGIN_ALLOW_THREADS;
-  res = self->ptr->build(q, n_threads, &error);
+  res = self->ptr->build(q, n_jobs, &error);
   Py_END_ALLOW_THREADS;
   if (!res) {
     PyErr_SetString(PyExc_Exception, error);
@@ -528,7 +528,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS | METH_KEYWORDS, "Adds item `i` (any nonnegative integer) with vector `v`.\n\nNote that it will allocate memory for `max(i)+1` items."},
   {"on_disk_build",(PyCFunction)py_an_on_disk_build, METH_VARARGS | METH_KEYWORDS, "Build will be performed with storage on disk instead of RAM."},
-  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
+  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added. `n_jobs` specifies the number of threads used to build the trees. `n_jobs=-1` uses all available CPU cores."},
   {"unbuild",(PyCFunction)py_an_unbuild, METH_NOARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
   {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, "Returns the distance between items `i` and `j`."},

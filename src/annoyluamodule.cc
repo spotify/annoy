@@ -121,7 +121,7 @@ public:
     int nargs = lua_gettop(L);
     Impl* self = getAnnoy(L, 1);
     int n_trees = luaL_checkinteger(L, 2);
-    int n_threads = 1;
+    int n_threads = -1;
     if (nargs >= 3) {
       n_threads = luaL_checkinteger(L, 3);
     }
