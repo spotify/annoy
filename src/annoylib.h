@@ -1175,7 +1175,7 @@ protected:
   double _split_imbalance(const vector<S>& left_indices, const vector<S>& right_indices) {
     double ls = (float)left_indices.size();
     double rs = (float)right_indices.size();
-    float f = ls/(ls + rs + 1);  // Add 1 to avoid 0/0
+    float f = ls / (ls + rs + 1e-9);  // Avoid 0/0
     return std::max(f, 1-f);
   }
 
@@ -1215,6 +1215,8 @@ protected:
     Node* m = (Node*)alloca(_s);
 
     for (int attempt = 0; attempt < 3; attempt++) {
+      children_indices[0].clear();
+      children_indices[1].clear();
       D::create_split(children, _f, _s, _random, m);
 
       for (size_t i = 0; i < indices.size(); i++) {
@@ -1230,9 +1232,6 @@ protected:
 
       if (_split_imbalance(children_indices[0], children_indices[1]) < 0.95)
         break;
-
-      children_indices[0].clear();
-      children_indices[1].clear();
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
@@ -1262,6 +1261,7 @@ protected:
       // run _make_tree for the smallest child first (for cache locality)
       m->children[side^flip] = _make_tree(children_indices[side^flip], false);
     }
+
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
