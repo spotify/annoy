@@ -1172,14 +1172,11 @@ protected:
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  bool _draw_random_split(const vector<S>& left_indices, const vector<S>& right_indices) {
-    if (left_indices.empty() || right_indices.empty())
-      return true;
-
-    float ls = (float)left_indices.size();
-    float rs = (float)right_indices.size();
-    float f = ls/(ls+rs);
-    return f < 0.01 || f > 0.99;
+  double _split_imbalance(const vector<S>& left_indices, const vector<S>& right_indices) {
+    double ls = (float)left_indices.size();
+    double rs = (float)right_indices.size();
+    float f = ls/(ls + rs + 1);  // Add 1 to avoid 0/0
+    return std::max(f, 1-f);
   }
 
   S _make_tree(const vector<S>& indices, bool is_root) {
@@ -1216,26 +1213,33 @@ protected:
 
     vector<S> children_indices[2];
     Node* m = (Node*)alloca(_s);
-    D::create_split(children, _f, _s, _random, m);
 
-    for (size_t i = 0; i < indices.size(); i++) {
-      S j = indices[i];
-      Node* n = _get(j);
-      if (n) {
-        bool side = D::side(m, n->v, _f, _random);
-        children_indices[side].push_back(j);
-      } else {
-        showUpdate("No node for index %d?\n", j);
+    for (int attempt = 0; attempt < 3; attempt++) {
+      D::create_split(children, _f, _s, _random, m);
+
+      for (size_t i = 0; i < indices.size(); i++) {
+        S j = indices[i];
+        Node* n = _get(j);
+        if (n) {
+          bool side = D::side(m, n->v, _f, _random);
+          children_indices[side].push_back(j);
+        } else {
+          showUpdate("No node for index %d?\n", j);
+        }
       }
+
+      if (_split_imbalance(children_indices[0], children_indices[1]) < 0.95)
+        break;
+
+      children_indices[0].clear();
+      children_indices[1].clear();
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
-    while (_draw_random_split(children_indices[0], children_indices[1])) {
+    while (_split_imbalance(children_indices[0], children_indices[1]) > 0.99) {
       if (_verbose)
         showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
           children_indices[0].size(), children_indices[1].size());
-      if (_verbose && indices.size() > 100000)
-        showUpdate("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
