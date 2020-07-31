@@ -51,8 +51,8 @@ if os.name != 'nt':
 
 # #349: something with OS X Mojave causes libstd not to be found
 if platform.system() == 'Darwin':
-    extra_compile_args += ['-mmacosx-version-min=10.9']
-    extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
+    extra_compile_args += ['-mmacosx-version-min=10.12']
+    extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.12']
 
 # Manual configuration, you're on your own here.
 manual_compiler_args = os.environ.get('ANNOY_COMPILER_ARGS', None)
