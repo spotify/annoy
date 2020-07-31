@@ -1168,11 +1168,21 @@ protected:
     }
   }
 
-  inline Node* _get(const S i) const {
+  Node* _get(const S i) const {
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  S _make_tree(const vector<S >& indices, bool is_root) {
+  bool _draw_random_split(const vector<S>& left_indices, const vector<S>& right_indices) {
+    if (left_indices.empty() || right_indices.empty())
+      return true;
+
+    float ls = (float)left_indices.size();
+    float rs = (float)right_indices.size();
+    float f = ls/(ls+rs);
+    return f < 0.01 || f > 0.99;
+  }
+
+  S _make_tree(const vector<S>& indices, bool is_root) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -1220,7 +1230,7 @@ protected:
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
-    while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
+    while (_draw_random_split(children_indices[0], children_indices[1])) {
       if (_verbose)
         showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
           children_indices[0].size(), children_indices[1].size());
@@ -1297,7 +1307,7 @@ protected:
     vector<pair<T, S> > nns_dist;
     S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
-      S j = nns[i];
+      S j = nns[i]; 
       if (j == last)
         continue;
       last = j;
