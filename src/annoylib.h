@@ -1163,13 +1163,13 @@ public:
       if (_verbose) showUpdate("pass %zd...\n", thread_roots.size());
 
       vector<S> indices;
+      threaded_build_policy.lock_shared_nodes();
       for (S i = 0; i < _n_items; i++) {
-        threaded_build_policy.lock_shared_nodes();
         if (_get(i)->n_descendants >= 1) { // Issue #223
           indices.push_back(i);
         }
-        threaded_build_policy.unlock_shared_nodes();
       }
+      threaded_build_policy.unlock_shared_nodes();
 
       thread_roots.push_back(_make_tree(indices, true, _random, threaded_build_policy));
     }
