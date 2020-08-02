@@ -1214,11 +1214,18 @@ protected:
     }
   }
 
-  inline Node* _get(const S i) const {
+  Node* _get(const S i) const {
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  S _make_tree(const vector<S >& indices, bool is_root, Random& _random, ThreadedBuildPolicy& threaded_build_policy) {
+  double _split_imbalance(const vector<S>& left_indices, const vector<S>& right_indices) {
+    double ls = (float)left_indices.size();
+    double rs = (float)right_indices.size();
+    float f = ls / (ls + rs + 1e-9);  // Avoid 0/0
+    return std::max(f, 1-f);
+  }
+
+  S _make_tree(const vector<S>& indices, bool is_root, Random& _random, ThreadedBuildPolicy& threaded_build_policy) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -1248,9 +1255,6 @@ protected:
       return item;
     }
 
-    vector<S> children_indices[2];
-    Node* m = (Node*)alloca(_s);
-
     threaded_build_policy.lock_shared_nodes();
     vector<Node*> children;
     for (size_t i = 0; i < indices.size(); i++) {
@@ -1260,27 +1264,35 @@ protected:
         children.push_back(n);
     }
 
-    D::create_split(children, _f, _s, _random, m);
+    vector<S> children_indices[2];
+    Node* m = (Node*)alloca(_s);
 
-    for (size_t i = 0; i < indices.size(); i++) {
-      S j = indices[i];
-      Node* n = _get(j);
-      if (n) {
-        bool side = D::side(m, n->v, _f, _random);
-        children_indices[side].push_back(j);
-      } else {
-        showUpdate("No node for index %d?\n", j);
+    for (int attempt = 0; attempt < 3; attempt++) {
+      children_indices[0].clear();
+      children_indices[1].clear();
+      D::create_split(children, _f, _s, _random, m);
+
+      for (size_t i = 0; i < indices.size(); i++) {
+        S j = indices[i];
+        Node* n = _get(j);
+        if (n) {
+          bool side = D::side(m, n->v, _f, _random);
+          children_indices[side].push_back(j);
+        } else {
+          showUpdate("No node for index %d?\n", j);
+        }
       }
+
+      if (_split_imbalance(children_indices[0], children_indices[1]) < 0.95)
+        break;
     }
     threaded_build_policy.unlock_shared_nodes();
 
     // If we didn't find a hyperplane, just randomize sides as a last option
-    while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
+    while (_split_imbalance(children_indices[0], children_indices[1]) > 0.99) {
       if (_verbose)
         showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
           children_indices[0].size(), children_indices[1].size());
-      if (_verbose && indices.size() > 100000)
-        showUpdate("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
@@ -1357,7 +1369,7 @@ protected:
     vector<pair<T, S> > nns_dist;
     S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
-      S j = nns[i];
+      S j = nns[i]; 
       if (j == last)
         continue;
       last = j;
