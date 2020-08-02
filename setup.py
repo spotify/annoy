@@ -19,6 +19,7 @@ from setuptools import setup, Extension
 import codecs
 import os
 import platform
+import sys
 
 readme_note = """\
 .. note::
@@ -47,7 +48,16 @@ if platform.machine() == 'x86_64':
     extra_compile_args += cputune
 
 if os.name != 'nt':
-    extra_compile_args += ['-std=c++14', '-O3', '-ffast-math', '-fno-associative-math']
+    extra_compile_args += ['-O3', '-ffast-math', '-fno-associative-math']
+
+# Add multithreaded build flag for all platforms using Python 3 and
+# for non-Windows Python 2 platforms
+python_major_version = sys.version_info[0]
+if python_major_version == 3 or (python_major_version == 2 and os.name != 'nt'):
+    extra_compile_args += ['-DANNOYLIB_MULTITHREADED_BUILD']
+
+    if os.name != 'nt':
+        extra_compile_args += ['-std=c++14']
 
 # #349: something with OS X Mojave causes libstd not to be found
 if platform.system() == 'Darwin':

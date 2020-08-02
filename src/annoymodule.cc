@@ -54,6 +54,11 @@ typedef signed __int32    int32_t;
     #define PyInt_FromLong PyLong_FromLong 
 #endif
 
+#ifdef ANNOYLIB_MULTITHREADED_BUILD
+  typedef AnnoyIndexMultiThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
+#else
+  typedef AnnoyIndexSingleThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
+#endif
 
 template class AnnoyIndexInterface<int32_t, float>;
 
@@ -63,7 +68,7 @@ class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
   // This is questionable from a performance point of view. Should reconsider this solution.
 private:
   int32_t _f_external, _f_internal;
-  AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random> _index;
+  AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random, AnnoyIndexThreadedBuildPolicy> _index;
   void _pack(const float* src, uint64_t* dst) const {
     for (int32_t i = 0; i < _f_internal; i++) {
       dst[i] = 0;
@@ -145,17 +150,17 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
     // This keeps coming up, see #368 etc
     PyErr_WarnEx(PyExc_FutureWarning, "The default argument for metric will be removed "
 		 "in future version of Annoy. Please pass metric='angular' explicitly.", 1);
-    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "angular")) {
-   self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
+   self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "euclidean")) {
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "manhattan")) {
-    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "hamming")) {
     self->ptr = new HammingWrapper(self->f);
   } else if (!strcmp(metric, "dot")) {
-    self->ptr = new AnnoyIndex<int32_t, float, DotProduct, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, DotProduct, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else {
     PyErr_SetString(PyExc_ValueError, "No such metric");
     return NULL;

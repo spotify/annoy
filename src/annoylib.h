@@ -57,9 +57,12 @@ typedef signed __int64    int64_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
+
+#ifdef ANNOYLIB_MULTITHREADED_BUILD
 #include <thread>
 #include <mutex>
 #include <shared_mutex>
+#endif
 
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
@@ -135,8 +138,6 @@ using std::vector;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
-using std::mutex;
-using std::thread;
 
 inline bool remap_memory_and_truncate(void** _ptr, int _fd, size_t old_size, size_t new_size) {
 #ifdef __linux__
@@ -836,7 +837,7 @@ class AnnoyIndexInterface {
   virtual bool on_disk_build(const char* filename, char** error=NULL) = 0;
 };
 
-template<typename S, typename T, typename Distance, typename Random>
+template<typename S, typename T, typename Distance, typename Random, class ThreadedBuildPolicy>
   class AnnoyIndex : public AnnoyIndexInterface<S, T> {
   /*
    * We use random projection to build a forest of binary trees of all items.
@@ -944,38 +945,11 @@ public:
       return false;
     }
 
-    if (n_threads == -1) {
-      // If the hardware_concurrency() value is not well defined or not computable, it returns ​0.
-      // We guard against this by using at least 1 thread.
-      n_threads = std::max(1, (int)std::thread::hardware_concurrency());
-    }
-
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
 
-    std::shared_timed_mutex nodes_mutex;
-    std::mutex n_nodes_mutex;
-    std::mutex roots_mutex;
-    std::mutex nodes_size_mutex;
-    vector<std::thread> threads(n_threads);
-    for (int thread_idx = 0; thread_idx < n_threads; thread_idx++) {
-      int trees_per_thread = q == -1 ? -1 : (int)floor((q + thread_idx) / n_threads);
-      threads[thread_idx] = std::thread(
-        &AnnoyIndex<S, T, D, Random>::_thread_build,
-        this,
-        trees_per_thread,
-        thread_idx,
-        std::ref(nodes_mutex),
-        std::ref(n_nodes_mutex),
-        std::ref(nodes_size_mutex),
-        std::ref(roots_mutex)
-      );
-    }
-
-    for (auto& thread : threads) {
-      thread.join();
-    }
+    ThreadedBuildPolicy::template build<S, T>(this, q, n_threads);
 
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
@@ -1165,6 +1139,46 @@ public:
     _seed = seed;
   }
 
+  void thread_build(int q, int thread_idx, ThreadedBuildPolicy& threaded_build_policy) {
+    Random _random;
+    // Each thread needs its own seed, otherwise each thread would be building the same tree(s)
+    int seed = _is_seeded ? _seed + thread_idx : thread_idx;
+    _random.set_seed(seed);
+
+    vector<S> thread_roots;
+    while (1) {
+      if (q == -1) {
+        threaded_build_policy.lock_n_nodes();
+        if (_n_nodes >= 2 * _n_items) {
+          threaded_build_policy.unlock_n_nodes();
+          break;
+        }
+        threaded_build_policy.unlock_n_nodes();
+      } else {
+        if (thread_roots.size() >= (size_t)q) {
+          break;
+        }
+      }
+
+      if (_verbose) showUpdate("pass %zd...\n", thread_roots.size());
+
+      vector<S> indices;
+      for (S i = 0; i < _n_items; i++) {
+        threaded_build_policy.lock_shared_nodes();
+        if (_get(i)->n_descendants >= 1) { // Issue #223
+          indices.push_back(i);
+        }
+        threaded_build_policy.unlock_shared_nodes();
+      }
+
+      thread_roots.push_back(_make_tree(indices, true, _random, threaded_build_policy));
+    }
+
+    threaded_build_policy.lock_roots();
+    _roots.insert(_roots.end(), thread_roots.begin(), thread_roots.end());
+    threaded_build_policy.unlock_roots();
+  }
+
 protected:
   void _reallocate_nodes(S n) {
     const double reallocation_factor = 1.3;
@@ -1186,67 +1200,25 @@ protected:
     if (_verbose) showUpdate("Reallocating to %d nodes: old_address=%p, new_address=%p\n", new_nodes_size, old, _nodes);
   }
 
+  void _allocate_size(S n, ThreadedBuildPolicy& threaded_build_policy) {
+    if (n > _nodes_size) {
+      threaded_build_policy.lock_nodes();
+      _reallocate_nodes(n);
+      threaded_build_policy.unlock_nodes();
+    }
+  }
+
   void _allocate_size(S n) {
     if (n > _nodes_size) {
       _reallocate_nodes(n);
     }
   }
 
-  void _allocate_size(S n, std::shared_timed_mutex& nodes_mutex, std::mutex& nodes_size_mutex) {
-    nodes_size_mutex.lock();
-    if (n > _nodes_size) {
-      nodes_mutex.lock();
-      _reallocate_nodes(n);
-      nodes_mutex.unlock();
-    }
-    nodes_size_mutex.unlock();
-  }
-
   inline Node* _get(const S i) const {
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  void _thread_build(int q, int thread_idx, std::shared_timed_mutex& nodes_mutex, std::mutex& n_nodes_mutex, std::mutex& nodes_size_mutex, std::mutex& roots_mutex) {
-    Random _random;
-    // Each thread needs its own seed, otherwise each thread would be building the same tree(s)
-    int seed = _is_seeded ? _seed + thread_idx : thread_idx;
-    _random.set_seed(seed);
-
-    vector<S> thread_roots;
-    while (1) {
-      if (q == -1) {
-        n_nodes_mutex.lock();
-        if (_n_nodes >= 2 * _n_items) {
-          n_nodes_mutex.unlock();
-          break;
-        }
-        n_nodes_mutex.unlock();
-      } else {
-        if (thread_roots.size() >= (size_t)q) {
-          break;
-        }
-      }
-
-      if (_verbose) showUpdate("pass %zd...\n", thread_roots.size());
-
-      vector<S> indices;
-      for (S i = 0; i < _n_items; i++) {
-        nodes_mutex.lock_shared();
-        if (_get(i)->n_descendants >= 1) { // Issue #223
-          indices.push_back(i);
-        }
-        nodes_mutex.unlock_shared();
-      }
-
-      thread_roots.push_back(_make_tree(indices, true, _random, nodes_mutex, n_nodes_mutex, nodes_size_mutex));
-    }
-
-    roots_mutex.lock();
-    _roots.insert(_roots.end(), thread_roots.begin(), thread_roots.end());
-    roots_mutex.unlock();
-  }
-
-  S _make_tree(const vector<S >& indices, bool is_root, Random& _random, std::shared_timed_mutex& nodes_mutex, std::mutex& n_nodes_mutex, std::mutex& nodes_size_mutex) {
+  S _make_tree(const vector<S >& indices, bool is_root, Random& _random, ThreadedBuildPolicy& threaded_build_policy) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -1256,12 +1228,12 @@ protected:
       return indices[0];
 
     if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
-      n_nodes_mutex.lock();
-      _allocate_size(_n_nodes + 1, nodes_mutex, nodes_size_mutex);
+      threaded_build_policy.lock_n_nodes();
+      _allocate_size(_n_nodes + 1, threaded_build_policy);
       S item = _n_nodes++;
-      n_nodes_mutex.unlock();
+      threaded_build_policy.unlock_n_nodes();
 
-      nodes_mutex.lock_shared();
+      threaded_build_policy.lock_shared_nodes();
       Node* m = _get(item);
       m->n_descendants = is_root ? _n_items : (S)indices.size();
 
@@ -1272,14 +1244,14 @@ protected:
       if (!indices.empty())
         memcpy(m->children, &indices[0], indices.size() * sizeof(S));
 
-      nodes_mutex.unlock_shared();
+      threaded_build_policy.unlock_shared_nodes();
       return item;
     }
 
     vector<S> children_indices[2];
     Node* m = (Node*)alloca(_s);
 
-    nodes_mutex.lock_shared();
+    threaded_build_policy.lock_shared_nodes();
     vector<Node*> children;
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
@@ -1300,7 +1272,7 @@ protected:
         showUpdate("No node for index %d?\n", j);
       }
     }
-    nodes_mutex.unlock_shared();
+    threaded_build_policy.unlock_shared_nodes();
 
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].size() == 0 || children_indices[1].size() == 0) {
@@ -1329,17 +1301,17 @@ protected:
     m->n_descendants = is_root ? _n_items : (S)indices.size();
     for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(children_indices[side^flip], false, _random, nodes_mutex, n_nodes_mutex, nodes_size_mutex);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], false, _random, threaded_build_policy);
     }
 
-    n_nodes_mutex.lock();
-    _allocate_size(_n_nodes + 1, nodes_mutex, nodes_size_mutex);
+    threaded_build_policy.lock_n_nodes();
+    _allocate_size(_n_nodes + 1, threaded_build_policy);
     S item = _n_nodes++;
-    n_nodes_mutex.unlock();
+    threaded_build_policy.unlock_n_nodes();
 
-    nodes_mutex.lock_shared();
+    threaded_build_policy.lock_shared_nodes();
     memcpy(_get(item), m, _s);
-    nodes_mutex.unlock_shared();
+    threaded_build_policy.unlock_shared_nodes();
 
     return item;
   }
@@ -1403,6 +1375,93 @@ protected:
     }
   }
 };
+
+class AnnoyIndexSingleThreadedBuildPolicy {
+public:
+  template<typename S, typename T, typename D, typename Random>
+  static void build(AnnoyIndex<S, T, D, Random, AnnoyIndexSingleThreadedBuildPolicy>* annoy, int q, int n_threads) {
+    AnnoyIndexSingleThreadedBuildPolicy threaded_build_policy;
+    annoy->thread_build(q, 0, threaded_build_policy);
+  }
+
+  void lock_n_nodes() {}
+  void unlock_n_nodes() {}
+
+  void lock_nodes() {}
+  void unlock_nodes() {}
+
+  void lock_shared_nodes() {}
+  void unlock_shared_nodes() {}
+
+  void lock_roots() {}
+  void unlock_roots() {}
+};
+
+#ifdef ANNOYLIB_MULTITHREADED_BUILD
+class AnnoyIndexMultiThreadedBuildPolicy {
+private:
+  std::shared_timed_mutex nodes_mutex;
+  std::mutex n_nodes_mutex;
+  std::mutex roots_mutex;
+
+public:
+  template<typename S, typename T, typename D, typename Random>
+  static void build(AnnoyIndex<S, T, D, Random, AnnoyIndexMultiThreadedBuildPolicy>* annoy, int q, int n_threads) {
+    AnnoyIndexMultiThreadedBuildPolicy threaded_build_policy;
+    if (n_threads == -1) {
+      // If the hardware_concurrency() value is not well defined or not computable, it returns 0.
+      // We guard against this by using at least 1 thread.
+      n_threads = std::max(1, (int)std::thread::hardware_concurrency());
+    }
+
+    vector<std::thread> threads(n_threads);
+
+    for (int thread_idx = 0; thread_idx < n_threads; thread_idx++) {
+      int trees_per_thread = q == -1 ? -1 : (int)floor((q + thread_idx) / n_threads);
+
+      threads[thread_idx] = std::thread(
+        &AnnoyIndex<S, T, D, Random, AnnoyIndexMultiThreadedBuildPolicy>::thread_build,
+        annoy,
+        trees_per_thread,
+        thread_idx,
+        std::ref(threaded_build_policy)
+      );
+    }
+
+    for (auto& thread : threads) {
+      thread.join();
+    }
+  }
+
+  void lock_n_nodes() {
+    n_nodes_mutex.lock();
+  }
+  void unlock_n_nodes() {
+    n_nodes_mutex.unlock();
+  }
+
+  void lock_nodes() {
+    nodes_mutex.lock();
+  }
+  void unlock_nodes() {
+    nodes_mutex.unlock();
+  }
+
+  void lock_shared_nodes() {
+    nodes_mutex.lock_shared();
+  }
+  void unlock_shared_nodes() {
+    nodes_mutex.unlock_shared();
+  }
+
+  void lock_roots() {
+    roots_mutex.lock();
+  }
+  void unlock_roots() {
+    roots_mutex.unlock();
+  }
+};
+#endif
 
 #endif
 // vim: tabstop=2 shiftwidth=2
