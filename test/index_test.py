@@ -235,7 +235,7 @@ class IndexTest(TestCase):
         for i in range(100):
             m.add_item(n_vectors+i, [random.gauss(0, 1) for z in range(f)])
         n_trees = 10
-        m.build(n_trees)
+        m.build(n_trees, n_jobs=1)
         path = 'test_big.annoy'
         m.save(path)  # Raises on Windows
 
