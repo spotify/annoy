@@ -58,7 +58,7 @@ Right now it only accepts integers as identifiers for items. Note that it will a
 Full Go API
 ---------------
 
-See annoygomodule.h. Generally the same as Python API except some arguments are not optional. 
+See annoygomodule.h. Generally the same as Python API except some arguments are not optional. Go binding does not support multithreaded build.
 
 Tests
 -------
