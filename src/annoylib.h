@@ -58,6 +58,12 @@ typedef signed __int64    int64_t;
 #include <queue>
 #include <limits>
 
+#ifdef ANNOYLIB_MULTITHREADED_BUILD
+#include <thread>
+#include <mutex>
+#include <shared_mutex>
+#endif
+
 #ifdef _MSC_VER
 // Needed for Visual Studio to disable runtime checks for mempcy
 #pragma runtime_checks("s", off)
@@ -104,7 +110,6 @@ inline void set_error_from_string(char **error, const char* msg) {
 #ifndef _MSC_VER
 #define popcount __builtin_popcountll
 #else // See #293, #358
-#define isnan(x) _isnan(x)
 #define popcount cole_popcount
 #endif
 
@@ -594,8 +599,8 @@ struct DotProduct : Angular {
     // Step one: compute the norm of each vector and store that in its extra dimension (f-1)
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
-      T norm = sqrt(dot(node->v, node->v, f));
-      if (isnan(norm)) norm = 0;
+      T d = dot(node->v, node->v, f);
+      T norm = d < 0 ? 0 : sqrt(d);
       node->dot_factor = norm;
     }
 
@@ -612,9 +617,8 @@ struct DotProduct : Angular {
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T node_norm = node->dot_factor;
-
-      T dot_factor = sqrt(pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0)));
-      if (isnan(dot_factor)) dot_factor = 0;
+      T squared_norm_diff = pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0));
+      T dot_factor = squared_norm_diff < 0 ? 0 : sqrt(squared_norm_diff);
 
       node->dot_factor = dot_factor;
     }
@@ -817,7 +821,7 @@ class AnnoyIndexInterface {
   // Note that the methods with an **error argument will allocate memory and write the pointer to that string if error is non-NULL
   virtual ~AnnoyIndexInterface() {};
   virtual bool add_item(S item, const T* w, char** error=NULL) = 0;
-  virtual bool build(int q, char** error=NULL) = 0;
+  virtual bool build(int q, int n_threads=-1, char** error=NULL) = 0;
   virtual bool unbuild(char** error=NULL) = 0;
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
@@ -833,7 +837,7 @@ class AnnoyIndexInterface {
   virtual bool on_disk_build(const char* filename, char** error=NULL) = 0;
 };
 
-template<typename S, typename T, typename Distance, typename Random>
+template<typename S, typename T, typename Distance, typename Random, class ThreadedBuildPolicy>
   class AnnoyIndex : public AnnoyIndexInterface<S, T> {
   /*
    * We use random projection to build a forest of binary trees of all items.
@@ -850,12 +854,13 @@ protected:
   const int _f;
   size_t _s;
   S _n_items;
-  Random _random;
   void* _nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
   S _n_nodes;
   S _nodes_size;
   vector<S> _roots;
   S _K;
+  bool _is_seeded;
+  int _seed;
   bool _loaded;
   bool _verbose;
   int _fd;
@@ -863,7 +868,7 @@ protected:
   bool _built;
 public:
 
-   AnnoyIndex(int f) : _f(f), _random() {
+   AnnoyIndex(int f) : _f(f) {
     _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
     _built = false;
@@ -929,7 +934,7 @@ public:
     return true;
   }
     
-  bool build(int q, char** error=NULL) {
+  bool build(int q, int n_threads=-1, char** error=NULL) {
     if (_loaded) {
       set_error_from_string(error, "You can't build a loaded index");
       return false;
@@ -943,21 +948,8 @@ public:
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
-    while (1) {
-      if (q == -1 && _n_nodes >= _n_items * 2)
-        break;
-      if (q != -1 && _roots.size() >= (size_t)q)
-        break;
-      if (_verbose) showUpdate("pass %zd...\n", _roots.size());
 
-      vector<S> indices;
-      for (S i = 0; i < _n_items; i++) {
-        if (_get(i)->n_descendants >= 1) // Issue #223
-          indices.push_back(i);
-      }
-
-      _roots.push_back(_make_tree(indices, true));
-    }
+    ThreadedBuildPolicy::template build<S, T>(this, q, n_threads);
 
     // Also, copy the roots into the last segment of the array
     // This way we can load them faster without reading the whole file
@@ -1035,6 +1027,7 @@ public:
     _n_nodes = 0;
     _nodes_size = 0;
     _on_disk = false;
+    _is_seeded = false;
     _roots.clear();
   }
 
@@ -1142,29 +1135,82 @@ public:
   }
 
   void set_seed(int seed) {
+    _is_seeded = true;
+    _seed = seed;
+  }
+
+  void thread_build(int q, int thread_idx, ThreadedBuildPolicy& threaded_build_policy) {
+    Random _random;
+    // Each thread needs its own seed, otherwise each thread would be building the same tree(s)
+    int seed = _is_seeded ? _seed + thread_idx : thread_idx;
     _random.set_seed(seed);
+
+    vector<S> thread_roots;
+    while (1) {
+      if (q == -1) {
+        threaded_build_policy.lock_n_nodes();
+        if (_n_nodes >= 2 * _n_items) {
+          threaded_build_policy.unlock_n_nodes();
+          break;
+        }
+        threaded_build_policy.unlock_n_nodes();
+      } else {
+        if (thread_roots.size() >= (size_t)q) {
+          break;
+        }
+      }
+
+      if (_verbose) showUpdate("pass %zd...\n", thread_roots.size());
+
+      vector<S> indices;
+      threaded_build_policy.lock_shared_nodes();
+      for (S i = 0; i < _n_items; i++) {
+        if (_get(i)->n_descendants >= 1) { // Issue #223
+          indices.push_back(i);
+        }
+      }
+      threaded_build_policy.unlock_shared_nodes();
+
+      thread_roots.push_back(_make_tree(indices, true, _random, threaded_build_policy));
+    }
+
+    threaded_build_policy.lock_roots();
+    _roots.insert(_roots.end(), thread_roots.begin(), thread_roots.end());
+    threaded_build_policy.unlock_roots();
   }
 
 protected:
+  void _reallocate_nodes(S n) {
+    const double reallocation_factor = 1.3;
+    S new_nodes_size = std::max(n, (S) ((_nodes_size + 1) * reallocation_factor));
+    void *old = _nodes;
+    
+    if (_on_disk) {
+      if (!remap_memory_and_truncate(&_nodes, _fd, 
+          static_cast<size_t>(_s) * static_cast<size_t>(_nodes_size), 
+          static_cast<size_t>(_s) * static_cast<size_t>(new_nodes_size)) && 
+          _verbose)
+          showUpdate("File truncation error\n");
+    } else {
+      _nodes = realloc(_nodes, _s * new_nodes_size);
+      memset((char *) _nodes + (_nodes_size * _s) / sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
+    }
+    
+    _nodes_size = new_nodes_size;
+    if (_verbose) showUpdate("Reallocating to %d nodes: old_address=%p, new_address=%p\n", new_nodes_size, old, _nodes);
+  }
+
+  void _allocate_size(S n, ThreadedBuildPolicy& threaded_build_policy) {
+    if (n > _nodes_size) {
+      threaded_build_policy.lock_nodes();
+      _reallocate_nodes(n);
+      threaded_build_policy.unlock_nodes();
+    }
+  }
+
   void _allocate_size(S n) {
     if (n > _nodes_size) {
-      const double reallocation_factor = 1.3;
-      S new_nodes_size = std::max(n, (S) ((_nodes_size + 1) * reallocation_factor));
-      void *old = _nodes;
-      
-      if (_on_disk) {
-        if (!remap_memory_and_truncate(&_nodes, _fd, 
-            static_cast<size_t>(_s) * static_cast<size_t>(_nodes_size), 
-            static_cast<size_t>(_s) * static_cast<size_t>(new_nodes_size)) && 
-            _verbose)
-            showUpdate("File truncation error\n");
-      } else {
-        _nodes = realloc(_nodes, _s * new_nodes_size);
-        memset((char *) _nodes + (_nodes_size * _s) / sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
-      }
-      
-      _nodes_size = new_nodes_size;
-      if (_verbose) showUpdate("Reallocating to %d nodes: old_address=%p, new_address=%p\n", new_nodes_size, old, _nodes);
+      _reallocate_nodes(n);
     }
   }
 
@@ -1179,7 +1225,7 @@ protected:
     return std::max(f, 1-f);
   }
 
-  S _make_tree(const vector<S>& indices, bool is_root) {
+  S _make_tree(const vector<S>& indices, bool is_root, Random& _random, ThreadedBuildPolicy& threaded_build_policy) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
@@ -1189,8 +1235,12 @@ protected:
       return indices[0];
 
     if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
-      _allocate_size(_n_nodes + 1);
+      threaded_build_policy.lock_n_nodes();
+      _allocate_size(_n_nodes + 1, threaded_build_policy);
       S item = _n_nodes++;
+      threaded_build_policy.unlock_n_nodes();
+
+      threaded_build_policy.lock_shared_nodes();
       Node* m = _get(item);
       m->n_descendants = is_root ? _n_items : (S)indices.size();
 
@@ -1200,9 +1250,12 @@ protected:
       // Only copy when necessary to avoid crash in MSVC 9. #293
       if (!indices.empty())
         memcpy(m->children, &indices[0], indices.size() * sizeof(S));
+
+      threaded_build_policy.unlock_shared_nodes();
       return item;
     }
 
+    threaded_build_policy.lock_shared_nodes();
     vector<Node*> children;
     for (size_t i = 0; i < indices.size(); i++) {
       S j = indices[i];
@@ -1233,6 +1286,7 @@ protected:
       if (_split_imbalance(children_indices[0], children_indices[1]) < 0.95)
         break;
     }
+    threaded_build_policy.unlock_shared_nodes();
 
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (_split_imbalance(children_indices[0], children_indices[1]) > 0.99) {
@@ -1259,13 +1313,17 @@ protected:
     m->n_descendants = is_root ? _n_items : (S)indices.size();
     for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(children_indices[side^flip], false);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], false, _random, threaded_build_policy);
     }
 
-
-    _allocate_size(_n_nodes + 1);
+    threaded_build_policy.lock_n_nodes();
+    _allocate_size(_n_nodes + 1, threaded_build_policy);
     S item = _n_nodes++;
+    threaded_build_policy.unlock_n_nodes();
+
+    threaded_build_policy.lock_shared_nodes();
     memcpy(_get(item), m, _s);
+    threaded_build_policy.unlock_shared_nodes();
 
     return item;
   }
@@ -1329,6 +1387,93 @@ protected:
     }
   }
 };
+
+class AnnoyIndexSingleThreadedBuildPolicy {
+public:
+  template<typename S, typename T, typename D, typename Random>
+  static void build(AnnoyIndex<S, T, D, Random, AnnoyIndexSingleThreadedBuildPolicy>* annoy, int q, int n_threads) {
+    AnnoyIndexSingleThreadedBuildPolicy threaded_build_policy;
+    annoy->thread_build(q, 0, threaded_build_policy);
+  }
+
+  void lock_n_nodes() {}
+  void unlock_n_nodes() {}
+
+  void lock_nodes() {}
+  void unlock_nodes() {}
+
+  void lock_shared_nodes() {}
+  void unlock_shared_nodes() {}
+
+  void lock_roots() {}
+  void unlock_roots() {}
+};
+
+#ifdef ANNOYLIB_MULTITHREADED_BUILD
+class AnnoyIndexMultiThreadedBuildPolicy {
+private:
+  std::shared_timed_mutex nodes_mutex;
+  std::mutex n_nodes_mutex;
+  std::mutex roots_mutex;
+
+public:
+  template<typename S, typename T, typename D, typename Random>
+  static void build(AnnoyIndex<S, T, D, Random, AnnoyIndexMultiThreadedBuildPolicy>* annoy, int q, int n_threads) {
+    AnnoyIndexMultiThreadedBuildPolicy threaded_build_policy;
+    if (n_threads == -1) {
+      // If the hardware_concurrency() value is not well defined or not computable, it returns 0.
+      // We guard against this by using at least 1 thread.
+      n_threads = std::max(1, (int)std::thread::hardware_concurrency());
+    }
+
+    vector<std::thread> threads(n_threads);
+
+    for (int thread_idx = 0; thread_idx < n_threads; thread_idx++) {
+      int trees_per_thread = q == -1 ? -1 : (int)floor((q + thread_idx) / n_threads);
+
+      threads[thread_idx] = std::thread(
+        &AnnoyIndex<S, T, D, Random, AnnoyIndexMultiThreadedBuildPolicy>::thread_build,
+        annoy,
+        trees_per_thread,
+        thread_idx,
+        std::ref(threaded_build_policy)
+      );
+    }
+
+    for (auto& thread : threads) {
+      thread.join();
+    }
+  }
+
+  void lock_n_nodes() {
+    n_nodes_mutex.lock();
+  }
+  void unlock_n_nodes() {
+    n_nodes_mutex.unlock();
+  }
+
+  void lock_nodes() {
+    nodes_mutex.lock();
+  }
+  void unlock_nodes() {
+    nodes_mutex.unlock();
+  }
+
+  void lock_shared_nodes() {
+    nodes_mutex.lock_shared();
+  }
+  void unlock_shared_nodes() {
+    nodes_mutex.unlock_shared();
+  }
+
+  void lock_roots() {
+    roots_mutex.lock();
+  }
+  void unlock_roots() {
+    roots_mutex.unlock();
+  }
+};
+#endif
 
 #endif
 // vim: tabstop=2 shiftwidth=2

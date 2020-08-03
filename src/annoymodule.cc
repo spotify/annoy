@@ -54,6 +54,11 @@ typedef signed __int32    int32_t;
     #define PyInt_FromLong PyLong_FromLong 
 #endif
 
+#ifdef ANNOYLIB_MULTITHREADED_BUILD
+  typedef AnnoyIndexMultiThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
+#else
+  typedef AnnoyIndexSingleThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
+#endif
 
 template class AnnoyIndexInterface<int32_t, float>;
 
@@ -63,7 +68,7 @@ class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
   // This is questionable from a performance point of view. Should reconsider this solution.
 private:
   int32_t _f_external, _f_internal;
-  AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random> _index;
+  AnnoyIndex<int32_t, uint64_t, Hamming, Kiss64Random, AnnoyIndexThreadedBuildPolicy> _index;
   void _pack(const float* src, uint64_t* dst) const {
     for (int32_t i = 0; i < _f_internal; i++) {
       dst[i] = 0;
@@ -84,7 +89,7 @@ public:
     _pack(w, &w_internal[0]);
     return _index.add_item(item, &w_internal[0], error);
   };
-  bool build(int q, char** error) { return _index.build(q, error); };
+  bool build(int q, int n_threads, char** error) { return _index.build(q, n_threads, error); };
   bool unbuild(char** error) { return _index.unbuild(error); };
   bool save(const char* filename, bool prefault, char** error) { return _index.save(filename, prefault, error); };
   void unload() { _index.unload(); };
@@ -145,17 +150,17 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
     // This keeps coming up, see #368 etc
     PyErr_WarnEx(PyExc_FutureWarning, "The default argument for metric will be removed "
 		 "in future version of Annoy. Please pass metric='angular' explicitly.", 1);
-    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "angular")) {
-   self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f);
+   self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "euclidean")) {
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "manhattan")) {
-    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, Manhattan, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else if (!strcmp(metric, "hamming")) {
     self->ptr = new HammingWrapper(self->f);
   } else if (!strcmp(metric, "dot")) {
-    self->ptr = new AnnoyIndex<int32_t, float, DotProduct, Kiss64Random>(self->f);
+    self->ptr = new AnnoyIndex<int32_t, float, DotProduct, Kiss64Random, AnnoyIndexThreadedBuildPolicy>(self->f);
   } else {
     PyErr_SetString(PyExc_ValueError, "No such metric");
     return NULL;
@@ -408,16 +413,17 @@ py_an_on_disk_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
 static PyObject *
 py_an_build(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int q;
+  int n_jobs = -1;
   if (!self->ptr) 
     return NULL;
-  static char const * kwlist[] = {"n_trees", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", (char**)kwlist, &q))
+  static char const * kwlist[] = {"n_trees", "n_jobs", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i", (char**)kwlist, &q, &n_jobs))
     return NULL;
 
   bool res;
   char* error;
   Py_BEGIN_ALLOW_THREADS;
-  res = self->ptr->build(q, &error);
+  res = self->ptr->build(q, n_jobs, &error);
   Py_END_ALLOW_THREADS;
   if (!res) {
     PyErr_SetString(PyExc_Exception, error);
@@ -527,7 +533,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS | METH_KEYWORDS, "Adds item `i` (any nonnegative integer) with vector `v`.\n\nNote that it will allocate memory for `max(i)+1` items."},
   {"on_disk_build",(PyCFunction)py_an_on_disk_build, METH_VARARGS | METH_KEYWORDS, "Build will be performed with storage on disk instead of RAM."},
-  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added."},
+  {"build",(PyCFunction)py_an_build, METH_VARARGS | METH_KEYWORDS, "Builds a forest of `n_trees` trees.\n\nMore trees give higher precision when querying. After calling `build`,\nno more items can be added. `n_jobs` specifies the number of threads used to build the trees. `n_jobs=-1` uses all available CPU cores."},
   {"unbuild",(PyCFunction)py_an_unbuild, METH_NOARGS, "Unbuilds the tree in order to allows adding new items.\n\nbuild() has to be called again afterwards in order to\nrun queries."},
   {"unload",(PyCFunction)py_an_unload, METH_NOARGS, "Unloads an index from disk."},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, "Returns the distance between items `i` and `j`."},

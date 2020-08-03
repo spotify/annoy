@@ -33,7 +33,7 @@ class LuaAnnoy {
 public:
   typedef int32_t AnnoyS;
   typedef float AnnoyT;
-  typedef AnnoyIndex<AnnoyS, AnnoyT, Distance, Kiss64Random> Impl;
+  typedef AnnoyIndex<AnnoyS, AnnoyT, Distance, Kiss64Random, AnnoyIndexSingleThreadedBuildPolicy> Impl;
   typedef LuaAnnoy<Distance> ThisClass;
 
   class LuaArrayProxy {
@@ -118,9 +118,10 @@ public:
   }
 
   static int build(lua_State* L) {
+    int nargs = lua_gettop(L);
     Impl* self = getAnnoy(L, 1);
     int n_trees = luaL_checkinteger(L, 2);
-    self->build(n_trees);
+    self->build(n_trees, 1);
     lua_pushboolean(L, true);
     return 1;
   }

@@ -64,7 +64,7 @@ end
 Full Lua API
 ------------
 
-Lua API closely resembles Python API, see main README.
+Lua API closely resembles Python API, see main README. Lua binding does not support multithreaded build.
 
 
 Tests

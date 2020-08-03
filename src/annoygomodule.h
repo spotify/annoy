@@ -17,7 +17,7 @@ class AnnoyIndex {
     ptr->add_item(item, w);
   };
   void build(int q) {
-    ptr->build(q);
+    ptr->build(q, 1);
   };
   bool save(const char* filename, bool prefault) {
     return ptr->save(filename, prefault);
@@ -69,7 +69,7 @@ class AnnoyIndexAngular : public AnnoyIndex
 {
  public:
   AnnoyIndexAngular(int f) {
-    ptr = new ::AnnoyIndex<int32_t, float, ::Angular, ::Kiss64Random>(f);
+    ptr = new ::AnnoyIndex<int32_t, float, ::Angular, ::Kiss64Random, AnnoyIndexSingleThreadedBuildPolicy>(f);
     this->f = f;
   }
 };
@@ -77,7 +77,7 @@ class AnnoyIndexAngular : public AnnoyIndex
 class AnnoyIndexEuclidean : public AnnoyIndex {
  public:
   AnnoyIndexEuclidean(int f) {
-    ptr = new ::AnnoyIndex<int32_t, float, ::Euclidean, ::Kiss64Random>(f);
+    ptr = new ::AnnoyIndex<int32_t, float, ::Euclidean, ::Kiss64Random, AnnoyIndexSingleThreadedBuildPolicy>(f);
     this->f = f;
   }
 };
@@ -85,7 +85,7 @@ class AnnoyIndexEuclidean : public AnnoyIndex {
 class AnnoyIndexManhattan : public AnnoyIndex {
  public:
   AnnoyIndexManhattan(int f) {
-    ptr = new ::AnnoyIndex<int32_t, float, ::Manhattan, ::Kiss64Random>(f);
+    ptr = new ::AnnoyIndex<int32_t, float, ::Manhattan, ::Kiss64Random, AnnoyIndexSingleThreadedBuildPolicy>(f);
     this->f = f;
   }
 };
