@@ -131,6 +131,7 @@ More info
 * `Dirk Eddelbuettel <https://github.com/eddelbuettel>`__ provides an `R version of Annoy <http://dirk.eddelbuettel.com/code/rcpp.annoy.html>`__.
 * `Andy Sloane <https://github.com/a1k0n>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
 * `Pishen Tsai <https://github.com/pishen>`__ provides a `Scala wrapper of Annoy <https://github.com/pishen/annoy4s>`__ which uses JNA to call the C++ library of Annoy.
+* `Atsushi Tatsuma <https://github.com/yoshoku>`__ provides `Ruby bindings for Annoy <https://github.com/yoshoku/annoy.rb>`__.
 * There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by `Taneli Leppä <https://github.com/rosmo>`__.
 * `Boris Nagaev <https://github.com/starius>`__ wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
 * During part of Spotify Hack Week 2016 (and a bit afterward), `Jim Kang <https://github.com/jimkang>`__ wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
