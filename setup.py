@@ -73,7 +73,7 @@ if manual_linker_args:
     extra_link_args = manual_linker_args.split(',')
 
 setup(name='annoy',
-      version='1.16.3',
+      version='1.17.0',
       description='Approximate Nearest Neighbors in C++/Python optimized for memory usage and loading/saving to disk.',
       packages=['annoy'],
       ext_modules=[
