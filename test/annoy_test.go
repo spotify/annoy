@@ -206,6 +206,18 @@ func (suite *AnnoyTestSuite) TestGetDistance() {
      annoyindex.DeleteAnnoyIndexAngular(index)
 }
 
+func (suite *AnnoyTestSuite) TestGetDotProductDistance() {
+    index := annoyindex.NewAnnoyIndexDotProduct(2)
+    index.AddItem(0, []float32{0, 1})
+    index.AddItem(1, []float32{1, 1})
+    index.Build(10)
+
+    assert.True(suite.T(),
+        math.Abs(1.0-float64(index.GetDistance(0, 1))) < 0.00001)
+
+    annoyindex.DeleteAnnoyIndexDotProduct(index)
+}
+
 func (suite *AnnoyTestSuite) TestLargeEuclideanIndex() {
      index := annoyindex.NewAnnoyIndexEuclidean(10)
 
