@@ -776,7 +776,7 @@ public:
       memcpy(_get(_n_nodes + i), _get(_roots[i]), _s);
     _n_nodes += nroots;
 
-    if (_verbose) showUpdate("has %ld nodes\n", _n_nodes);
+    if (_verbose) showUpdate("has %zu nodes\n", size_t(_n_nodes));
   }
   
   void unbuild() {
@@ -815,7 +815,7 @@ public:
     if (_fd) {
       // we have mmapped data
       close(_fd);
-      off_t size = _n_nodes * _s;
+      size_t size = size_t(_n_nodes) * _s;
       munmap(_nodes, size);
     } else if (_nodes) {
       // We have heap allocated data
@@ -859,7 +859,7 @@ public:
       _roots.pop_back();
     _loaded = true;
     _n_items = m;
-    if (_verbose) showUpdate("found %lu roots with degree %ld\n", _roots.size(), m);
+    if (_verbose) showUpdate("found %zu roots with degree %zd\n", _roots.size(), size_t(m));
     return true;
   }
 

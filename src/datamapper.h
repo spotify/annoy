@@ -24,6 +24,13 @@
 namespace detail {
   struct DataMapping
   {
+    DataMapping( void const *d, size_t s )
+      : data(d)
+      , size(s)
+      {}
+
+    DataMapping() = default;
+    
     void const *data = nullptr;
     size_t size = 0;
   };
@@ -39,25 +46,25 @@ public:
   Mapping map(const char* filename, bool need_mlock) {
     int fd = open(filename, O_RDONLY, (int)0400);
     if (fd == -1) {
-      return Mapping{ nullptr, 0 };
+      return Mapping();
     }
 
     struct stat fd_stat;
     if (fstat(fd, &fd_stat)) {
-        return Mapping{ nullptr, 0 };
+        return Mapping();
     }
 
     void *mmaped = mmap(0, fd_stat.st_size, PROT_READ, MAP_SHARED, fd, 0);
     close(fd);
     if (mmaped == MAP_FAILED) {
-      return Mapping{ nullptr, 0 };
+      return Mapping();
     }
 
     if (need_mlock) {
       mlock(mmaped, fd_stat.st_size);
     }
 
-    return Mapping{ mmaped, (size_t)fd_stat.st_size };
+    return Mapping(mmaped, (size_t)fd_stat.st_size);
   }
 
   void unmap(const Mapping & mapping) {
@@ -68,6 +75,8 @@ public:
 };
 
 // Anonymous HugeTLB mapping.
+// Valid only on some Linux based-systems
+#if defined(MAP_HUGETLB)
 // Allocates memory from pool and populates it by file data from disk.
 // It may be better to consider HugeTLB FS instead. In that case you will get instant data loading.
 class HugePagesDataMapper {
@@ -78,19 +87,19 @@ public:
   Mapping map(const char* filename, bool need_mlock) {
     int fd = open(filename, O_RDONLY, (int)0400);
     if (fd == -1) {
-      return Mapping{ nullptr, 0 };
+      return Mapping();
     }
 
     struct stat fd_stat;
     if (fstat(fd, &fd_stat)) {
-        return Mapping{ nullptr, 0 };
+        return Mapping();
     }
 
     Mapping mapping;
     mapping.size = fd_stat.st_size;
     mapping.data = mmap(0, mapping.size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
     if (mapping.data == MAP_FAILED) {
-      return Mapping{ nullptr, 0 };
+      return Mapping();
     }
 
     size_t bytes_left = mapping.size;
@@ -98,7 +107,7 @@ public:
     while (bytes_left) {
       ssize_t count = read(fd, bytes, bytes_left);
       if (count <= 0) {
-        return Mapping{ nullptr, 0 };
+        return Mapping();
       }
       bytes = static_cast<char *>(bytes) + count;
       bytes_left -= count;
@@ -114,4 +123,6 @@ public:
     }
   }
 };
+
+#endif
 

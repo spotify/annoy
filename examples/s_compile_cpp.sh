@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 echo "compiling precision example..."
 for cpp in $(find . -type f -name "*.cpp"); do
     echo "compiling ${cpp}..."
