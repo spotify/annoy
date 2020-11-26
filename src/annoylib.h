@@ -43,7 +43,7 @@ typedef signed __int32    int32_t;
 #endif
 
 #include <string.h>
-#include <math.h>
+#include <cmath>
 #include <vector>
 #include <algorithm>
 #include <queue>
@@ -440,7 +440,7 @@ struct DotProduct : Angular {
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       T norm = sqrt(dot(node->v, node->v, f));
-      if (isnan(norm)) norm = 0;
+      if (std::isnan(norm)) norm = 0;
       node->dot_factor = norm;
     }
 
@@ -459,7 +459,7 @@ struct DotProduct : Angular {
       T node_norm = node->dot_factor;
 
       T dot_factor = sqrt(pow(max_norm, 2.0) - pow(node_norm, 2.0));
-      if (isnan(dot_factor)) dot_factor = 0;
+      if (std::isnan(dot_factor)) dot_factor = 0;
 
       node->dot_factor = dot_factor;
       node->norm = dot(node->v, node->v, f) + (dot_factor * dot_factor);
@@ -528,7 +528,7 @@ struct Hamming : Base {
       for (; j < dim; j++) {
         n->v[0] = j;
         cur_size = 0;
-	for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
+	      for (typename vector<Node<S, T>*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
           if (margin(n, (*it)->v, f)) {
             cur_size++;
           }
@@ -832,14 +832,9 @@ public:
       return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
-#ifdef MAP_POPULATE
-    _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED | MAP_POPULATE, _fd, 0);
-#else
-    _nodes = (Node*)mmap(
-        0, size, PROT_READ, MAP_SHARED, _fd, 0);
-#endif
-
+    _nodes = (Node*)mmap(0, size, PROT_READ, MAP_SHARED, _fd, 0);
+    if( _nodes == MAP_FAILED )
+      return false;
     _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
@@ -861,6 +856,12 @@ public:
     _n_items = m;
     if (_verbose) showUpdate("found %zu roots with degree %zd\n", _roots.size(), size_t(m));
     return true;
+  }
+
+  bool madvise(int flags)
+  {
+      size_t size = size_t(_n_nodes) * _s;
+      return madvise(_nodes, size, flags) == 0;
   }
 
   T get_distance(S i, S j) const {

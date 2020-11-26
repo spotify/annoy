@@ -405,7 +405,6 @@ class PackedAnnoySearcher {
 public:
   typedef Distance D;
   typedef typename Distance::PackedFloatType PackedFloatType;
-  //typedef EuclideanPacked16 SD;
   typedef typename D::template Node<S, T> Node;
   typedef typename DataMapper::Mapping DataMapping;
 private:
@@ -481,6 +480,16 @@ public:
     _n_items = m;
 
     return true;
+  }
+
+  // this function useful in several cases:
+  // 1. exclude huge coredump via MADV_DONTDUMP.
+  // 2. preload from storage into memmory via MADV_WILLNEED.
+  // 3. use THP if you disable it on your system via MADV_HUGEPAGE.
+  // 4. something special ;)
+  bool madvise(int flags)
+  {
+      return madvise(_mapping.data, _mapping.size, flags) == 0;
   }
 
   T get_distance(S i, S j) const {
