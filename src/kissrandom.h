@@ -20,8 +20,10 @@ struct Kiss32Random {
   uint32_t z;
   uint32_t c;
 
+  static const uint32_t default_seed = 123456789;
+
   // seed must be != 0
-  Kiss32Random(uint32_t seed = 123456789) {
+  Kiss32Random(uint32_t seed = default_seed) {
     x = seed;
     y = 362436000;
     z = 521288629;
@@ -64,8 +66,10 @@ struct Kiss64Random {
   uint64_t z;
   uint64_t c;
 
+  static const uint64_t default_seed = 1234567890987654321ULL;
+
   // seed must be != 0
-  Kiss64Random(uint64_t seed = 1234567890987654321ULL) {
+  Kiss64Random(uint64_t seed = default_seed) {
     x = seed;
     y = 362436362436362436ULL;
     z = 1066149217761810ULL;
@@ -97,7 +101,7 @@ struct Kiss64Random {
     // Draw random integer between 0 and n-1 where n is at most the number of data points you have
     return kiss() % n;
   }
-  inline void set_seed(uint32_t seed) {
+  inline void set_seed(uint64_t seed) {
     x = seed;
   }
 };

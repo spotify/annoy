@@ -57,6 +57,7 @@ typedef signed __int64    int64_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
+#include <type_traits>
 
 #ifdef ANNOYLIB_MULTITHREADED_BUILD
 #include <thread>
@@ -815,7 +816,7 @@ struct Manhattan : Minkowski {
   }
 };
 
-template<typename S, typename T>
+template<typename S, typename T, typename R = uint64_t>
 class AnnoyIndexInterface {
  public:
   // Note that the methods with an **error argument will allocate memory and write the pointer to that string if error is non-NULL
@@ -833,12 +834,12 @@ class AnnoyIndexInterface {
   virtual S get_n_trees() const = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, T* v) const = 0;
-  virtual void set_seed(int q) = 0;
+  virtual void set_seed(R q) = 0;
   virtual bool on_disk_build(const char* filename, char** error=NULL) = 0;
 };
 
 template<typename S, typename T, typename Distance, typename Random, class ThreadedBuildPolicy>
-  class AnnoyIndex : public AnnoyIndexInterface<S, T> {
+  class AnnoyIndex : public AnnoyIndexInterface<S, T, typename std::remove_const<decltype(Random::default_seed)>::type> {
   /*
    * We use random projection to build a forest of binary trees of all items.
    * Basically just split the hyperspace into two sides by a hyperplane,
@@ -849,6 +850,7 @@ template<typename S, typename T, typename Distance, typename Random, class Threa
 public:
   typedef Distance D;
   typedef typename D::template Node<S, T> Node;
+  typedef typename std::remove_const<decltype(Random::default_seed)>::type R;
 
 protected:
   const int _f;
@@ -859,8 +861,7 @@ protected:
   S _nodes_size;
   vector<S> _roots;
   S _K;
-  bool _is_seeded;
-  int _seed;
+  R _seed = Random::default_seed;
   bool _loaded;
   bool _verbose;
   int _fd;
@@ -1027,7 +1028,7 @@ public:
     _n_nodes = 0;
     _nodes_size = 0;
     _on_disk = false;
-    _is_seeded = false;
+    _seed = Random::default_seed;
     _roots.clear();
   }
 
@@ -1134,16 +1135,13 @@ public:
     memcpy(v, m->v, (_f) * sizeof(T));
   }
 
-  void set_seed(int seed) {
-    _is_seeded = true;
+  void set_seed(R seed) {
     _seed = seed;
   }
 
   void thread_build(int q, int thread_idx, ThreadedBuildPolicy& threaded_build_policy) {
-    Random _random;
     // Each thread needs its own seed, otherwise each thread would be building the same tree(s)
-    int seed = _is_seeded ? _seed + thread_idx : thread_idx;
-    _random.set_seed(seed);
+    Random _random(_seed + thread_idx);
 
     vector<S> thread_roots;
     while (1) {
