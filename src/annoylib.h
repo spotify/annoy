@@ -862,7 +862,7 @@ public:
 #if __cplusplus >= 201103L
   typedef typename std::remove_const<decltype(Random::default_seed)>::type R;
 #else
-  typedef Random::seed_type R;
+  typedef typename Random::seed_type R;
 #endif
 
 protected:
