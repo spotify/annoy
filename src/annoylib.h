@@ -874,7 +874,7 @@ protected:
   S _nodes_size;
   vector<S> _roots;
   S _K;
-  R _seed = Random::default_seed;
+  R _seed;
   bool _loaded;
   bool _verbose;
   int _fd;
@@ -882,7 +882,7 @@ protected:
   bool _built;
 public:
 
-   AnnoyIndex(int f) : _f(f) {
+   AnnoyIndex(int f) : _f(f), _seed(Random::default_seed) {
     _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
     _verbose = false;
     _built = false;
