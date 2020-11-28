@@ -57,7 +57,10 @@ typedef signed __int64    int64_t;
 #include <algorithm>
 #include <queue>
 #include <limits>
+
+#if __cplusplus >= 201103L
 #include <type_traits>
+#endif
 
 #ifdef ANNOYLIB_MULTITHREADED_BUILD
 #include <thread>
@@ -839,7 +842,13 @@ class AnnoyIndexInterface {
 };
 
 template<typename S, typename T, typename Distance, typename Random, class ThreadedBuildPolicy>
-  class AnnoyIndex : public AnnoyIndexInterface<S, T, typename std::remove_const<decltype(Random::default_seed)>::type> {
+  class AnnoyIndex : public AnnoyIndexInterface<S, T, 
+#if __cplusplus >= 201103L
+    typename std::remove_const<decltype(Random::default_seed)>::type
+#else
+    typename Random::seed_type
+#endif
+    > {
   /*
    * We use random projection to build a forest of binary trees of all items.
    * Basically just split the hyperspace into two sides by a hyperplane,
@@ -850,7 +859,11 @@ template<typename S, typename T, typename Distance, typename Random, class Threa
 public:
   typedef Distance D;
   typedef typename D::template Node<S, T> Node;
+#if __cplusplus >= 201103L
   typedef typename std::remove_const<decltype(Random::default_seed)>::type R;
+#else
+  typedef Random::seed_type R;
+#endif
 
 protected:
   const int _f;

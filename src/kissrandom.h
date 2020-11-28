@@ -21,6 +21,9 @@ struct Kiss32Random {
   uint32_t c;
 
   static const uint32_t default_seed = 123456789;
+#if __cplusplus < 201103L
+  typedef uint32_t seed_type;
+#endif
 
   // seed must be != 0
   Kiss32Random(uint32_t seed = default_seed) {
@@ -67,6 +70,9 @@ struct Kiss64Random {
   uint64_t c;
 
   static const uint64_t default_seed = 1234567890987654321ULL;
+#if __cplusplus < 201103L
+  typedef uint64_t seed_type;
+#endif
 
   // seed must be != 0
   Kiss64Random(uint64_t seed = default_seed) {
