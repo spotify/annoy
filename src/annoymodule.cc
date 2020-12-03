@@ -123,7 +123,7 @@ public:
     _index.get_item(item, &v_internal[0]);
     _unpack(&v_internal[0], v);
   };
-  void set_seed(int q) { _index.set_seed(q); };
+  void set_seed(uint64_t q) { _index.set_seed(q); };
   bool on_disk_build(const char* filename, char** error) { return _index.on_disk_build(filename, error); };
 };
 
