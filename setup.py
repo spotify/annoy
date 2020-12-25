@@ -19,9 +19,8 @@ from setuptools import setup, Extension
 import codecs
 import os
 import platform
+import subprocess
 import sys
-
-import setup_help
 
 readme_note = """\
 .. note::
@@ -33,6 +32,29 @@ readme_note = """\
     :target: https://github.com/spotify/annoy
 
 """
+
+def _get_AVX_macro_list():
+    cmd = """gcc -march=native -dM -E - < /dev/null | grep "__AVX512" | sort"""
+    #os.system(cmd)
+    exec_stdoutput = subprocess.check_output(cmd, shell=True)
+
+    AVX_macro_list = []
+    for i,line in enumerate(exec_stdoutput.decode().split(os.linesep)):
+        term_list = line.split(" ")
+        if term_list[0] == "#define":
+            AVX_macro_list.append(term_list[1])
+
+    return AVX_macro_list
+
+
+def _get_unuse_AVX512_options():
+    args = []
+    AVX_macro_list = _get_AVX_macro_list()
+    for m in AVX_macro_list:
+        option = "-U" + m
+        args.append(option)
+    return args
+
 
 with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
@@ -77,7 +99,7 @@ if manual_linker_args:
 # compile without AVX512.
 UNUSE_AVX512_ANNOY_COMPILE = os.environ.get('UNUSE_AVX512_ANNOY_COMPILE', None)
 if UNUSE_AVX512_ANNOY_COMPILE == "YES":
-    extra_compile_args += setup_help.get_unuse_AVX512_options()
+    extra_compile_args += _get_unuse_AVX512_options()
 
 setup(name='annoy',
       version='1.17.0',
