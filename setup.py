@@ -21,6 +21,8 @@ import os
 import platform
 import sys
 
+import setup_help
+
 readme_note = """\
 .. note::
 
@@ -71,6 +73,11 @@ if manual_compiler_args:
 manual_linker_args = os.environ.get('ANNOY_LINKER_ARGS', None)
 if manual_linker_args:
     extra_link_args = manual_linker_args.split(',')
+
+# compile without AVX512.
+UNUSE_AVX512_ANNOY_COMPILE = os.environ.get('UNUSE_AVX512_ANNOY_COMPILE', None)
+if UNUSE_AVX512_ANNOY_COMPILE == "YES":
+    extra_compile_args += setup_help.get_unuse_AVX512_options()
 
 setup(name='annoy',
       version='1.17.0',
