@@ -8,6 +8,13 @@ matrix:
     - python: 3.6
       env:
         - TOXENV=py36
+    - python: 3.7
+      env:
+        - TOXENV=py37
+    - os: osx
+      language: generic
+      env:
+        - TOXENV=py37
 
 env:
   matrix:
@@ -23,4 +30,3 @@ install:
 
 script:
   - TRAVIS=true tox
-
