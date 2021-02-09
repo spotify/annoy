@@ -59,6 +59,10 @@ public:
     if (mmaped == MAP_FAILED) {
       return Mapping();
     }
+#if defined(MADV_DONTDUMP)
+    // Exclude from a core dump those pages
+    madvise(mmaped, fd_stat.st_size, MADV_DONTDUMP);
+#endif
 
     if (need_mlock) {
       mlock(mmaped, fd_stat.st_size);
@@ -97,7 +101,8 @@ public:
 
     Mapping mapping;
     mapping.size = fd_stat.st_size;
-    mapping.data = mmap(0, mapping.size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
+    mapping.data = mmap(0, mapping.size, PROT_READ | PROT_WRITE, 
+                        MAP_SHARED | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
     if (mapping.data == MAP_FAILED) {
       return Mapping();
     }
@@ -113,6 +118,11 @@ public:
       bytes_left -= count;
     }
     close(fd);
+
+#if defined(MADV_DONTDUMP)
+    // Exclude from a core dump those pages
+    madvise(mmaped, fd_stat.st_size, MADV_DONTDUMP);
+#endif
 
     return mapping;
   }
