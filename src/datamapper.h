@@ -121,7 +121,7 @@ public:
 
 #if defined(MADV_DONTDUMP)
     // Exclude from a core dump those pages
-    madvise(mmaped, fd_stat.st_size, MADV_DONTDUMP);
+    madvise(const_cast<void*>(mapping.data), fd_stat.st_size, MADV_DONTDUMP);
 #endif
 
     return mapping;

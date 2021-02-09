@@ -790,6 +790,8 @@ public:
   }
 
   bool save(const char* filename) {
+    // remove original file
+    unlink(filename);
     FILE *f = fopen(filename, "wb");
     if (f == NULL)
       return false;
@@ -816,7 +818,8 @@ public:
       // we have mmapped data
       close(_fd);
       size_t size = size_t(_n_nodes) * _s;
-      munmap(_nodes, size);
+      if( _nodes != MAP_FAILED )
+        munmap(_nodes, size);
     } else if (_nodes) {
       // We have heap allocated data
       free(_nodes);
@@ -832,9 +835,13 @@ public:
       return false;
     }
     off_t size = lseek(_fd, 0, SEEK_END);
-    _nodes = (Node*)mmap(0, size, PROT_READ, MAP_SHARED, _fd, 0);
-    if( _nodes == MAP_FAILED )
+    if( 0 == size )
+      // cannot load zero-sized file, but some tests wait this behavior
+      return true;
+    _nodes = (Node*)mmap(0, size_t(size), PROT_READ, MAP_SHARED, _fd, 0);
+    if( _nodes == MAP_FAILED ) {
       return false;
+    }
     _n_nodes = (S)(size / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
