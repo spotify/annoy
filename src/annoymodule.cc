@@ -311,8 +311,6 @@ convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
     return false;
   }
 
-    return false;
-  }
   for (int z = 0; z < f; z++) {
     PyObject *key = PyInt_FromLong(z);
     PyObject *pf = PyObject_GetItem(v, key);
