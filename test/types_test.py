@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+from typing import Type
 import numpy
 import random
 from common import TestCase
@@ -56,3 +57,53 @@ class TypesTest(TestCase):
             self.assertRaises(IndexError, i.get_distance, 0, bad_index)
             self.assertRaises(IndexError, i.get_nns_by_item, bad_index, 1)
             self.assertRaises(IndexError, i.get_item_vector, bad_index)
+
+    def test_missing_len(self):
+        """
+        We should get a helpful error message if our vector doesn't have a
+        __len__ method.
+        """
+        class FakeCollection:
+            ...
+        
+        i = AnnoyIndex(10, 'euclidean')
+        with self.assertRaises(TypeError, msg="object of type 'FakeCollection' has no len()"):
+            i.add_item(1, FakeCollection())
+
+    def test_missing_iter(self):
+        """
+        We should get a helpful error message if our vector doesn't have a
+        __iter__ method.
+        """
+        class FakeCollection:
+            def __len__(self):
+                return 5
+        
+        i = AnnoyIndex(5, 'euclidean')
+        with self.assertRaises(TypeError, msg="'FakeCollection' object is not iterable"):
+            i.add_item(1, FakeCollection())
+
+    def test_short_iter(self):
+        """
+        Ensure we handle our vector not being long enough.
+        """
+        class FakeCollection:
+            def __len__(self):
+                return 3
+            
+            def __iter__(self):
+                return iter([1,2])
+        
+        i = AnnoyIndex(3, 'euclidean')
+        with self.assertRaises(IndexError, msg="Vector has wrong length (expected 3, got 2)"):
+            i.add_item(1, FakeCollection())
+    
+    def test_non_float(self):
+        """
+        We should error gracefully if non-floats are provided in our vector.
+        """
+        array_strings = ["1", "2", "3"]
+        
+        i = AnnoyIndex(3, 'euclidean')
+        with self.assertRaises(TypeError, msg="must be real number, not str"):
+            i.add_item(1, array_strings)
