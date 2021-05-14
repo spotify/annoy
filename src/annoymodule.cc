@@ -295,7 +295,6 @@ bool
 convert_iterable_to_vector(PyObject* v, int f, vector<float>* w) {
   Py_ssize_t length = PyObject_Size(v);
   if (length == -1) {
-    PyErr_Format(PyExc_TypeError, "object of type '%.200s' has no len()", Py_TYPE(v)->tp_name);
     return false;
   }
   if (length != f) {
@@ -307,7 +306,6 @@ convert_iterable_to_vector(PyObject* v, int f, vector<float>* w) {
   PyObject *item;
 
   if (iterator == NULL) {
-    PyErr_Format(PyExc_TypeError, "'%.200s' object is not iterable", Py_TYPE(v)->tp_name);
     return false;
   }
   for (int z = 0; z < f; z++) {

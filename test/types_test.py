@@ -64,7 +64,7 @@ class TypesTest(TestCase):
         __len__ method.
         """
         class FakeCollection:
-            ...
+            pass
         
         i = AnnoyIndex(10, 'euclidean')
         with self.assertRaises(TypeError, msg="object of type 'FakeCollection' has no len()"):
