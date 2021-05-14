@@ -301,7 +301,7 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 
 bool
-convert_iterable_to_vector(PyObject* v, int f, vector<float>* w) {
+convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
   Py_ssize_t length = PyObject_Size(v);
   if (length == -1) {
     return false;
@@ -311,30 +311,14 @@ convert_iterable_to_vector(PyObject* v, int f, vector<float>* w) {
     return false;
   }
 
-  PyObject *iterator = PyObject_GetIter(v);
-  PyObject *item;
-
-  if (iterator == NULL) {
     return false;
   }
   for (int z = 0; z < f; z++) {
-    item = PyIter_Next(iterator);
-
-    if (item == NULL) {
-      PyErr_Format(PyExc_IndexError, "Vector has wrong length (expected %d, got %d)", f, z);
-      return false;
-    }
-
-    double value = PyFloat_AsDouble(item);
-    Py_DECREF(item);
-    if (value == -1.0 && PyErr_Occurred()) {
-      return false;
-    }
-    (*w)[z] = value;
-  }
-  Py_DECREF(iterator);
-  if (PyErr_Occurred()) {
-    return false;
+    PyObject *key = PyInt_FromLong(z);
+    PyObject *pf = PyObject_GetItem(v, key);
+    (*w)[z] = PyFloat_AsDouble(pf);
+    Py_DECREF(key);
+    Py_DECREF(pf);
   }
   return true;
 }
@@ -351,7 +335,7 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args, PyObject *kwargs) {
     return NULL;
 
   vector<float> w(self->f);
-  if (!convert_iterable_to_vector(v, self->f, &w)) {
+  if (!convert_list_to_vector(v, self->f, &w)) {
     return NULL;
   }
 
@@ -407,7 +391,7 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   }
 
   vector<float> w(self->f);
-  if (!convert_iterable_to_vector(v, self->f, &w)) {
+  if (!convert_list_to_vector(v, self->f, &w)) {
     return NULL;
   }
   char* error;
