@@ -237,16 +237,25 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
 PyObject*
 get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
   PyObject* l = PyList_New(result.size());
+  if (l == NULL) {
+    return NULL;
+  }
   for (size_t i = 0; i < result.size(); i++)
     PyList_SetItem(l, i, PyInt_FromLong(result[i]));
   if (!include_distances)
     return l;
 
   PyObject* d = PyList_New(distances.size());
+  if (d == NULL) {
+    return NULL;
+  }
   for (size_t i = 0; i < distances.size(); i++)
     PyList_SetItem(d, i, PyFloat_FromDouble(distances[i]));
 
   PyObject* t = PyTuple_New(2);
+  if (t == NULL) {
+    return NULL;
+  }
   PyTuple_SetItem(t, 0, l);
   PyTuple_SetItem(t, 1, d);
 
@@ -372,6 +381,9 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   vector<float> v(self->f);
   self->ptr->get_item(item, &v[0]);
   PyObject* l = PyList_New(self->f);
+  if (l == NULL) {
+    return NULL;
+  }
   for (int z = 0; z < self->f; z++) {
     PyList_SetItem(l, z, PyFloat_FromDouble(v[z]));
   }
