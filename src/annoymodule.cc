@@ -326,6 +326,9 @@ convert_iterable_to_vector(PyObject* v, int f, vector<float>* w) {
     (*w)[z] = value;
   }
   Py_DECREF(iterator);
+  if (PyErr_Occurred()) {
+    return false;
+  }
   return true;
 }
 
