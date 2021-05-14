@@ -292,26 +292,40 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 
 bool
-convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
-  if (PyObject_Size(v) == -1) {
-    char buf[256];
-    snprintf(buf, 256, "Expected an iterable, got an object of type \"%s\"", v->ob_type->tp_name);
-    PyErr_SetString(PyExc_ValueError, buf);
+convert_iterable_to_vector(PyObject* v, int f, vector<float>* w) {
+  Py_ssize_t length = PyObject_Size(v);
+  if (length == -1) {
+    PyErr_Format(PyExc_TypeError, "object of type '%.200s' has no len()", Py_TYPE(v)->tp_name);
     return false;
   }
-  if (PyObject_Size(v) != f) {
-    char buf[128];
-    snprintf(buf, 128, "Vector has wrong length (expected %d, got %ld)", f, PyObject_Size(v));
-    PyErr_SetString(PyExc_IndexError, buf);
+  if (length != f) {
+    PyErr_Format(PyExc_IndexError, "Vector has wrong length (expected %d, got %ld)", f, length);
+    return false;
+  }
+
+  PyObject *iterator = PyObject_GetIter(v);
+  PyObject *item;
+
+  if (iterator == NULL) {
+    PyErr_Format(PyExc_TypeError, "'%.200s' object is not iterable", Py_TYPE(v)->tp_name);
     return false;
   }
   for (int z = 0; z < f; z++) {
-    PyObject *key = PyInt_FromLong(z);
-    PyObject *pf = PyObject_GetItem(v, key);
-    (*w)[z] = PyFloat_AsDouble(pf);
-    Py_DECREF(key);
-    Py_DECREF(pf);
+    item = PyIter_Next(iterator);
+
+    if (item == NULL) {
+      PyErr_Format(PyExc_IndexError, "Vector has wrong length (expected %d, got %d)", f, z);
+      return false;
+    }
+
+    double value = PyFloat_AsDouble(item);
+    Py_DECREF(item);
+    if (value == -1.0 && PyErr_Occurred()) {
+      return false;
+    }
+    (*w)[z] = value;
   }
+  Py_DECREF(iterator);
   return true;
 }
 
@@ -327,7 +341,7 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args, PyObject *kwargs) {
     return NULL;
 
   vector<float> w(self->f);
-  if (!convert_list_to_vector(v, self->f, &w)) {
+  if (!convert_iterable_to_vector(v, self->f, &w)) {
     return NULL;
   }
 
@@ -380,7 +394,7 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   }
 
   vector<float> w(self->f);
-  if (!convert_list_to_vector(v, self->f, &w)) {
+  if (!convert_iterable_to_vector(v, self->f, &w)) {
     return NULL;
   }
   char* error;
