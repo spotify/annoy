@@ -69,20 +69,20 @@ class TypesTest(TestCase):
         with self.assertRaises(TypeError, msg="object of type 'FakeCollection' has no len()"):
             i.add_item(1, FakeCollection())
 
-    def test_missing_iter(self):
+    def test_missing_getitem(self):
         """
         We should get a helpful error message if our vector doesn't have a
-        __iter__ method.
+        __getitem__ method.
         """
         class FakeCollection:
             def __len__(self):
                 return 5
         
         i = AnnoyIndex(5, 'euclidean')
-        with self.assertRaises(TypeError, msg="'FakeCollection' object is not iterable"):
+        with self.assertRaises(TypeError, msg="'FakeCollection' object is not subscriptable"):
             i.add_item(1, FakeCollection())
 
-    def test_short_iter(self):
+    def test_short(self):
         """
         Ensure we handle our vector not being long enough.
         """
@@ -90,11 +90,11 @@ class TypesTest(TestCase):
             def __len__(self):
                 return 3
             
-            def __iter__(self):
-                return iter([1,2])
+            def __getitem__(self, i: int) -> float:
+                raise IndexError 
         
         i = AnnoyIndex(3, 'euclidean')
-        with self.assertRaises(IndexError, msg="Vector has wrong length (expected 3, got 2)"):
+        with self.assertRaises(IndexError):
             i.add_item(1, FakeCollection())
     
     def test_non_float(self):
