@@ -90,7 +90,7 @@ class TypesTest(TestCase):
             def __len__(self):
                 return 3
             
-            def __getitem__(self, i: int) -> float:
+            def __getitem__(self, i):
                 raise IndexError 
         
         i = AnnoyIndex(3, 'euclidean')
