@@ -237,16 +237,25 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
 PyObject*
 get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
   PyObject* l = PyList_New(result.size());
+  if (l == NULL) {
+    return NULL;
+  }
   for (size_t i = 0; i < result.size(); i++)
     PyList_SetItem(l, i, PyInt_FromLong(result[i]));
   if (!include_distances)
     return l;
 
   PyObject* d = PyList_New(distances.size());
+  if (d == NULL) {
+    return NULL;
+  }
   for (size_t i = 0; i < distances.size(); i++)
     PyList_SetItem(d, i, PyFloat_FromDouble(distances[i]));
 
   PyObject* t = PyTuple_New(2);
+  if (t == NULL) {
+    return NULL;
+  }
   PyTuple_SetItem(t, 0, l);
   PyTuple_SetItem(t, 1, d);
 
@@ -293,24 +302,31 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 bool
 convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
-  if (PyObject_Size(v) == -1) {
-    char buf[256];
-    snprintf(buf, 256, "Expected an iterable, got an object of type \"%s\"", v->ob_type->tp_name);
-    PyErr_SetString(PyExc_ValueError, buf);
+  Py_ssize_t length = PyObject_Size(v);
+  if (length == -1) {
     return false;
   }
-  if (PyObject_Size(v) != f) {
-    char buf[128];
-    snprintf(buf, 128, "Vector has wrong length (expected %d, got %ld)", f, PyObject_Size(v));
-    PyErr_SetString(PyExc_IndexError, buf);
+  if (length != f) {
+    PyErr_Format(PyExc_IndexError, "Vector has wrong length (expected %d, got %ld)", f, length);
     return false;
   }
+
   for (int z = 0; z < f; z++) {
     PyObject *key = PyInt_FromLong(z);
+    if (key == NULL) {
+      return false;
+    }
     PyObject *pf = PyObject_GetItem(v, key);
-    (*w)[z] = PyFloat_AsDouble(pf);
     Py_DECREF(key);
+    if (pf == NULL) {
+      return false;
+    }
+    double value = PyFloat_AsDouble(pf);
     Py_DECREF(pf);
+    if (value == -1.0 && PyErr_Occurred()) {
+      return false;
+    }
+    (*w)[z] = value;
   }
   return true;
 }
@@ -357,6 +373,9 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   vector<float> v(self->f);
   self->ptr->get_item(item, &v[0]);
   PyObject* l = PyList_New(self->f);
+  if (l == NULL) {
+    return NULL;
+  }
   for (int z = 0; z < self->f; z++) {
     PyList_SetItem(l, z, PyFloat_FromDouble(v[z]));
   }
