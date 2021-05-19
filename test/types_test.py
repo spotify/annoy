@@ -13,6 +13,7 @@
 # the License.
 
 import numpy
+import sys
 import random
 from common import TestCase
 from annoy import AnnoyIndex
@@ -66,8 +67,13 @@ class TypesTest(TestCase):
             pass
         
         i = AnnoyIndex(10, 'euclidean')
-        with self.assertRaises(TypeError, msg="object of type 'FakeCollection' has no len()"):
-            i.add_item(1, FakeCollection())
+        # Python 2.7 raises an AttributeError instead of a TypeError like newer versions of Python.
+        if sys.version_info.major == 2:
+            with self.assertRaises(AttributeError, msg="FakeCollection instance has no attribute '__len__'"):
+                i.add_item(1, FakeCollection())
+        else:
+            with self.assertRaises(TypeError, msg="object of type 'FakeCollection' has no len()"):
+                i.add_item(1, FakeCollection())
 
     def test_missing_getitem(self):
         """
@@ -79,8 +85,13 @@ class TypesTest(TestCase):
                 return 5
         
         i = AnnoyIndex(5, 'euclidean')
-        with self.assertRaises(TypeError, msg="'FakeCollection' object is not subscriptable"):
-            i.add_item(1, FakeCollection())
+        # Python 2.7 raises an AttributeError instead of a TypeError like newer versions of Python.
+        if sys.version_info.major == 2:
+            with self.assertRaises(AttributeError, msg="FakeCollection instance has no attribute '__getitem__'"):
+                i.add_item(1, FakeCollection())
+        else:
+            with self.assertRaises(TypeError, msg="'FakeCollection' object is not subscriptable"):
+                i.add_item(1, FakeCollection())
 
     def test_short(self):
         """
