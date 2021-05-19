@@ -317,17 +317,16 @@ convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
     PyErr_Format(PyExc_IndexError, "Vector has wrong length (expected %d, got %ld)", f, length);
     return false;
   }
-  PyObject *key = NULL;
-  PyObject *pf = NULL;
+
   for (int z = 0; z < f; z++) {
-    key = PyInt_FromLong(z);
+    PyObject *key = PyInt_FromLong(z);
     if (key == NULL) {
-      goto error;
+      return false;
     }
-    pf = PyObject_GetItem(v, key);
+    PyObject *pf = PyObject_GetItem(v, key);
     Py_DECREF(key);
     if (pf == NULL) {
-      goto error;
+      return false;
     }
     double value = PyFloat_AsDouble(pf);
     Py_DECREF(pf);
@@ -337,11 +336,6 @@ convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
     (*w)[z] = value;
   }
   return true;
-
-  error:
-    Py_XDECREF(key);
-    Py_XDECREF(pf);
-    return false;
 }
 
 static PyObject* 
