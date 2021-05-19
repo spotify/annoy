@@ -236,30 +236,37 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 PyObject*
 get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
-  PyObject* l = PyList_New(result.size());
+  PyObject* l = NULL;
+  PyObject* d = NULL;
+  PyObject* t = NULL;
+  l = PyList_New(result.size());
   if (l == NULL) {
-    return NULL;
+    goto error;
   }
   for (size_t i = 0; i < result.size(); i++)
     PyList_SetItem(l, i, PyInt_FromLong(result[i]));
   if (!include_distances)
     return l;
 
-  PyObject* d = PyList_New(distances.size());
+  d = PyList_New(distances.size());
   if (d == NULL) {
-    return NULL;
+    goto error;
   }
   for (size_t i = 0; i < distances.size(); i++)
     PyList_SetItem(d, i, PyFloat_FromDouble(distances[i]));
 
-  PyObject* t = PyTuple_New(2);
+  t = PyTuple_Pack(2, l, d);
   if (t == NULL) {
-    return NULL;
+    goto error;
   }
-  PyTuple_SetItem(t, 0, l);
-  PyTuple_SetItem(t, 1, d);
 
   return t;
+
+  error:
+    Py_XDECREF(l);
+    Py_XDECREF(d);
+    Py_XDECREF(t);
+    return NULL;
 }
 
 
@@ -310,16 +317,17 @@ convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
     PyErr_Format(PyExc_IndexError, "Vector has wrong length (expected %d, got %ld)", f, length);
     return false;
   }
-
+  PyObject *key = NULL;
+  PyObject *pf = NULL;
   for (int z = 0; z < f; z++) {
-    PyObject *key = PyInt_FromLong(z);
+    key = PyInt_FromLong(z);
     if (key == NULL) {
-      return false;
+      goto error;
     }
-    PyObject *pf = PyObject_GetItem(v, key);
+    pf = PyObject_GetItem(v, key);
     Py_DECREF(key);
     if (pf == NULL) {
-      return false;
+      goto error;
     }
     double value = PyFloat_AsDouble(pf);
     Py_DECREF(pf);
@@ -329,6 +337,11 @@ convert_list_to_vector(PyObject* v, int f, vector<float>* w) {
     (*w)[z] = value;
   }
   return true;
+
+  error:
+    Py_XDECREF(key);
+    Py_XDECREF(pf);
+    return false;
 }
 
 static PyObject* 
