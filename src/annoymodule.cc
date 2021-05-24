@@ -250,6 +250,7 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
       goto error;
     }
     PyList_SetItem(l, i, res);
+    res = NULL;
   }
   if (!include_distances)
     return l;
@@ -263,6 +264,7 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
       goto error;
     }
     PyList_SetItem(d, i, dist);
+    dist = NULL;
   }
 
   if ((t = PyTuple_Pack(2, l, d)) == NULL) {
@@ -400,6 +402,7 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
       goto error;
     }
     PyList_SetItem(l, z, dist);
+    dist = NULL;
   }
 
   return l;
