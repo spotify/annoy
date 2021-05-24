@@ -267,6 +267,7 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
     if (PyList_SetItem(d, i, dist) < 0) {
       goto error;
     }
+    dist = NULL;
   }
 
   if ((t = PyTuple_Pack(2, l, d)) == NULL) {
