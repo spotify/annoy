@@ -239,18 +239,16 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
   PyObject* l = NULL;
   PyObject* d = NULL;
   PyObject* t = NULL;
-  PyObject* res = NULL;
-  PyObject* dist = NULL;
 
   if ((l = PyList_New(result.size())) == NULL) {
     goto error;
   }
   for (size_t i = 0; i < result.size(); i++) {
-    if ((res = PyInt_FromLong(result[i])) == NULL) {
+    PyObject* res = PyInt_FromLong(result[i]);
+    if (res == NULL) {
       goto error;
     }
     PyList_SetItem(l, i, res);
-    res = NULL;
   }
   if (!include_distances)
     return l;
@@ -260,11 +258,11 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
   }
 
   for (size_t i = 0; i < distances.size(); i++) {
-    if ((dist = PyFloat_FromDouble(distances[i])) == NULL) {
+    PyObject* dist = PyFloat_FromDouble(distances[i]);
+    if (dist == NULL) {
       goto error;
     }
     PyList_SetItem(d, i, dist);
-    dist = NULL;
   }
 
   if ((t = PyTuple_Pack(2, l, d)) == NULL) {
@@ -277,8 +275,6 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
     Py_XDECREF(l);
     Py_XDECREF(d);
     Py_XDECREF(t);
-    Py_XDECREF(res);
-    Py_XDECREF(dist);
     return NULL;
 }
 
@@ -398,18 +394,17 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   }
   PyObject* dist = NULL;
   for (int z = 0; z < self->f; z++) {
-    if ((dist = PyFloat_FromDouble(v[z])) == NULL) {
+    PyObject* dist = PyFloat_FromDouble(v[z]);
+    if (dist == NULL) {
       goto error;
     }
     PyList_SetItem(l, z, dist);
-    dist = NULL;
   }
 
   return l;
 
   error:
     Py_XDECREF(l);
-    Py_XDECREF(dist);
     return NULL;
 }
 
