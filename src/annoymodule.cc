@@ -249,9 +249,7 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
     if ((res = PyInt_FromLong(result[i])) == NULL) {
       goto error;
     }
-    if (PyList_SetItem(l, i, res) < 0) {
-      goto error;
-    }
+    PyList_SetItem(l, i, res);
   }
   if (!include_distances)
     return l;
@@ -264,10 +262,7 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
     if ((dist = PyFloat_FromDouble(distances[i])) == NULL) {
       goto error;
     }
-    if (PyList_SetItem(d, i, dist) < 0) {
-      goto error;
-    }
-    dist = NULL;
+    PyList_SetItem(d, i, dist);
   }
 
   if ((t = PyTuple_Pack(2, l, d)) == NULL) {
@@ -404,9 +399,7 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
     if ((dist = PyFloat_FromDouble(v[z])) == NULL) {
       goto error;
     }
-    if (PyList_SetItem(l, z, dist) < 0) {
-      goto error;
-    }
+    PyList_SetItem(l, z, dist);
   }
 
   return l;
