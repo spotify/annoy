@@ -392,7 +392,6 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   if (l == NULL) {
     return NULL;
   }
-  PyObject* dist = NULL;
   for (int z = 0; z < self->f; z++) {
     PyObject* dist = PyFloat_FromDouble(v[z]);
     if (dist == NULL) {
