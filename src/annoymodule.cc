@@ -236,30 +236,46 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 PyObject*
 get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
-  PyObject* l = PyList_New(result.size());
-  if (l == NULL) {
-    return NULL;
+  PyObject* l = NULL;
+  PyObject* d = NULL;
+  PyObject* t = NULL;
+
+  if ((l = PyList_New(result.size())) == NULL) {
+    goto error;
   }
-  for (size_t i = 0; i < result.size(); i++)
-    PyList_SetItem(l, i, PyInt_FromLong(result[i]));
+  for (size_t i = 0; i < result.size(); i++) {
+    PyObject* res = PyInt_FromLong(result[i]);
+    if (res == NULL) {
+      goto error;
+    }
+    PyList_SetItem(l, i, res);
+  }
   if (!include_distances)
     return l;
 
-  PyObject* d = PyList_New(distances.size());
-  if (d == NULL) {
-    return NULL;
+  if ((d = PyList_New(distances.size())) == NULL) {
+    goto error;
   }
-  for (size_t i = 0; i < distances.size(); i++)
-    PyList_SetItem(d, i, PyFloat_FromDouble(distances[i]));
 
-  PyObject* t = PyTuple_New(2);
-  if (t == NULL) {
-    return NULL;
+  for (size_t i = 0; i < distances.size(); i++) {
+    PyObject* dist = PyFloat_FromDouble(distances[i]);
+    if (dist == NULL) {
+      goto error;
+    }
+    PyList_SetItem(d, i, dist);
   }
-  PyTuple_SetItem(t, 0, l);
-  PyTuple_SetItem(t, 1, d);
+
+  if ((t = PyTuple_Pack(2, l, d)) == NULL) {
+    goto error;
+  }
 
   return t;
+
+  error:
+    Py_XDECREF(l);
+    Py_XDECREF(d);
+    Py_XDECREF(t);
+    return NULL;
 }
 
 
@@ -377,10 +393,18 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
     return NULL;
   }
   for (int z = 0; z < self->f; z++) {
-    PyList_SetItem(l, z, PyFloat_FromDouble(v[z]));
+    PyObject* dist = PyFloat_FromDouble(v[z]);
+    if (dist == NULL) {
+      goto error;
+    }
+    PyList_SetItem(l, z, dist);
   }
 
   return l;
+
+  error:
+    Py_XDECREF(l);
+    return NULL;
 }
 
 
