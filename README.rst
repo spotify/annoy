@@ -136,7 +136,7 @@ More info
 * `Boris Nagaev <https://github.com/starius>`__ wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
 * During part of Spotify Hack Week 2016 (and a bit afterward), `Jim Kang <https://github.com/jimkang>`__ wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
 * `Min-Seok Kim <https://github.com/mskimm>`__ built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
-* `hanabi1224 <https://github.com/hanabi1224>`__ built a `Rust version <https://github.com/hanabi1224/RuAnnoy>`__ of Annoy and dotnet binding although currently it's read-only.
+* `hanabi1224 <https://github.com/hanabi1224>`__ built a read-only `Rust version <https://github.com/hanabi1224/RuAnnoy>`__ of Annoy, together with **dotnet, jvm and dart** read-only bindings.
 * `Presentation from New York Machine Learning meetup <http://www.slideshare.net/erikbern/approximate-nearest-neighbor-methods-and-vector-models-nyc-ml-meetup>`__ about Annoy
 * Annoy is available as a `conda package <https://anaconda.org/conda-forge/python-annoy>`__ on Linux, OS X, and Windows.
 * `ann-benchmarks <https://github.com/erikbern/ann-benchmarks>`__ is a benchmark for several approximate nearest neighbor libraries. Annoy seems to be fairly competitive, especially at higher precisions:
