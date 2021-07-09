@@ -54,6 +54,8 @@ typedef signed __int32    int32_t;
     #define PyInt_FromLong PyLong_FromLong 
 #endif
 
+using namespace Annoy;
+
 #ifdef ANNOYLIB_MULTITHREADED_BUILD
   typedef AnnoyIndexMultiThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
 #else
