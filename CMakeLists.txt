@@ -10,8 +10,7 @@ add_library(Annoy INTERFACE)
 set(ANNOY_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/annoy)
 file(MAKE_DIRECTORY ${ANNOY_INCLUDE_DIR})
 foreach (HEADER annoylib.h kissrandom.h mman.h)
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/src/${HEADER} 
-         DESTINATION ${ANNOY_INCLUDE_DIR}/${HEADER})
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/src/${HEADER} DESTINATION ${ANNOY_INCLUDE_DIR})
 endforeach()
 
 target_include_directories(Annoy INTERFACE include/)
