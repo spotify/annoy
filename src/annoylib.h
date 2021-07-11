@@ -1129,8 +1129,31 @@ public:
     _get_all_nns(m->v, n, search_k, result, distances);
   }
 
+  vector<pair<T, S> > get_nns_by_item(S item, size_t n, int search_k, bool normalize = true) const {
+    vector<pair<T, S> > output;
+    const Node* m = _get(item);
+    _get_all_nns(m->v, n, search_k, output);
+    if (normalize) {
+      for (size_t i = 0; i < output.size(); i++) {
+        output[i].first = D::normalized_distance(output[i].first);
+      }
+    }
+    return output;
+  }
+
   void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {
     _get_all_nns(w, n, search_k, result, distances);
+  }
+
+  vector<pair<T, S> > get_nns_by_vector(const T* w, size_t n, int search_k, bool normalize = true) const {
+    vector<pair<T, S> > output;
+    _get_all_nns(w, n, search_k, output);
+    if (normalize) {
+      for (size_t i = 0; i < output.size(); i++) {
+        output[i].first = D::normalized_distance(output[i].first);
+      }
+    }
+    return output;
   }
 
   S get_n_items() const {
@@ -1343,6 +1366,17 @@ protected:
   }
 
   void _get_all_nns(const T* v, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {
+    vector<pair<T, S> > nns_dist;
+    _get_all_nns(v, n, search_k, nns_dist);
+    for (size_t i = 0; i < nns_dist.size(); i++) {
+      if (distances)
+        distances->push_back(D::normalized_distance(nns_dist[i].first));
+      result->push_back(nns_dist[i].second);
+    }
+    return;
+  }
+
+  void _get_all_nns(const T* v, size_t n, int search_k, vector<pair<T, S> >& nns_dist) const {
     Node* v_node = (Node *)alloca(_s);
     D::template zero_value<Node>(v_node);
     memcpy(v_node->v, v, sizeof(T) * _f);
@@ -1380,7 +1414,6 @@ protected:
     // Get distances for all items
     // To avoid calculating distance multiple times for any items, sort by id
     std::sort(nns.begin(), nns.end());
-    vector<pair<T, S> > nns_dist;
     S last = -1;
     for (size_t i = 0; i < nns.size(); i++) {
       S j = nns[i]; 
@@ -1394,11 +1427,8 @@ protected:
     size_t m = nns_dist.size();
     size_t p = n < m ? n : m; // Return this many items
     std::partial_sort(nns_dist.begin(), nns_dist.begin() + p, nns_dist.end());
-    for (size_t i = 0; i < p; i++) {
-      if (distances)
-        distances->push_back(D::normalized_distance(nns_dist[i].first));
-      result->push_back(nns_dist[i].second);
-    }
+    nns_dist.resize(p);
+    return;
   }
 };
 
