@@ -1,6 +1,8 @@
 #include "annoylib.h"
 #include "kissrandom.h"
 
+using namespace Annoy;
+
 namespace GoAnnoy {
 
 class AnnoyIndex {

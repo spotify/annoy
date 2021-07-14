@@ -1,5 +1,5 @@
-#ifndef KISSRANDOM_H
-#define KISSRANDOM_H
+#ifndef ANNOY_KISSRANDOM_H
+#define ANNOY_KISSRANDOM_H
 
 #if defined(_MSC_VER) && _MSC_VER == 1500
 typedef unsigned __int32    uint32_t;
@@ -7,6 +7,8 @@ typedef unsigned __int64    uint64_t;
 #else
 #include <stdint.h>
 #endif
+
+namespace Annoy {
 
 // KISS = "keep it simple, stupid", but high quality random number generator
 // http://www0.cs.ucl.ac.uk/staff/d.jones/GoodPracticeRNG.pdf -> "Use a good RNG and build it into your code"
@@ -111,6 +113,8 @@ struct Kiss64Random {
     x = seed;
   }
 };
+
+}
 
 #endif
 // vim: tabstop=2 shiftwidth=2

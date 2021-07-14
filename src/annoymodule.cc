@@ -24,9 +24,9 @@ typedef signed __int32    int32_t;
 #endif
 
 
-#if defined(USE_AVX512)
+#if defined(ANNOYLIB_USE_AVX512)
 #define AVX_INFO "Using 512-bit AVX instructions"
-#elif defined(USE_AVX128)
+#elif defined(ANNOYLIB_USE_AVX128)
 #define AVX_INFO "Using 128-bit AVX instructions"
 #else
 #define AVX_INFO "Not using AVX instructions"
@@ -53,6 +53,8 @@ typedef signed __int32    int32_t;
 #ifdef IS_PY3K
     #define PyInt_FromLong PyLong_FromLong 
 #endif
+
+using namespace Annoy;
 
 #ifdef ANNOYLIB_MULTITHREADED_BUILD
   typedef AnnoyIndexMultiThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
