@@ -24,7 +24,6 @@ try:
 except ImportError:
     from urllib.request import urlretrieve # Python 3
 import gzip
-from nose.plugins.attrib import attr
 
 class AccuracyTest(unittest.TestCase):
     def _get_index(self, dataset):
