@@ -107,17 +107,20 @@ func (suite *AnnoyTestSuite) TestFileHandling() {
 func (suite *AnnoyTestSuite) TestOnDiskBuild() {
      index := annoyindex.NewAnnoyIndexAngular(3)
      index.OnDiskBuild("go_test.ann");
-     
+
      info, err := os.Stat("go_test.ann")
      if err != nil {
         assert.Fail(suite.T(), "Failed to create file, file not found")
      }
-     
+     if info.Size() == 0 {
+        assert.Fail(suite.T(), "Failed to create file, file size zero")
+     }
+
      index.AddItem(0, []float32{0, 0, 1})
      index.AddItem(1, []float32{0, 1, 0})
      index.AddItem(2, []float32{1, 0, 0})
      index.Build(10)
-     
+
      index.Unload();
      index.Load("go_test.ann");
 
@@ -132,7 +135,7 @@ func (suite *AnnoyTestSuite) TestOnDiskBuild() {
      assert.Equal(suite.T(), []int{2, 0, 1}, result)
 
      annoyindex.DeleteAnnoyIndexAngular(index)
-     
+
      os.Remove("go_test.ann")
 }
 
@@ -253,5 +256,3 @@ func (suite *AnnoyTestSuite) TestLargeEuclideanIndex() {
 func TestAnnoyTestSuite(t *testing.T) {
     suite.Run(t, new(AnnoyTestSuite))
 }
-
-
