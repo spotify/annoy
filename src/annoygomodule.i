@@ -1,5 +1,7 @@
 %module annoyindex
 
+namespace Annoy {}
+
 %{
 #include "annoygomodule.h"
 %}
@@ -92,6 +94,3 @@
 %feature("notabstract") GoAnnoyIndexEuclidean;
 %feature("notabstract") GoAnnoyIndexManhattan;
 %feature("notabstract") GoAnnoyIndexDotProduct;
-
-
-
