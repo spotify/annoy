@@ -43,7 +43,7 @@ class HolesTest(TestCase):
             annoy.add_item(base_i + i, numpy.random.normal(size=(f,)))
         annoy.build(100)
         res = annoy.get_nns_by_item(base_i, n)
-        self.assertEquals(set(res), set([base_i + i for i in range(n)]))
+        self.assertEqual(set(res), set([base_i + i for i in range(n)]))
 
     def test_root_one_child(self):
         # See https://github.com/spotify/annoy/issues/223

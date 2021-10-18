@@ -244,4 +244,4 @@ class IndexTest(TestCase):
         self.assertLess(os.path.getsize(path), dangerous_size + 100e3)
 
         # Sanity check number of trees
-        self.assertEquals(m.get_n_trees(), n_trees)
+        self.assertEqual(m.get_n_trees(), n_trees)

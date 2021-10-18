@@ -34,6 +34,6 @@ class SeedTest(TestCase):
             indexes.append(index)
 
         for k in range(Y.shape[0]):
-            self.assertEquals(indexes[0].get_nns_by_vector(Y[k], 100),
-                              indexes[1].get_nns_by_vector(Y[k], 100))
+            self.assertEqual(indexes[0].get_nns_by_vector(Y[k], 100),
+                             indexes[1].get_nns_by_vector(Y[k], 100))
 

@@ -205,8 +205,8 @@ class AngularIndexTest(TestCase):
         idx.save('foo.idx')
         idx = AnnoyIndex(100, 'angular')
         idx.load('foo.idx')
-        self.assertEquals(idx.get_n_items(), 1)
-        self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [0])
+        self.assertEqual(idx.get_n_items(), 1)
+        self.assertEqual(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [0])
 
     def test_no_items(self):
         idx = AnnoyIndex(100, 'angular')
@@ -214,8 +214,8 @@ class AngularIndexTest(TestCase):
         idx.save('foo.idx')
         idx = AnnoyIndex(100, 'angular')
         idx.load('foo.idx')
-        self.assertEquals(idx.get_n_items(), 0)
-        self.assertEquals(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
+        self.assertEqual(idx.get_n_items(), 0)
+        self.assertEqual(idx.get_nns_by_vector(vector=numpy.random.randn(100), n=50, include_distances=False), [])
 
     def test_single_vector(self):
         # https://github.com/spotify/annoy/issues/194
@@ -224,6 +224,6 @@ class AngularIndexTest(TestCase):
         a.build(10)
         a.save('1.ann')
         indices, dists = a.get_nns_by_vector([1, 0, 0], 3, include_distances=True)
-        self.assertEquals(indices, [0])
+        self.assertEqual(indices, [0])
         self.assertAlmostEqual(dists[0] ** 2, 0.0)
     
