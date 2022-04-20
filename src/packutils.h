@@ -22,13 +22,17 @@
 #include <immintrin.h>
 #include <stdint.h>
 
-static float const _15BITS_MULT = 32767.f, _15BITS_DIVISOR = 1.f / _15BITS_MULT;
+#ifndef NO_MANUAL_VECTORIZATION
+# if defined(__AVX2__)
+#   define USE_AVX2
+# endif
+#endif
 
-#if defined(USE_AVX)
+#if defined(USE_AVX2)
 
 inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
 {
-  __m256 mm1 = _mm256_set1_ps(_15BITS_MULT);
+  __m256 mm1 = _mm256_set1_ps(32767.f);
   while( d >= 16  )
   {
       __m256 a = _mm256_loadu_ps(x);
@@ -43,7 +47,7 @@ inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__rest
 
   if( d )
   {
-    __m128 m1 = _mm_set1_ps(_15BITS_MULT);
+    __m128 m1 = _mm_set1_ps(32767.f);
     __m128 a = _mm_loadu_ps(x);
     __m128 b = _mm_loadu_ps(x + 4);
     __m128i ai = _mm_cvtps_epi32(_mm_mul_ps(a, m1));
@@ -54,7 +58,7 @@ inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__rest
 
 void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t d )
 {
-  __m256 mm1 = _mm256_set1_ps(_15BITS_DIVISOR);
+  __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);
   while( d >= 16  )
   {
       __m256i s  = _mm256_loadu_si256( (__m256i const*)(in) );
@@ -70,7 +74,7 @@ void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__
   }
   if( d )
   {
-      __m128 m1 = _mm_set1_ps(_15BITS_DIVISOR);
+      __m128 m1 = _mm_set1_ps(1.f / 32767.f);
       __m128i s  = _mm_loadu_si128( (__m128i const*)(in) );
       __m128i ai = _mm_srai_epi32(_mm_unpacklo_epi16(s, s), 16);
       __m128i bi = _mm_srai_epi32(_mm_unpackhi_epi16(s, s), 16);
@@ -84,13 +88,15 @@ void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__
 float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
 {
   float sum;
-  __m256 mm1 = _mm256_set1_ps(_15BITS_DIVISOR);
+  __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);
   __m256 msum1 = _mm256_setzero_ps(), msum2 = _mm256_setzero_ps();
   __m256 mx, my;
   while( d >= 16  )
   {
       // every step decoded into 16 floats
-      __m256i s  = _mm256_loadu_si256( (__m256i const*)(in) );
+      // sadly but we need to use here unaligned load
+      // due to 16 byte offset for vector, not 32 byte!
+      __m256i s  = _mm256_lddqu_si256( (__m256i const*)(in) );
       __m256i ai = _mm256_srai_epi32(_mm256_unpacklo_epi16(s, s), 16);
       __m256 a = _mm256_mul_ps(_mm256_cvtepi32_ps(ai), mm1);
       mx = _mm256_load_ps(y);
@@ -115,7 +121,7 @@ float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__re
   {
     // every step decoded into 8 floats
     // use here slow _mm_dp_ps instruction since is no loop here
-    __m128 m1 = _mm_set1_ps(_15BITS_DIVISOR);
+    __m128 m1 = _mm_set1_ps(1.f / 32767.f);
     __m128i s  = _mm_load_si128( (__m128i const*)(in) );
     __m128i ai = _mm_srai_epi32(_mm_unpacklo_epi16(s, s), 16);
     __m128 a = _mm_mul_ps(_mm_cvtepi32_ps(ai), m1);
@@ -136,7 +142,7 @@ float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__re
 
 inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
 {
-  __m128 m1 = _mm_set1_ps(_15BITS_MULT);
+  __m128 m1 = _mm_set1_ps(32767.f);
   for( uint32_t i = 0; i < d; i += 8 )
   {
     __m128 a = _mm_loadu_ps(x + i);
@@ -152,7 +158,7 @@ inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__rest
 
 inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t d )
 {
-  __m128 m1 = _mm_set1_ps(_15BITS_DIVISOR);
+  __m128 m1 = _mm_set1_ps(1.f / 32767.f);
   // every step decoded into 8 float at once!
   for( uint32_t i = 0; i < d; i += 8 )
   {
@@ -172,11 +178,12 @@ inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float cons
   __builtin_prefetch((uint8_t const*)in + 64);
   __builtin_prefetch((uint8_t const*)in + 128);
   __builtin_prefetch((uint8_t const*)in + 192);
-  __m128 m1 = _mm_set1_ps(_15BITS_DIVISOR);
+  __m128 m1 = _mm_set1_ps(1.f / 32767.f);
   __m128 msum1 = _mm_setzero_ps(), msum2 = _mm_setzero_ps();
   __m128 mx, my;
   // every step decoded into 8 float at once!
-  for( uint32_t i = 0; i < d; i += 8 )
+  uint32_t i = 0;
+  do
   {
     __m128i s  = _mm_load_si128( (__m128i const*)(in + i) );
     __m128i ai = _mm_srai_epi32(_mm_unpacklo_epi16(s, s), 16);
@@ -187,7 +194,9 @@ inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float cons
     __m128 b = _mm_mul_ps(_mm_cvtepi32_ps(bi), m1);
     my = _mm_load_ps (y + i + 4);
     msum2 = _mm_add_ps (msum2, _mm_mul_ps (b, my));
+    i += 8;
   }
+  while( i < d );
 
   msum1 = _mm_add_ps(msum1, msum2);
 

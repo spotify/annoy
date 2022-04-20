@@ -21,7 +21,7 @@
 #include "annoylib.h"
 #include "datamapper.h"
 #include <stdexcept>
-#include <deque>
+#include <algorithm>
 #include <memory>
 #include <iostream>
 
@@ -406,18 +406,22 @@ public:
   typedef Distance D;
   typedef typename Distance::PackedFloatType PackedFloatType;
   typedef typename D::template Node<S, T> Node;
+  typedef std::unique_ptr<Node, decltype( &free )> NodeUPtrType;
   typedef typename DataMapper::Mapping DataMapping;
 private:
   static constexpr S const _K_mask = S(1) << S(sizeof(S) * 8 - 1);
   static constexpr S const _K_mask_clear = _K_mask - 1;
+protected:
+  typedef std::pair<T, S>               qpair_t;
+  typedef std::vector<qpair_t>          queue_t;
 protected:
   int _f;
   S _s; // Size of each node
   S _K; // Max number of descendants to fit into node
   S _n_items; // number of ordinal nodes(i.e leaf)
   void const *_nodes; // Could either be mmapped, or point to a memory buffer that we reallocate
-  std::vector<S> _roots;
-  DataMapper _mapper;
+  queue_t _roots_q;
+  DataMapper  _mapper;
   DataMapping _mapping;
 public:
 
@@ -463,20 +467,29 @@ public:
     S n_nodes = (S)((_mapping.size - sizeof_indices) / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
-    _roots.clear();
+    std::vector<S> roots;
+    roots.clear();
     S m = -1;
     for (S i = n_nodes - 1; i >= 0; i--) {
       S k = _get(i)->n_descendants;
       if (m == S(-1) || k == m) {
-        _roots.push_back(i);
+        roots.push_back(i);
         m = k;
       } else {
         break;
       }
     }
     // hacky fix: since the last root precedes the copy of all roots, delete it
-    if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
-      _roots.pop_back();
+    if (roots.size() > 1 && _get(roots.front())->children[0] == _get(roots.back())->children[0])
+      roots.pop_back();
+
+    _roots_q.reserve(roots.size());
+
+    // convert ordinal roots refs into search queue to reduce time of building heap for scan
+    for ( S r : roots ) {
+      _roots_q.emplace_back(Distance::template pq_initial_value<T>(), r);
+    }
+    std::make_heap(_roots_q.begin(), _roots_q.end());
     _n_items = m;
 
     return true;
@@ -500,12 +513,55 @@ public:
     float __attribute__((aligned(16))) mv[_f];
     const Node* m = _get(item);
     decode_vector_i16_f32((uint16_t const*)m->v, mv, _f);
-    //memcpy(mv, m->v, sizeof(float) * _f);
-    _get_all_nns(mv, n, search_k, result, distances);
+    get_nns_by_vector(mv, n, search_k, result, distances);
   }
 
-  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-    _get_all_nns(w, n, search_k, result, distances);
+  static Node* mk_node( const T* v, int n, void *node_alloc_buf ) {
+    Node* v_node = static_cast<Node*>(node_alloc_buf);
+
+    D::template zero_value<Node>(v_node);
+    memcpy(v_node->v, v, sizeof(T) * n);
+    D::init_node(v_node, n);
+
+    return v_node;
+  }
+
+  static NodeUPtrType mk_node_ptr( const T* v, int n ) {
+    Node* v_node = mk_node(v, n, malloc(offsetof(Node, v) + n * sizeof(T)));
+    return NodeUPtrType(v_node, free);
+  }
+
+  void get_nns_by_vector(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
+        // init node for comparsion from given vector(v)
+    // alloc space for that node on the stack!
+    // but node vector(v[1]) data is need to be aligned to 16 bytes
+    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
+         __attribute__((aligned(16)));
+    
+    Node* v_node = mk_node(v, _f, node_alloc_buf);
+
+    vector<pair<T, S> > nns_dist;
+    size_t p = _get_all_nns(v_node, n, search_k, nns_dist);
+    // prealloc result buffers
+    result->reserve(p);
+    if (distances)
+    {
+        distances->reserve(p);
+        for (size_t i = 0; i < p; i++) {
+          distances->push_back(D::normalized_distance(nns_dist[i].first));
+          result->push_back(nns_dist[i].second);
+        }
+    }
+    else {
+      for (size_t i = 0; i < p; i++) {
+        result->push_back(nns_dist[i].second);
+      }
+    }
+  }
+
+  // same as above but return all found results w/o resorting by distance
+  size_t get_nns_by_node_raw(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist) const {
+    return _get_all_nns(v_node, n, search_k, nns_dist);
   }
 
   S get_n_items() const {
@@ -526,80 +582,67 @@ private:
   }
 
   inline Node* _get(S i) const {
-    return get_node_ptr<S, Node>(_nodes, _s, i);
+    Node *nd = get_node_ptr<S, Node>(_nodes, _s, i);
+    __builtin_prefetch(nd);
+    return nd;
   }
 
-  void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-    typedef std::pair<T, S> qpair_t;
-    typedef std::vector<qpair_t> qvector_t;
-
-    size_t const roots_size = _roots.size();
-
-    if (search_k == (size_t)-1)
-      search_k = n * roots_size; // slightly arbitrary default value
-
-    // reduce prealloc(maybe user give us wrong values?)
-    size_t const prealloc = std::min(search_k, roots_size * 128);
-
-    qvector_t qvector;
-    qvector.reserve(prealloc); // prealloc queue
-
-    for ( S r : _roots ) {
-      qvector.emplace_back(Distance::template pq_initial_value<T>(), r);
-    }
-
-    std::priority_queue<qpair_t, qvector_t> q( std::less<qpair_t>(), std::move(qvector) );
-
-    std::vector<S> nns;
-    nns.reserve(search_k);
-    while (nns.size() < search_k && !q.empty()) {
-      const pair<T, S>& top = q.top();
+  size_t _get_all_nns(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist) const {
+    if (search_k == (S)-1)
+      search_k = n * _roots_q.size(); // slightly arbitrary default value
+    
+    std::unique_ptr<S[]> nns( new S[search_k + _K * 2]);
+    // copy prepared queue with roots
+    queue_t q;
+    // reduce realloc overhead
+    // TODO: dTLB high pressure here, so deside to use HP for temp and output buffers!
+    q.reserve( n * _roots_q.size() );
+    q.assign(_roots_q.begin(), _roots_q.end());
+    S nns_cnt = 0;
+    // collect candidates ID's w/o collecting weights to reduce bandwidth penalty
+    // due to dups in candidates
+    do {
+      const pair<T, S>& top = q.front();
       T d = top.first;
       S fi = top.second, i = fi & _K_mask_clear;
-      q.pop();
+      std::pop_heap(q.begin(), q.end());
+      q.pop_back();
 
       if( !(fi & _K_mask) )
       {
         // ordinal node
         Node* nd = _get(i);
         if (nd->n_descendants == 1 && i < _n_items) {
-          nns.push_back(i);
+          nns[nns_cnt++] = i;
         } else {
           // split node
-          T margin = D::margin(nd, v, _f);
-          q.emplace(D::pq_distance(d, margin, 1), S(nd->children[1]));
-          q.emplace(D::pq_distance(d, margin, 0), S(nd->children[0]));
+          T margin = D::margin(nd, v_node->v, _f);
+          q.emplace_back(D::pq_distance(d, margin, 1), S(nd->children[1]));
+          std::push_heap(q.begin(), q.end());
+          q.emplace_back(D::pq_distance(d, margin, 0), S(nd->children[0]));
+          std::push_heap(q.begin(), q.end());
         }
       }
       else
       {
         // index only node
         S const *idx = (S const*)_mapping.data + i * _K;
+        __builtin_prefetch(idx);
         S const *dst = idx + 1;
-        nns.insert(nns.end(), dst, dst + *idx);
+        void *dest = &nns[nns_cnt];
+        nns_cnt += *idx;
+        memcpy(dest, dst, *idx * sizeof(S));
       }
-    }
+    } while (nns_cnt < search_k && !q.empty());
 
-    // Get distances for all items
-    // To avoid calculating distance multiple times for any items, sort by id
-    // NOTE: this only need to improve some quality, for speed is better to avoid sorting
-    std::sort(nns.begin(), nns.end());
-    vector<pair<T, S> > nns_dist;
-    nns_dist.reserve(nns.size());
-
-    // init node for comparsion from given vector(v)
-    // alloc space for that node on the stack!
-    // but node vector(v[1]) data is need to be aligned to 16 bytes
-    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
-         __attribute__((aligned(16)));
-    Node* v_node = (Node *)node_alloc_buf;
-
-    D::template zero_value<Node>(v_node);
-    memcpy(v_node->v, v, sizeof(T) * _f);
-    D::init_node(v_node, _f);
+    // sort by ID to eliminate dups
+    std::sort(nns.get(), nns.get() + nns_cnt);
+    nns_dist.reserve(nns_cnt);
 
     S last = -1;
-    for (S j : nns) {
+    // eliminate dups and calc distances
+    for (S i = 0, j; i < nns_cnt; ++i) {
+      j = nns[i];
       if (j == last)
         continue;
       last = j;
@@ -608,27 +651,14 @@ private:
           nns_dist.emplace_back(D::distance(nd, v_node, _f), j);
     }
 
+    // resort by distance
     size_t m = nns_dist.size(), p = std::min(m, n);
     if( n < m ) // Has more than N results, so get only top N
       std::partial_sort(nns_dist.begin(), nns_dist.begin() + n, nns_dist.end());
     else
       std::sort(nns_dist.begin(), nns_dist.end());
 
-    // prealloc result buffers
-    result->reserve(p);
-    if (distances)
-    {
-        distances->reserve(p);
-        for (size_t i = 0; i < p; i++) {
-          distances->push_back(D::normalized_distance(nns_dist[i].first));
-          result->push_back(nns_dist[i].second);
-        }
-    }
-    else {
-      for (size_t i = 0; i < p; i++) {
-        result->push_back(nns_dist[i].second);
-      }
-    }
+    return p;
   }
 };
 
@@ -640,7 +670,6 @@ struct EuclideanPacked16 : Euclidean
   */
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    __builtin_prefetch((uint8_t const*)x + 8);
     T pp = x->norm;
     T qq = y->norm;
     T pq = decode_and_dot_i16_f32((PackedFloatType const*)x->v, y->v, f);
