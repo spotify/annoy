@@ -62,7 +62,7 @@ using namespace Annoy;
   typedef AnnoyIndexSingleThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
 #endif
 
-template class AnnoyIndexInterface<int32_t, float>;
+template class Annoy::AnnoyIndexInterface<int32_t, float>;
 
 class HammingWrapper : public AnnoyIndexInterface<int32_t, float> {
   // Wrapper class for Hamming distance, using composition.
