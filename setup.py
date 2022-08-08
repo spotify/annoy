@@ -36,7 +36,7 @@ with codecs.open('README.rst', encoding='utf-8') as fobj:
     long_description = readme_note + fobj.read()
 
 # Various platform-dependent extras
-extra_compile_args = ['-D_CRT_SECURE_NO_WARNINGS']
+extra_compile_args = ['-D_CRT_SECURE_NO_WARNINGS', '-fpermissive']
 extra_link_args = []
 
 # Not all CPUs have march as a tuning parameter
