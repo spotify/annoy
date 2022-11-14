@@ -8,7 +8,7 @@ except NameError:
     # Python 3 compat
     xrange = range
 
-n, f = 100000, 40
+n, f = 1000000, 70
 
 t = AnnoyIndex(f, 'angular')
 for i in xrange(n):
