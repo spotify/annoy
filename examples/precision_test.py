@@ -8,7 +8,7 @@ except NameError:
     # Python 3 compat
     xrange = range
 
-n, f = 100000, 40
+n, f = 100000, 70
 
 t = AnnoyIndex(f, 'angular')
 for i in xrange(n):
@@ -20,7 +20,7 @@ for i in xrange(n):
 t.build(2 * f)
 t.save('test.tree')
 
-limits = [10, 100, 1000, 10000]
+limits = [10, 100, 1000, 10000,100000]
 k = 10
 prec_sum = {}
 prec_n = 1000
