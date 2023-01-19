@@ -670,7 +670,7 @@ struct DotProduct : Angular {
 
   template<typename T>
   static inline T normalized_distance(T distance) {
-    return -distance;
+    return sqrt(std::max(distance, T(0)));
   }
 
   template<typename T, typename S, typename Node>
