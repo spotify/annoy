@@ -408,6 +408,56 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     }
   }
 }
+
+template<typename T, typename Random, typename Distance, typename Node>
+inline void two_means_dot(const vector<Node*>& nodes, int f, Random& random, Node* p, Node* q) {
+  /*
+    This algorithm is a huge heuristic. Empirically it works really well, but I
+    can't motivate it well. The basic idea is to keep two centroids and assign
+    points to either one of them. We weight each centroid by the number of points
+    assigned to it, so to balance it. 
+  */
+  static int iteration_steps = 200;
+  size_t count = nodes.size();
+
+  size_t i = random.index(count);
+  size_t j = random.index(count-1);
+  j += (j >= i); // ensure that i != j
+
+  Distance::template copy_node<T, Node>(p, nodes[i], f);
+  Distance::template copy_node<T, Node>(q, nodes[j], f);
+
+  Distance::template normalize<T, Node>(p, f); 
+  Distance::template normalize<T, Node>(q, f);
+  Distance::init_node(p, f);
+  Distance::init_node(q, f);
+
+  int ic = 1, jc = 1;
+  for (int l = 0; l < iteration_steps; l++) {
+    size_t k = random.index(count);
+    T di = ic * Distance::distance(p, nodes[k], f),
+      dj = jc * Distance::distance(q, nodes[k], f);
+
+    // if cosine
+    T norm = sqrt(dot(nodes[k]->v, nodes[k]->v, f) + pow(nodes[k]->dot_factor, 2));
+    if (!(norm > T(0))) {
+      continue;
+    }
+    if (di < dj) {
+      for (int z = 0; z < f; z++)
+        p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+      p->dot_factor = (p->dot_factor * ic + nodes[k]->dot_factor / norm) / (ic + 1);
+      Distance::init_node(p, f);
+      ic++;
+    } else if (dj < di) {
+      for (int z = 0; z < f; z++)
+        q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+      q->dot_factor = (q->dot_factor * jc + nodes[k]->dot_factor / norm) / (jc + 1);
+      Distance::init_node(q, f);
+      jc++;
+    }
+  }
+}
 } // namespace
 
 struct Base {
@@ -486,6 +536,10 @@ struct Angular : Base {
       return (bool)random.flip();
   }
   template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    return side(n, y->v, f, random);
+  }
+  template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     Node<S, T>* p = (Node<S, T>*)alloca(s);
     Node<S, T>* q = (Node<S, T>*)alloca(s);
@@ -538,7 +592,14 @@ struct DotProduct : Angular {
   }
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    return -dot(x->v, y->v, f);
+    // Calculated by analogy with the angular case
+    T pp = dot(x->v, x->v, f) + x->dot_factor * x->dot_factor;
+    T qq = dot(y->v, y->v, f) + y->dot_factor * y->dot_factor;
+    T pq = dot(x->v, y->v, f) + x->dot_factor * y->dot_factor;
+    T ppqq = pp * qq;
+
+    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    else return 2.0;
   }
 
   template<typename Node>
@@ -562,7 +623,7 @@ struct DotProduct : Angular {
     Node<S, T>* q = (Node<S, T>*)alloca(s);
     DotProduct::zero_value(p); 
     DotProduct::zero_value(q);
-    two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
+    two_means_dot<T, Random, DotProduct, Node<S, T> >(nodes, f, random, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
     n->dot_factor = p->dot_factor - q->dot_factor;
@@ -581,7 +642,21 @@ struct DotProduct : Angular {
 
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    return dot(n->v, y, f) + (n->dot_factor * n->dot_factor);
+    return dot(n->v, y, f);
+  }
+
+  template<typename S, typename T>
+  static inline T margin(const Node<S, T>* n, const Node<S, T>* y, int f) {
+    return dot(n->v, y->v, f) + n->dot_factor * y->dot_factor;
+  }
+
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n,  const Node<S, T>* y, int f, Random& random) {
+    T dot = margin(n, y, f);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return (bool)random.flip();
   }
 
   template<typename S, typename T, typename Random>
@@ -681,6 +756,10 @@ struct Hamming : Base {
     return margin(n, y, f);
   }
   template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    return side(n, y->v, f, random);
+  }
+  template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     size_t cur_size = 0;
     size_t i = 0;
@@ -747,6 +826,10 @@ struct Minkowski : Base {
       return (dot > 0);
     else
       return (bool)random.flip();
+  }
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    return side(n, y->v, f, random);
   }
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
@@ -1290,7 +1373,7 @@ protected:
         S j = indices[i];
         Node* n = _get(j);
         if (n) {
-          bool side = D::side(m, n->v, _f, _random);
+          bool side = D::side(m, n, _f, _random);
           children_indices[side].push_back(j);
         } else {
           annoylib_showUpdate("No node for index %d?\n", j);
