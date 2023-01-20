@@ -358,11 +358,6 @@ inline float euclidean_distance<float>(const float* x, const float* y, int f) {
 
 #endif
 
- 
-template<typename T>
-inline T get_norm(T* v, int f) {
-  return sqrt(dot(v, v, f));
-}
 
 template<typename T, typename Random, typename Distance, typename Node>
 inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, Node* p, Node* q) {
@@ -391,68 +386,16 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     size_t k = random.index(count);
     T di = ic * Distance::distance(p, nodes[k], f),
       dj = jc * Distance::distance(q, nodes[k], f);
-    T norm = cosine ? get_norm(nodes[k]->v, f) : 1;
+    T norm = cosine ? Distance::template get_norm<T, Node>(nodes[k], f) : 1;
     if (!(norm > T(0))) {
       continue;
     }
     if (di < dj) {
-      for (int z = 0; z < f; z++)
-        p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+      Distance::update_mean(p, nodes[k], norm, ic, f);
       Distance::init_node(p, f);
       ic++;
     } else if (dj < di) {
-      for (int z = 0; z < f; z++)
-        q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
-      Distance::init_node(q, f);
-      jc++;
-    }
-  }
-}
-
-template<typename T, typename Random, typename Distance, typename Node>
-inline void two_means_dot(const vector<Node*>& nodes, int f, Random& random, Node* p, Node* q) {
-  /*
-    This algorithm is a huge heuristic. Empirically it works really well, but I
-    can't motivate it well. The basic idea is to keep two centroids and assign
-    points to either one of them. We weight each centroid by the number of points
-    assigned to it, so to balance it. 
-  */
-  static int iteration_steps = 200;
-  size_t count = nodes.size();
-
-  size_t i = random.index(count);
-  size_t j = random.index(count-1);
-  j += (j >= i); // ensure that i != j
-
-  Distance::template copy_node<T, Node>(p, nodes[i], f);
-  Distance::template copy_node<T, Node>(q, nodes[j], f);
-
-  Distance::template normalize<T, Node>(p, f); 
-  Distance::template normalize<T, Node>(q, f);
-  Distance::init_node(p, f);
-  Distance::init_node(q, f);
-
-  int ic = 1, jc = 1;
-  for (int l = 0; l < iteration_steps; l++) {
-    size_t k = random.index(count);
-    T di = ic * Distance::distance(p, nodes[k], f),
-      dj = jc * Distance::distance(q, nodes[k], f);
-
-    // if cosine
-    T norm = sqrt(dot(nodes[k]->v, nodes[k]->v, f) + pow(nodes[k]->dot_factor, 2));
-    if (!(norm > T(0))) {
-      continue;
-    }
-    if (di < dj) {
-      for (int z = 0; z < f; z++)
-        p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
-      p->dot_factor = (p->dot_factor * ic + nodes[k]->dot_factor / norm) / (ic + 1);
-      Distance::init_node(p, f);
-      ic++;
-    } else if (dj < di) {
-      for (int z = 0; z < f; z++)
-        q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
-      q->dot_factor = (q->dot_factor * jc + nodes[k]->dot_factor / norm) / (jc + 1);
+      Distance::update_mean(q, nodes[k], norm, jc, f);
       Distance::init_node(q, f);
       jc++;
     }
@@ -478,12 +421,23 @@ struct Base {
   }
 
   template<typename T, typename Node>
+  static inline T get_norm(Node* node, int f) {
+      return sqrt(dot(node->v, node->v, f));
+  }
+
+  template<typename T, typename Node>
   static inline void normalize(Node* node, int f) {
-    T norm = get_norm(node->v, f);
+    T norm = Base::get_norm<T, Node>(node, f);
     if (norm > 0) {
       for (int z = 0; z < f; z++)
         node->v[z] /= norm;
     }
+  }
+
+  template<typename T, typename Node>
+  static inline void update_mean(Node* mean, Node* new_node, T norm, int c, int f) {
+      for (int z = 0; z < f; z++)
+        mean->v[z] = (mean->v[z] * c + new_node->v[z] / norm) / (c + 1);
   }
 };
 
@@ -590,6 +544,19 @@ struct DotProduct : Angular {
   static const char* name() {
     return "dot";
   }
+
+  template<typename T, typename Node>
+  static inline T get_norm(Node* node, int f) {
+      return sqrt(dot(node->v, node->v, f) + node->dot_factor * node->dot_factor);
+  }
+
+  template<typename T, typename Node>
+  static inline void update_mean(Node* mean, Node* new_node, T norm, int c, int f) {
+      for (int z = 0; z < f; z++)
+        mean->v[z] = (mean->v[z] * c + new_node->v[z] / norm) / (c + 1);
+      mean->dot_factor = (mean->dot_factor * c + new_node->dot_factor / norm) / (c + 1);
+  }
+
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     // Calculated by analogy with the angular case
@@ -623,7 +590,7 @@ struct DotProduct : Angular {
     Node<S, T>* q = (Node<S, T>*)alloca(s);
     DotProduct::zero_value(p); 
     DotProduct::zero_value(q);
-    two_means_dot<T, Random, DotProduct, Node<S, T> >(nodes, f, random, p, q);
+    two_means<T, Random, DotProduct, Node<S, T> >(nodes, f, random, true, p, q);
     for (int z = 0; z < f; z++)
       n->v[z] = p->v[z] - q->v[z];
     n->dot_factor = p->dot_factor - q->dot_factor;
