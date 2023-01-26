@@ -568,8 +568,8 @@ struct DotProduct : Angular {
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     if (x->built || y->built) {
-      // if index is already built we only need order of distances
-      // thus, we can return dot product itself
+      // When index is already built, we don't need angular distances to retrieve NNs
+      // Thus, we can return dot product scores itself
       return -dot(x->v, y->v, f);
     }
 
@@ -586,12 +586,12 @@ struct DotProduct : Angular {
   template<typename Node>
   static inline void zero_value(Node* dest) {
     dest->dot_factor = 0;
-    dest->norm = 0;
   }
 
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
     n->built = false;
+    n->norm = dot(n->v, n->v, f) + n->dot_factor * n->dot_factor;
   }
 
   template<typename T, typename Node>
@@ -695,9 +695,7 @@ struct DotProduct : Angular {
   static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
-      // we need to remove dot_factor to correctly search by item_id when an index is already built
-      node->dot_factor = 0;
-      // when an index is built, we will remember it in index nodes to compute distances differently
+      // When an index is built, we will remember it in index item nodes to compute distances differently
       node->built = true;
     }
   }
