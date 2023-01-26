@@ -410,6 +410,12 @@ struct Base {
     // on the entire set of nodes passed into this index.
   }
 
+  template<typename T, typename S, typename Node>
+  static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    // Override this in specific metric structs below if you need to do any post-processing
+    // on the entire set of nodes passed into this index.
+  }
+
   template<typename Node>
   static inline void zero_value(Node* dest) {
     // Initialize any fields that require sane defaults within this node.
@@ -538,6 +544,8 @@ struct DotProduct : Angular {
     S n_descendants;
     S children[2]; // Will possibly store more than 2
     T dot_factor;
+    T norm;
+    bool built;
     T v[ANNOYLIB_V_ARRAY_SIZE];
   };
 
@@ -559,9 +567,15 @@ struct DotProduct : Angular {
 
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
+    if (x->built || y->built) {
+      // if index is already built we only need order of distances
+      // thus, we can return dot product itself
+      return -dot(x->v, y->v, f);
+    }
+
     // Calculated by analogy with the angular case
-    T pp = dot(x->v, x->v, f) + x->dot_factor * x->dot_factor;
-    T qq = dot(y->v, y->v, f) + y->dot_factor * y->dot_factor;
+    T pp = x->norm ? x->norm : dot(x->v, x->v, f) + x->dot_factor * x->dot_factor;
+    T qq = y->norm ? y->norm : dot(y->v, y->v, f) + y->dot_factor * y->dot_factor;
     T pq = dot(x->v, y->v, f) + x->dot_factor * y->dot_factor;
     T ppqq = pp * qq;
 
@@ -572,10 +586,12 @@ struct DotProduct : Angular {
   template<typename Node>
   static inline void zero_value(Node* dest) {
     dest->dot_factor = 0;
+    dest->norm = 0;
   }
 
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
+    n->built = false;
   }
 
   template<typename T, typename Node>
@@ -637,7 +653,7 @@ struct DotProduct : Angular {
 
   template<typename T>
   static inline T normalized_distance(T distance) {
-    return sqrt(std::max(distance, T(0)));
+    return -distance;
   }
 
   template<typename T, typename S, typename Node>
@@ -651,6 +667,7 @@ struct DotProduct : Angular {
       T d = dot(node->v, node->v, f);
       T norm = d < 0 ? 0 : sqrt(d);
       node->dot_factor = norm;
+      node->built = false;
     }
 
     // Step two: find the maximum norm
@@ -669,7 +686,19 @@ struct DotProduct : Angular {
       T squared_norm_diff = pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0));
       T dot_factor = squared_norm_diff < 0 ? 0 : sqrt(squared_norm_diff);
 
+      node->norm = pow(max_norm, static_cast<T>(2.0));
       node->dot_factor = dot_factor;
+    }
+  }
+
+  template<typename T, typename S, typename Node>
+  static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    for (S i = 0; i < node_count; i++) {
+      Node* node = get_node_ptr<S, Node>(nodes, _s, i);
+      // we need to remove dot_factor to correctly search by item_id when an index is already built
+      node->dot_factor = 0;
+      // when an index is built, we will remember it in index nodes to compute distances differently
+      node->built = true;
     }
   }
 };
@@ -1037,6 +1066,9 @@ public:
       }
       _nodes_size = _n_nodes;
     }
+
+    D::template postprocess<T, S, Node>(_nodes, _s, _n_items, _f);
+
     _built = true;
     return true;
   }

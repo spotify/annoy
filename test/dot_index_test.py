@@ -57,6 +57,7 @@ class DotIndexTest(TestCase):
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
         i.add_item(2, [0, 0])
+        i.build(10)
 
         self.assertAlmostEqual(i.get_distance(0, 1), 1.0)
         self.assertAlmostEqual(i.get_distance(1, 2), 0.0)
