@@ -27,23 +27,35 @@ import gzip
 from nose.plugins.attrib import attr
 
 class AccuracyTest(unittest.TestCase):
-    def _get_index(self, dataset):
-        url = 'http://vectors.erikbern.com/%s.hdf5' % dataset
+    def _get_index(self, dataset, custom_distance=None, custom_dim=None):
+        url = 'http://ann-benchmarks.com/%s.hdf5' % dataset
         vectors_fn = os.path.join('test', dataset + '.hdf5')
-        index_fn = os.path.join('test', dataset + '.annoy')
 
         if not os.path.exists(vectors_fn):
             print('downloading', url, '->', vectors_fn)
             urlretrieve(url, vectors_fn)
 
         dataset_f = h5py.File(vectors_fn, 'r')
+
         distance = dataset_f.attrs['distance']
+        if custom_distance:
+            distance = custom_distance
+
         f = dataset_f['train'].shape[1]
+        if custom_dim:
+            f = custom_dim
+
+        if custom_distance:
+            dataset = dataset.rsplit('-', 2)[0] + "-%d-%s" % (f, custom_distance)
+        index_fn = os.path.join('test', dataset + '.annoy')
+        
         annoy = AnnoyIndex(f, distance)
 
         if not os.path.exists(index_fn):
             print('adding items', distance, f)
             for i, v in enumerate(dataset_f['train']):
+                if len(v) > f:
+                    v = v[:f]
                 annoy.add_item(i, v)
 
             print('building index')
@@ -51,15 +63,17 @@ class AccuracyTest(unittest.TestCase):
             annoy.save(index_fn)
         else:
             annoy.load(index_fn)
-        return annoy, dataset_f
+        return annoy, dataset_f, dataset
 
-    def _test_index(self, dataset, exp_accuracy):
-        annoy, dataset_f = self._get_index(dataset)
+    def _test_index(self, dataset, exp_accuracy, custom_metric=None, custom_dim=None):
+        annoy, dataset_f, dataset = self._get_index(dataset, custom_metric, custom_dim)
 
         n, k = 0, 0
 
         for i, v in enumerate(dataset_f['test']):
-            js_fast = annoy.get_nns_by_vector(v, 10, 1000)
+            if custom_dim:
+                v = v[:custom_dim]
+            js_fast = annoy.get_nns_by_vector(v, 10, 10000)
             js_real = dataset_f['neighbors'][i][:10]
             assert len(js_fast) == 10
             assert len(js_real) == 10
@@ -80,3 +94,9 @@ class AccuracyTest(unittest.TestCase):
 
     def test_fashion_mnist(self):
         self._test_index('fashion-mnist-784-euclidean', 90.00)
+
+    def test_lastfm_dot(self):
+        self._test_index('lastfm-64-dot', 60.00, 'dot', 64)
+
+    def test_lastfm_angular(self):
+        self._test_index('lastfm-64-dot', 60.00, 'angular', 65)
