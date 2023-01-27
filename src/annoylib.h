@@ -634,7 +634,7 @@ struct DotProduct : Angular {
   }
 
   template<typename S, typename T, typename Random>
-  static inline bool side(const Node<S, T>* n,  const Node<S, T>* y, int f, Random& random) {
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
     T dot = margin(n, y, f);
     if (dot != 0)
       return (dot > 0);
