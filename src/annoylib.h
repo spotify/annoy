@@ -539,7 +539,9 @@ struct DotProduct : Angular {
   template<typename S, typename T>
   struct Node {
     /*
-     * This is an extension of the Angular node with an extra attribute for the scaled norm.
+     * This is an extension of the Angular node with extra attributes for the DotProduct metric.
+     * It has dot_factor which is needed to reduce the task to Angular distance metric (see the preprocess method)
+     * and also a built flag that helps to compute exact dot products when an index is already built.
      */
     S n_descendants;
     S children[2]; // Will possibly store more than 2
