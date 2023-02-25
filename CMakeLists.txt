@@ -19,7 +19,7 @@ target_include_directories(Annoy INTERFACE
 # Install
 include(GNUInstallDirs)
 
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(TARGETS Annoy
