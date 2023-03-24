@@ -16,7 +16,7 @@
 #include <map>
 #include <random>
 
-
+using namespace Annoy;
 int precision(int f=40, int n=1000000){
 	std::chrono::high_resolution_clock::time_point t_start, t_end;
 
