@@ -12,11 +12,11 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+import unittest
 import numpy
 import random
 from common import TestCase
 from annoy import AnnoyIndex
-from nose.plugins.skip import SkipTest
 
 
 class HammingIndexTest(TestCase):
@@ -85,7 +85,7 @@ class HammingIndexTest(TestCase):
         avg_dist = 1.0 * sum(dists) / len(dists)
         self.assertLessEqual(avg_dist, 0.42)
 
-    @SkipTest  # will fix later
+    @unittest.skip('will fix later')
     def test_zero_vectors(self):
         # Mentioned on the annoy-user list
         bitstrings = [
