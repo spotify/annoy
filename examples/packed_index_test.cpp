@@ -38,6 +38,7 @@ static std::vector<float> GenerateVector( size_t n, float lo, float hi )
 
 static int test(int f, int k, uint32_t count, int depth = 30)
 {
+    using namespace Annoy;
     // create indexer first
     {
         PackedAnnoyIndexer<uint32_t, float, Euclidean, Kiss32Random> indexer(f, k);

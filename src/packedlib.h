@@ -25,6 +25,8 @@
 #include <memory>
 #include <iostream>
 
+namespace Annoy {
+
 namespace detail {
   // This is common storage header(tailer)
   struct Header
@@ -112,11 +114,8 @@ public:
   }
 
   void build(int q) {
-    if (_loaded) {
-      // TODO: throw exception
-      showUpdate("You can't build a loaded index\n");
-      return;
-    }
+    if (_loaded)
+      throw std::runtime_error("You can't build a loaded index");
 
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
@@ -207,8 +206,10 @@ public:
         max_max_bit = std::max(max_max_bit, mb);
         total_bits += mb;
       }
-      showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\ntotal size of indices=%zd numbers of blocks=%zd\n",
-      _n_items, _n_nodes, iblocks * _K * sizeof(S), iblocks);
+      showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\n"
+                 "total size of indices=%zd numbers of blocks=%zd\n"
+                 "total number of maxbits=%zd\n",
+                 _n_items, _n_nodes, iblocks * _K * sizeof(S), iblocks, total_bits);
 
       auto iblock_avg_sz = total_size / double(iblocks);
 
@@ -284,7 +285,7 @@ protected:
 
   void _write_header( FILE *f, S nblocks ) {
     // write header only at tail of file to keep strict alignment in memory
-    // for faster memory access
+    // for much faster memory access
     detail::Header hdr;
     hdr.version = 0;
     hdr.vlen = _f;
@@ -497,7 +498,7 @@ public:
 
   // this function useful in several cases:
   // 1. exclude huge coredump via MADV_DONTDUMP.
-  // 2. preload from storage into memmory via MADV_WILLNEED.
+  // 2. preload from storage into memory via MADV_WILLNEED.
   // 3. use THP if you disable it on your system via MADV_HUGEPAGE.
   // 4. something special ;)
   bool madvise(int flags)
@@ -595,7 +596,7 @@ private:
     // copy prepared queue with roots
     queue_t q;
     // reduce realloc overhead
-    // TODO: dTLB high pressure here, so deside to use HP for temp and output buffers!
+    // TODO: dTLB high pressure here, so decide to use HP for temp and output buffers!
     q.reserve( n * _roots_q.size() );
     q.assign(_roots_q.begin(), _roots_q.end());
     S nns_cnt = 0;
@@ -682,6 +683,7 @@ struct EuclideanPacked16 : Euclidean
   }
 };
 
+} // namespace Annoy
 
 // vim: tabstop=2 shiftwidth=2
 

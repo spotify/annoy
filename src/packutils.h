@@ -28,6 +28,8 @@
 # endif
 #endif
 
+namespace Annoy {
+
 #if defined(USE_AVX2)
 
 inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
@@ -205,3 +207,5 @@ inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float cons
   return  _mm_cvtss_f32 (msum1);
 }
 #endif
+
+} // namespace Annoy
