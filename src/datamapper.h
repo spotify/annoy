@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+namespace Annoy {
 
 namespace detail {
   struct DataMapping
@@ -136,3 +137,4 @@ public:
 
 #endif
 
+} // namespace Annoy
