@@ -29,7 +29,7 @@ def add_items(i):
 
 def check_nns(i):
     assert i.get_nns_by_vector([4, 4], 3) == [2, 1, 0]
-    assert iget_nns_by_vector([1, 1], 3) == [0, 1, 2]
+    assert i.get_nns_by_vector([1, 1], 3) == [0, 1, 2]
     assert i.get_nns_by_vector([4, 2], 3) == [1, 2, 0]
 
 def test_on_disk():

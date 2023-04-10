@@ -91,7 +91,7 @@ def test_save_without_build():
 def test_unbuild_with_loaded_tree():
     i = AnnoyIndex(10, 'angular')
     i.load('test/test.tree')
-    with pytest.rases():
+    with pytest.raises(Exception):
         i.unbuild()
 
 def test_seed():
@@ -137,7 +137,7 @@ def test_prefault():
 
 def test_fail_save():
     t = AnnoyIndex(40, 'angular')
-    with self.assertRaises(IOError):
+    with pytest.raises(IOError):
         t.save('')
 
 def test_overwrite_index():
@@ -164,7 +164,7 @@ def test_overwrite_index():
     t3.build(10)
     if os.name == 'nt':
         # Can't overwrite on Windows
-        with self.assertRaises(IOError):
+        with pytest.raises(IOError):
             t3.save('test.ann')
     else:
         t3.save('test.ann')
@@ -248,8 +248,8 @@ def test_very_large_index():
     m.save(path)  # Raises on Windows
 
     # Sanity check size of index
-    self.assertGreaterEqual(os.path.getsize(path), dangerous_size)
-    self.assertLess(os.path.getsize(path), dangerous_size + 100e3)
+    assert os.path.getsize(path) >= dangerous_size
+    assert os.path.getsize(path) < dangerous_size + 100e3
 
     # Sanity check number of trees
     assert m.get_n_trees() == n_trees

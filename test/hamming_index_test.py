@@ -45,7 +45,7 @@ def test_basic_nns():
     assert i.get_nns_by_item(0, 99) == [0, 1]
     assert i.get_nns_by_item(1, 99) == [1, 0]
     rs, ds = i.get_nns_by_item(0, 99, include_distances=True)
-    self.assertEqual(rs, [0, 1])
+    assert rs == [0, 1]
     assert ds[0] == pytest.approx(0)
     assert ds[1] == pytest.approx(numpy.dot(u-v, u-v))
 
@@ -112,5 +112,5 @@ def test_zero_vectors():
     idx = AnnoyIndex(f, 'hamming')
     idx.load('idx.ann')
     js, ds = idx.get_nns_by_item(0, 5, include_distances=True)
-    self.assertEqual(js[0], 0)
-    self.assertEqual(ds[:4], [0, 1, 1, 22])
+    assert js[0] == 0
+    assert ds[:4] == [0, 1, 1, 22]

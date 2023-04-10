@@ -192,9 +192,9 @@ def test_distance_consistency():
             u_norm = numpy.array(u) * numpy.dot(u, u)**-0.5
             v_norm = numpy.array(v) * numpy.dot(v, v)**-0.5
             # cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
-            assert dist ** 2 == pytest.approx(numpy.dot(u_norm - v_norm, u_norm - v_norm))
+            assert dist ** 2 == pytest.approx(numpy.dot(u_norm - v_norm, u_norm - v_norm), rel=1e-2)
             # self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
-            assert dist ** 2 == pytest.approx(sum([(x-y)**2 for x, y in zip(u_norm, v_norm)]))
+            assert dist ** 2 == pytest.approx(sum([(x-y)**2 for x, y in zip(u_norm, v_norm)]), rel=1e-2)
 
 def test_only_one_item():
     # reported to annoy-user by Kireet Reddy

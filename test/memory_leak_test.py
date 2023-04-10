@@ -31,7 +31,7 @@ def test_get_lots_of_nns():
     i.add_item(0, [random.gauss(0, 1) for x in range(f)])
     i.build(10)
     for j in range(100):
-        self.assertEqual(i.get_nns_by_item(0, 999999999), [0])
+        assert i.get_nns_by_item(0, 999999999) == [0]
             
 def test_build_unbuid():
     f = 10
@@ -44,5 +44,5 @@ def test_build_unbuid():
         i.unbuild()
         i.build(10)
             
-    self.assertEqual(i.get_n_items(), 1000)
+    assert i.get_n_items() == 1000
 
