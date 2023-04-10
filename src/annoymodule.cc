@@ -270,6 +270,8 @@ get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances,
   if ((t = PyTuple_Pack(2, l, d)) == NULL) {
     goto error;
   }
+  Py_XDECREF(l);
+  Py_XDECREF(d);
 
   return t;
 
