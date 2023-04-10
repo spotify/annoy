@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+import pytest
 import random
 
 from annoy import AnnoyIndex
@@ -48,3 +49,17 @@ def test_build_unbuid():
         i.build(10)
 
     assert i.get_n_items() == 1000
+
+
+def test_include_distances():
+    # See #633
+    # (Not able to repro it though)
+    f = 10
+    i = AnnoyIndex(f, "euclidean")
+    for j in range(10000):
+        i.add_item(j, [random.gauss(0, 1) for x in range(f)])
+    i.build(10)
+
+    v = [random.gauss(0, 1) for x in range(f)]
+    for _ in range(10000000):
+        indices, distances = i.get_nns_by_vector(v, 1, include_distances=True)
