@@ -13,6 +13,7 @@
 # the License.
 
 import numpy
+
 from annoy import AnnoyIndex
 
 
@@ -23,7 +24,7 @@ def test_seeding():
 
     indexes = []
     for i in range(2):
-        index = AnnoyIndex(f, 'angular')
+        index = AnnoyIndex(f, "angular")
         index.set_seed(42)
         for j in range(X.shape[0]):
             index.add_item(j, X[j])
@@ -32,5 +33,6 @@ def test_seeding():
         indexes.append(index)
 
     for k in range(Y.shape[0]):
-        assert indexes[0].get_nns_by_vector(Y[k], 100) \
-            == indexes[1].get_nns_by_vector(Y[k], 100)
+        assert indexes[0].get_nns_by_vector(Y[k], 100) == indexes[1].get_nns_by_vector(
+            Y[k], 100
+        )

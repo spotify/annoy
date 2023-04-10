@@ -12,15 +12,17 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+import random
+
 import numpy
 import pytest
-import random
+
 from annoy import AnnoyIndex
 
 
 def test_get_nns_by_vector():
     f = 2
-    i = AnnoyIndex(f, 'euclidean')
+    i = AnnoyIndex(f, "euclidean")
     i.add_item(0, [2, 2])
     i.add_item(1, [3, 2])
     i.add_item(2, [3, 3])
@@ -30,9 +32,10 @@ def test_get_nns_by_vector():
     assert i.get_nns_by_vector([1, 1], 3) == [0, 1, 2]
     assert i.get_nns_by_vector([4, 2], 3) == [1, 2, 0]
 
+
 def test_get_nns_by_item():
     f = 2
-    i = AnnoyIndex(f, 'euclidean')
+    i = AnnoyIndex(f, "euclidean")
     i.add_item(0, [2, 2])
     i.add_item(1, [3, 2])
     i.add_item(2, [3, 3])
@@ -41,9 +44,10 @@ def test_get_nns_by_item():
     assert i.get_nns_by_item(0, 3) == [0, 1, 2]
     assert i.get_nns_by_item(2, 3) == [2, 1, 0]
 
+
 def test_dist():
     f = 2
-    i = AnnoyIndex(f, 'euclidean')
+    i = AnnoyIndex(f, "euclidean")
     i.add_item(0, [0, 1])
     i.add_item(1, [1, 1])
     i.add_item(2, [0, 0])
@@ -51,32 +55,34 @@ def test_dist():
     assert i.get_distance(0, 1) == pytest.approx(1.0**0.5)
     assert i.get_distance(1, 2) == pytest.approx(2.0**0.5)
 
+
 def test_large_index():
     # Generate pairs of random points where the pair is super close
     f = 10
-    q = [random.gauss(0, 10) for z in range(f)]
-    i = AnnoyIndex(f, 'euclidean')
+    [random.gauss(0, 10) for z in range(f)]
+    i = AnnoyIndex(f, "euclidean")
     for j in range(0, 10000, 2):
         p = [random.gauss(0, 1) for z in range(f)]
-        x = [1 + pi + random.gauss(0, 1e-2) for pi in p] # todo: should be q[i]
+        x = [1 + pi + random.gauss(0, 1e-2) for pi in p]  # todo: should be q[i]
         y = [1 + pi + random.gauss(0, 1e-2) for pi in p]
         i.add_item(j, x)
-        i.add_item(j+1, y)
+        i.add_item(j + 1, y)
 
     i.build(10)
     for j in range(0, 10000, 2):
-        assert i.get_nns_by_item(j, 2) == [j, j+1]
-        assert i.get_nns_by_item(j+1, 2) == [j+1, j]
+        assert i.get_nns_by_item(j, 2) == [j, j + 1]
+        assert i.get_nns_by_item(j + 1, 2) == [j + 1, j]
+
 
 def precision(n, n_trees=10, n_points=10000, n_rounds=10):
     found = 0
     for r in range(n_rounds):
         # create random points at distance x
         f = 10
-        i = AnnoyIndex(f, 'euclidean')
+        i = AnnoyIndex(f, "euclidean")
         for j in range(n_points):
             p = [random.gauss(0, 1) for z in range(f)]
-            norm = sum([pi ** 2 for pi in p]) ** 0.5
+            norm = sum([pi**2 for pi in p]) ** 0.5
             x = [pi / norm * j for pi in p]
             i.add_item(j, x)
 
@@ -89,21 +95,26 @@ def precision(n, n_trees=10, n_points=10000, n_rounds=10):
 
     return 1.0 * found / (n * n_rounds)
 
+
 def test_precision_1():
     assert precision(1) >= 0.98
+
 
 def test_precision_10():
     assert precision(10) >= 0.98
 
+
 def test_precision_100():
     assert precision(100) >= 0.98
+
 
 def test_precision_1000():
     assert precision(1000) >= 0.98
 
+
 def test_get_nns_with_distances():
     f = 3
-    i = AnnoyIndex(f, 'euclidean')
+    i = AnnoyIndex(f, "euclidean")
     i.add_item(0, [0, 0, 2])
     i.add_item(1, [0, 1, 1])
     i.add_item(2, [1, 0, 0])
@@ -111,19 +122,20 @@ def test_get_nns_with_distances():
 
     l, d = i.get_nns_by_item(0, 3, -1, True)
     assert l == [0, 1, 2]
-    assert d[0]**2 == pytest.approx(0)
-    assert d[1]**2 == pytest.approx(2)
-    assert d[2]**2 == pytest.approx(5)
+    assert d[0] ** 2 == pytest.approx(0)
+    assert d[1] ** 2 == pytest.approx(2)
+    assert d[2] ** 2 == pytest.approx(5)
 
     l, d = i.get_nns_by_vector([2, 2, 2], 3, -1, True)
     assert l == [1, 0, 2]
-    assert d[0]**2 == pytest.approx(6)
-    assert d[1]**2 == pytest.approx(8)
-    assert d[2]**2 == pytest.approx(9)
+    assert d[0] ** 2 == pytest.approx(6)
+    assert d[1] ** 2 == pytest.approx(8)
+    assert d[2] ** 2 == pytest.approx(9)
+
 
 def test_include_dists():
     f = 40
-    i = AnnoyIndex(f, 'euclidean')
+    i = AnnoyIndex(f, "euclidean")
     v = numpy.random.normal(size=f)
     i.add_item(0, v)
     i.add_item(1, -v)
@@ -133,9 +145,10 @@ def test_include_dists():
     assert indices == [0, 1]
     assert dists[0] == pytest.approx(0)
 
+
 def test_distance_consistency():
     n, f = 1000, 3
-    i = AnnoyIndex(f, 'euclidean')
+    i = AnnoyIndex(f, "euclidean")
     for j in range(n):
         i.add_item(j, numpy.random.normal(size=f))
     i.build(10)
@@ -146,11 +159,14 @@ def test_distance_consistency():
             u = numpy.array(i.get_item_vector(a))
             v = numpy.array(i.get_item_vector(b))
             assert dist == pytest.approx(numpy.dot(u - v, u - v) ** 0.5)
-            assert dist == pytest.approx(sum([(x-y)**2 for x, y in zip(u, v)])**0.5)
+            assert dist == pytest.approx(
+                sum([(x - y) ** 2 for x, y in zip(u, v)]) ** 0.5
+            )
+
 
 def test_rounding_error():
     # https://github.com/spotify/annoy/issues/314
-    i = AnnoyIndex(1, 'euclidean')
+    i = AnnoyIndex(1, "euclidean")
     i.add_item(0, [0.7125930])
     i.add_item(1, [0.7123166])
     assert i.get_distance(0, 1) >= 0.0
