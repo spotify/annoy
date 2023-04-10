@@ -22,4 +22,4 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install .
       - run: pip install h5py numpy pytest
-      - run: pytest
+      - run: pytest -v
