@@ -26,7 +26,6 @@ except ImportError:
     from urllib.request import urlretrieve  # Python 3
 
 
-
 def _get_index(dataset):
     url = "http://vectors.erikbern.com/%s.hdf5" % dataset
     vectors_fn = os.path.join("test", dataset + ".hdf5")

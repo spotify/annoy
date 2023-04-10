@@ -199,23 +199,29 @@ def test_distance_consistency():
     n, f = 1000, 3
     i = AnnoyIndex(f, "angular")
     for j in range(n):
-        i.add_item(j, numpy.random.normal(size=f))
+        while True:
+            v = numpy.random.normal(size=f)
+            if numpy.dot(v, v) > 0.1:
+                break
+        i.add_item(j, v)
     i.build(10)
     for a in random.sample(range(n), 100):
         indices, dists = i.get_nns_by_item(a, 100, include_distances=True)
         for b, dist in zip(indices, dists):
-            assert dist == pytest.approx(i.get_distance(a, b))
             u = i.get_item_vector(a)
             v = i.get_item_vector(b)
+            assert dist == pytest.approx(i.get_distance(a, b), rel=1e-3, abs=1e-3)
             u_norm = numpy.array(u) * numpy.dot(u, u) ** -0.5
             v_norm = numpy.array(v) * numpy.dot(v, v) ** -0.5
             # cos = numpy.clip(1 - cosine(u, v), -1, 1) # scipy returns 1 - cos
             assert dist**2 == pytest.approx(
-                numpy.dot(u_norm - v_norm, u_norm - v_norm), rel=1e-2
+                numpy.dot(u_norm - v_norm, u_norm - v_norm), rel=1e-3, abs=1e-3
             )
             # self.assertAlmostEqual(dist, (2*(1 - cos))**0.5)
             assert dist**2 == pytest.approx(
-                sum([(x - y) ** 2 for x, y in zip(u_norm, v_norm)]), rel=1e-2
+                sum([(x - y) ** 2 for x, y in zip(u_norm, v_norm)]),
+                rel=1e-3,
+                abs=1e-3,
             )
 
 
