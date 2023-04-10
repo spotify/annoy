@@ -1,7 +1,7 @@
 #!/bin/bash
 
-
-echo "compiling precision example..."
-cmd="g++ precision_test.cpp -DANNOYLIB_MULTITHREADED_BUILD -o precision_test -std=c++14 -pthread"
-eval $cmd
-echo "Done"
+for cpp in $(find . -type f -name "*.cpp"); do
+    echo "compiling ${cpp}..."
+    c++ -Wall "${cpp}" -o $(basename "${cpp}" .cpp) -O2 -DANNOYLIB_MULTITHREADED_BUILD -std=c++14 -pthread -mssse3
+    echo "Done"
+done

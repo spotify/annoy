@@ -125,7 +125,7 @@ public:
         break;
       if (q != -1 && _roots.size() >= (size_t)q)
         break;
-      if (_verbose) showUpdate("pass %zd...\n", _roots.size());
+      if (_verbose) annoylib_showUpdate("pass %zd...\n", _roots.size());
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
@@ -146,12 +146,12 @@ public:
     }
     _n_nodes += nroots;
 
-    if (_verbose) showUpdate("has %d nodes\n", _n_nodes);
+    if (_verbose) annoylib_showUpdate("has %d nodes\n", _n_nodes);
   }
 
   void unbuild() {
     if (_loaded) {
-      showUpdate("You can't unbuild a loaded index\n");
+      annoylib_showUpdate("You can't unbuild a loaded index\n");
       return;
     }
 
@@ -206,7 +206,7 @@ public:
         max_max_bit = std::max(max_max_bit, mb);
         total_bits += mb;
       }
-      showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\n"
+      annoylib_showUpdate("after pack stats\ntotal normal=%d total_nodes=%d\n"
                  "total size of indices=%zd numbers of blocks=%zd\n"
                  "total number of maxbits=%zd\n",
                  _n_items, _n_nodes, iblocks * _K * sizeof(S), iblocks, total_bits);
@@ -215,7 +215,7 @@ public:
 
       (void)iblock_avg_sz;
 
-      showUpdate("iblock avg sz=%f waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
+      annoylib_showUpdate("iblock avg sz=%f waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
     }
 
     FILE *f = fopen(filename, "wb");
@@ -266,7 +266,7 @@ public:
       free(_nodes);
     }
     reinitialize();
-    if (_verbose) showUpdate("unloaded\n");
+    if (_verbose) annoylib_showUpdate("unloaded\n");
   }
 
   void set_seed(int seed) {
@@ -299,7 +299,7 @@ protected:
       const double reallocation_factor = 1.3;
       size_t new_nodes_size = std::max(n,
                   (size_t)((_nodes_size + 1) * reallocation_factor));
-      if (_verbose) showUpdate("Reallocating to %zd nodes\n", new_nodes_size);
+      if (_verbose) annoylib_showUpdate("Reallocating to %zd nodes\n", new_nodes_size);
       _nodes = realloc(_nodes, _s * new_nodes_size);
       memset((char *)_nodes + (_nodes_size * _s)/sizeof(char), 0, (new_nodes_size - _nodes_size) * _s);
       _nodes_size = new_nodes_size;
@@ -358,10 +358,10 @@ protected:
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (children_indices[0].empty() || children_indices[1].empty()) {
       if (_verbose && false)
-        showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
+        annoylib_showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
           children_indices[0].size(), children_indices[1].size());
       if (_verbose && isz > 100000)
-        showUpdate("Failed splitting %lu items\n", indices.size());
+        annoylib_showUpdate("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
@@ -663,7 +663,7 @@ private:
   }
 };
 
-struct EuclideanPacked16 : Euclidean
+struct DotProductPacked16 : DotProduct
 {
   typedef uint16_t PackedFloatType;
   /* we only redefined distance function to work with normal float data on right(y) side
@@ -671,15 +671,12 @@ struct EuclideanPacked16 : Euclidean
   */
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    T pp = x->norm;
-    T qq = y->norm;
-    T pq = decode_and_dot_i16_f32((PackedFloatType const*)x->v, y->v, f);
-    return pp + qq - 2*pq;
+    return -decode_and_dot_i16_f32((PackedFloatType const*)x->v, y->v, f);
   }
 
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    return n->a + decode_and_dot_i16_f32((PackedFloatType const*)n->v, y, f);
+    return decode_and_dot_i16_f32((PackedFloatType const*)n->v, y, f) + + (n->dot_factor * n->dot_factor);
   }
 };
 

@@ -41,7 +41,7 @@ static int test(int f, int k, uint32_t count, int depth = 30)
     using namespace Annoy;
     // create indexer first
     {
-        PackedAnnoyIndexer<uint32_t, float, Euclidean, Kiss32Random> indexer(f, k);
+        PackedAnnoyIndexer<uint32_t, float, DotProduct, Kiss32Random> indexer(f, k);
         for( uint32_t i = 0; i < count; ++i )
         {
             auto vec = GenerateVector(f, -1.f, +1.f);
@@ -55,7 +55,7 @@ static int test(int f, int k, uint32_t count, int depth = 30)
 
     // and load from scratch
 
-    PackedAnnoySearcher<uint32_t, float, EuclideanPacked16> searcher;
+    PackedAnnoySearcher<uint32_t, float, DotProductPacked16> searcher;
 
     searcher.load(TMP_FNAME, false);
 
@@ -90,10 +90,11 @@ static int test(int f, int k, uint32_t count, int depth = 30)
 int main(int argc, char **argv) {
     int f, k, n, d;
 
+    srand(336);
     try
     {
         if(argc == 1){
-            return test(64, 128, 100000);
+            return test(64, 128, 1000000);
         }
         else if(argc == 5){
 
@@ -113,5 +114,6 @@ int main(int argc, char **argv) {
     }
 
 
+    std::cout << "SUCCESS\n";
     return EXIT_SUCCESS;
 }
