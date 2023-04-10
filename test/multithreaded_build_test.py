@@ -1,4 +1,3 @@
-
 import numpy
 
 from annoy import AnnoyIndex
