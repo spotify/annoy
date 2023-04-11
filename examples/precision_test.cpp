@@ -91,7 +91,7 @@ int precision(int f=40, int n=1000000){
 		for(std::vector<int>::iterator limit = limits.begin(); limit!=limits.end(); ++limit){
 
 			t_start = std::chrono::high_resolution_clock::now();
-			t.get_nns_by_item(j, (*limit), (size_t) -1, &toplist, nullptr); //search_k defaults to "n_trees * n" if not provided.
+			t.get_nns_by_item(j, (*limit), (size_t) -1U, &toplist, nullptr); //search_k defaults to "n_trees * n" if not provided.
 			t_end = std::chrono::high_resolution_clock::now();
 			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t_end - t_start ).count();
 

@@ -13,8 +13,6 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-// WARNING! you need to enable SSSE3 instructions for this file! (-mssse3)
-
 #pragma once
 
 #include "packutils.h"
@@ -37,6 +35,90 @@ namespace detail {
   };
 
   static_assert( sizeof(Header) == 16, "header must 16 bytes long!");
+
+
+  class FileWriter
+  {
+  public:
+    ~FileWriter()
+    {
+      if( f )
+        fclose(f);
+    }
+    bool open( char const *filename, size_t calculated_size )
+    {
+      f = fopen(filename, "wb");
+      if (f == nullptr)
+        return false;
+      
+      return true;
+    }
+    void write( void const *buf, size_t sz, size_t cnt )
+    {
+      fwrite(buf, sz, cnt, f);
+    }
+  private:
+    FILE *f = nullptr;
+  };
+
+  class MMapWriter
+  {
+  public:
+    typedef DataMapping Mapping;
+  public:
+    ~MMapWriter() { destroy(); } 
+    bool open( char const */*filename*/, size_t calculated_size )
+    {
+      void *p = mmap(0, calculated_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+      if( p == MAP_FAILED )
+        return false;
+      
+      maping = p;
+      top = static_cast<uint8_t*>(p);
+      size = calculated_size;
+
+#if defined(MADV_DONTDUMP)
+      // Exclude from a core dump those pages
+      madvise(p, calculated_size, MADV_DONTDUMP);
+#endif
+      return true;
+    }
+
+    void write( void const *buf, size_t sz, size_t cnt )
+    {
+      size_t total = sz * cnt;
+      memcpy(top, buf, total);
+      top += total;
+    }
+
+    DataMapping map( char const */*filename*/, bool need_mlock ) {
+      if (need_mlock) {
+        mlock(maping, size);
+        mlocked = true;
+      }
+      return DataMapping{maping, size};
+    }
+
+    void unmap( DataMapping const & ) {
+      destroy();
+    }
+
+    void* get_ptr() const { return maping; }
+  private:
+    void destroy() {
+      if( maping ) {
+        //if( mlocked )
+        //  munlock(maping, size);
+        munmap(maping, size);
+        maping = nullptr;
+      }
+    }
+  private:
+    void *maping = nullptr;
+    uint8_t *top = nullptr;
+    size_t size = 0;
+    bool mlocked = false;
+  };
 
 } // namespace detail
 
@@ -70,7 +152,6 @@ protected:
   Random _random;
   bool _loaded;
   bool _verbose;
-  int _fd;
 
   typedef std::vector<S> indices_list_t;
   std::deque<indices_list_t>  _indices_lists;
@@ -176,7 +257,8 @@ public:
     return maxbits(max);
   }
 
-  bool save(const char* filename) {
+  template<typename FWriter>
+  bool save_impl(FWriter &w, const char* filename) {
     // calc size of packed node
     size_t packed_size = offsetof(Node, v) + _f * sizeof(uint16_t);
     // allocate new buffer
@@ -218,8 +300,11 @@ public:
       annoylib_showUpdate("iblock avg sz=%f waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
     }
 
-    FILE *f = fopen(filename, "wb");
-    if (f == NULL)
+    size_t calculated_size = packed_size * _n_nodes // packed vectors size
+                             + sizeof(S) * _K * _indices_lists.size() // unpacked indices size
+                             + sizeof(detail::Header)
+                             ;
+    if( !w.open(filename, calculated_size) )
       return false;
 
     // write indices first
@@ -237,21 +322,31 @@ public:
         // zeroing bytes left for stability
         memset(data_start, 0, sizeof(index_write_block) - ((isz + 1) * sizeof(S)));
       }
-      fwrite(index_write_block, sizeof(index_write_block), 1, f);
+      w.write(index_write_block, sizeof(index_write_block), 1);
     }
     // and nodes data
-    fwrite(packed_nodes, packed_size, _n_nodes, f);
+    w.write(packed_nodes, packed_size, _n_nodes);
     // header goes to the tail
-    _write_header(f, iblocks);
-    fclose(f);
+    // write header only at tail of file to keep strict alignment in memory
+    // for much faster memory access
+    detail::Header hdr;
+    hdr.version = 0;
+    hdr.vlen = _f;
+    hdr.idx_block_len = _K;
+    hdr.nblocks = iblocks;
+    w.write(&hdr, sizeof(hdr), 1);
 
     unload();
 
     return true;
   }
 
+  bool save(const char* filename) {
+    detail::FileWriter wr;
+    return save_impl(wr, filename);
+  }
+
   void reinitialize() {
-    _fd = 0;
     _nodes = nullptr;
     _loaded = false;
     _n_items = 0;
@@ -282,18 +377,6 @@ public:
   }
 
 protected:
-
-  void _write_header( FILE *f, S nblocks ) {
-    // write header only at tail of file to keep strict alignment in memory
-    // for much faster memory access
-    detail::Header hdr;
-    hdr.version = 0;
-    hdr.vlen = _f;
-    hdr.idx_block_len = _K;
-    hdr.nblocks = nblocks;
-    fwrite(&hdr, sizeof(hdr), 1, f);
-  }
-
   void _allocate_size(size_t n) {
     if (n > _nodes_size) {
       const double reallocation_factor = 1.3;
@@ -426,13 +509,13 @@ protected:
   DataMapping _mapping;
 public:
 
-  PackedAnnoySearcher(const DataMapper & mapper = DataMapper())
+  PackedAnnoySearcher(DataMapper && mapper = DataMapper())
     : _f(0)
     , _s(0)
     , _K(0)
     , _n_items(0)
     , _nodes(nullptr)
-    , _mapper(mapper)
+    , _mapper(std::move(mapper))
   {
     // check size of node must be multiply of 16
     if( _s % 16 )

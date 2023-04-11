@@ -41,8 +41,7 @@ namespace detail {
 
 class MMapDataMapper {
 public:
-    typedef detail::DataMapping Mapping;
-
+  typedef detail::DataMapping Mapping;
 public:
   Mapping map(const char* filename, bool need_mlock) {
     int fd = open(filename, O_RDONLY, (int)0400);

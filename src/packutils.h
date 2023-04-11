@@ -14,13 +14,17 @@
 
 // WARNING! you need to enable at least SSSE3 instructions for this file! (-mssse3)
 // or AVX2 (-mavx2) to gain better speed
-
 #pragma once
 
 #include <emmintrin.h>
 #include <pmmintrin.h>
 #include <immintrin.h>
 #include <stdint.h>
+
+
+#if not defined(__SSSE3__)
+# error "You need to enable SSSE3 instructions for this file or higher!(-mssse3)"
+#endif
 
 #ifndef NO_MANUAL_VECTORIZATION
 # if defined(__AVX2__)
