@@ -584,8 +584,7 @@ public:
   // 2. preload from storage into memory via MADV_WILLNEED.
   // 3. use THP if you disable it on your system via MADV_HUGEPAGE.
   // 4. something special ;)
-  bool madvise(int flags)
-  {
+  bool madvise(int flags) {
       return madvise(_mapping.data, _mapping.size, flags) == 0;
   }
 
@@ -616,7 +615,7 @@ public:
   }
 
   void get_nns_by_vector(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-        // init node for comparsion from given vector(v)
+    // init node for comparison from given vector(v)
     // alloc space for that node on the stack!
     // but node vector(v[1]) data is need to be aligned to 16 bytes
     char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
@@ -625,7 +624,8 @@ public:
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     vector<pair<T, S> > nns_dist;
-    size_t p = _get_all_nns(v_node, n, search_k, nns_dist);
+    _get_all_nns(v_node, n, search_k, nns_dist, _just_bypass);
+    size_t p = std::min(nns_dist.size(), n);
     // prealloc result buffers
     result->reserve(p);
     if (distances)
@@ -643,9 +643,29 @@ public:
     }
   }
 
-  // same as above but return all found results w/o resorting by distance
-  size_t get_nns_by_node_raw(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist) const {
-    return _get_all_nns(v_node, n, search_k, nns_dist);
+  // faster versions of above get_nns() functions
+  // supported user-defined filtering
+  // WARN: this version return raw-distance, you can normalize it in filter function!
+  template<typename Filter>
+  void get_nns_by_vector_filter(const T* v, size_t n, size_t search_k, Filter filter, vector<pair<T, S> > &nns_dist) const {
+    // init node for comparison from given vector(v)
+    // alloc space for that node on the stack!
+    // but node vector(v[1]) data is need to be aligned to 16 bytes
+    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
+         __attribute__((aligned(16)));
+    
+    Node* v_node = mk_node(v, _f, node_alloc_buf);
+
+    _get_all_nns(v_node, n, search_k, nns_dist, filter);
+  }
+
+  // same as above but referenced himself
+  template<typename Filter>
+  void get_nns_by_item_filter(S item, size_t n, size_t search_k, Filter filter, vector<pair<T, S> > &nns_dist) const {
+    float __attribute__((aligned(16))) mv[_f];
+    const Node* m = _get(item);
+    decode_vector_i16_f32((uint16_t const*)m->v, mv, _f);
+    get_nns_by_vector_filter(mv, n, search_k, filter, nns_dist);
   }
 
   S get_n_items() const {
@@ -671,15 +691,23 @@ private:
     return nd;
   }
 
-  size_t _get_all_nns(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist) const {
+  static bool _just_bypass( T dist ) {
+      return true;
+  }
+
+  template<typename Filter>
+  void _get_all_nns(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist, 
+                    Filter filter) const {
     if (search_k == (S)-1)
       search_k = n * _roots_q.size(); // slightly arbitrary default value
-    
+    // alloc node-ids temporary search buffer on the heap
+    // TODO: this is little faster than using stack, 
+    // but consider using preallocated memory buffer instead!
     std::unique_ptr<S[]> nns( new S[search_k + _K * 2]);
     // copy prepared queue with roots
     queue_t q;
     // reduce realloc overhead
-    // TODO: dTLB high pressure here, so decide to use HP for temp and output buffers!
+    // TODO: dTLB high pressure during scan loop, so decide to use HP for temp and output buffers!
     q.reserve( n * _roots_q.size() );
     q.assign(_roots_q.begin(), _roots_q.end());
     S nns_cnt = 0;
@@ -731,18 +759,20 @@ private:
         continue;
       last = j;
       Node const *nd = _get(j);
-      if (nd->n_descendants == 1)  // This is only to guard a really obscure case, #284
-          nns_dist.emplace_back(D::distance(nd, v_node, _f), j);
+      if (nd->n_descendants == 1) { // This is only to guard a really obscure case, #284
+        T dist = D::distance(nd, v_node, _f);
+        if( filter(dist) )
+          nns_dist.emplace_back(dist, j);
+      }
     }
 
     // resort by distance
-    size_t m = nns_dist.size(), p = std::min(m, n);
+    size_t m = nns_dist.size();
     if( n < m ) // Has more than N results, so get only top N
       std::partial_sort(nns_dist.begin(), nns_dist.begin() + n, nns_dist.end());
     else
       std::sort(nns_dist.begin(), nns_dist.end());
 
-    return p;
   }
 };
 
@@ -759,7 +789,7 @@ struct DotProductPacked16 : DotProduct
 
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    return decode_and_dot_i16_f32((PackedFloatType const*)n->v, y, f) + + (n->dot_factor * n->dot_factor);
+    return decode_and_dot_i16_f32((PackedFloatType const*)n->v, y, f) + (n->dot_factor * n->dot_factor);
   }
 };
 

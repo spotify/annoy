@@ -13,7 +13,23 @@
 #include "../src/packedlib.h"
 #include <random>
 #include <vector>
+#include <string>
 #include <algorithm>
+
+template<typename T>
+bool is_near
+(
+    T const value,
+    T const target,
+    T const accuracy
+)
+{
+    return
+        (value + accuracy) >= target
+        &&
+        (value - accuracy) <= target
+        ;
+}
 
 static char const TMP_FNAME[] = { "packed_annoy.idx" };
 
@@ -22,24 +38,54 @@ static float frand()
     return std::rand() / (float)RAND_MAX;
 }
 
+float vlength( std::vector<float> const &v )
+{
+    float sum = 0.f;
+
+    for( float f : v )
+        sum += f * f;
+    
+    return std::sqrt(sum);
+}
+
+
+void normalize( float const length, std::vector<float> &v )
+{
+    for( float &f : v )
+        f /= length;
+}
+
 static std::vector<float> GenerateVector( size_t n, float lo, float hi )
 {
     std::vector<float> v(n);
-    std::transform
-    (
-        v.begin(), v.end(), v.begin(),
-        [lo, hi]( float ) -> float { return lo + (hi - lo) * frand(); }
-    );
+    float len;
+    do
+    {
+        std::transform
+        (
+            v.begin(), v.end(), v.begin(),
+            [lo, hi]( float ) -> float { return lo + (hi - lo) * frand(); }
+        );
+
+        // normalize vector for dot product!
+        len = vlength(v);
+    }
+    while( is_near(len, 0.f, 0.00001f) );
+
+
+    normalize(len, v);
 
     return v;
 }
 
-#define CHECK_AND_THROW(eq) { if( eq ) throw std::runtime_error("CHECK FAILED: " #eq); }
+#define CHECK_AND_THROW(eq) { if( !(eq) ) throw std::runtime_error("CHECK FAILED: " #eq " at line: " + std::to_string(__LINE__)); }
 
 using namespace Annoy;
 
-static int test(int f, int k, uint32_t count, int depth = 30)
+static void test(int f, int k, uint32_t count, int depth = 30)
 {
+    // reset srand every time to get same vectors
+    srand(336);
     std::cout << "run test(), f=" << f << " k=" << k << " nvectors=" << count << std::endl;
     // create indexer first
     {
@@ -53,7 +99,7 @@ static int test(int f, int k, uint32_t count, int depth = 30)
         indexer.build(depth);
         std::cout << "building done, save into: \"" << TMP_FNAME << "\"" << std::endl;
         bool saved_success = indexer.save(TMP_FNAME);
-        CHECK_AND_THROW(saved_success != true);
+        CHECK_AND_THROW(saved_success == true);
     }
 
     // and load from scratch
@@ -64,7 +110,7 @@ static int test(int f, int k, uint32_t count, int depth = 30)
 
     uint32_t nitems = searcher.get_n_items(), nfound = 0;
 
-    CHECK_AND_THROW( nitems != count );
+    CHECK_AND_THROW( nitems == count );
 
     std::vector<uint32_t> results;
 
@@ -83,15 +129,49 @@ static int test(int f, int k, uint32_t count, int depth = 30)
             ++nfound;
     }
 
-    double const qual = nfound / double(nitems_for_test);
+    double qual = nfound / double(nitems_for_test);
 
-    std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
+    std::cout << "scan self with depth=" << depth << " quality=" << qual << std::endl;
 
-    return qual > 0.9 ? 0 : 1/*bad*/;
+    CHECK_AND_THROW( qual > 0.9 );
+
+    // check with filtering
+    {
+        nfound = 0;
+        std::vector<std::pair<float, uint32_t>> results;
+        for( uint32_t i = 0; i < nitems_for_test; ++i )
+        {
+            results.clear();
+            searcher.get_nns_by_item_filter(i, depth, search_k, []( float &dist ) {
+                // for DotProduct we must get abs to get real distance similarity
+                dist = std::abs(dist);
+                // also check for minimal quality
+                if( dist > 0.8f )
+                    return true;
+                return false; // throw away this result!
+            }, results);
+            // check results
+            for( auto p : results )
+            {
+                // check all distances must be leq 0.1
+                CHECK_AND_THROW( p.first >= 0.8f );
+                if( i == p.second )
+                {
+                    CHECK_AND_THROW( is_near(p.first, 1.f, 0.0001f) );
+                    ++nfound;
+                }
+            }
+        }
+    }
+    qual = nfound / double(nitems_for_test);
+
+    std::cout << "scan vectors w/ filtering, with depth=" << depth << " quality=" << qual << std::endl;
+
+    CHECK_AND_THROW( qual > 0.9 );
 }
 
 
-static int in_mem_test(int f, int k, uint32_t count, int depth = 30)
+static void in_mem_test(int f, int k, uint32_t count, int depth = 30)
 {
     std::cout << "run in_mem_test(), f=" << f << " k=" << k << " nvectors=" << count << std::endl;
 
@@ -111,7 +191,7 @@ static int in_mem_test(int f, int k, uint32_t count, int depth = 30)
                   << loader_n_writer.get_ptr() << std::endl;
         // we can pass nullptr for filename
         bool saved_success = indexer.save_impl(loader_n_writer, nullptr);
-        CHECK_AND_THROW(saved_success != true);
+        CHECK_AND_THROW(saved_success == true);
     }
 
     // and load from the same memory block
@@ -124,7 +204,7 @@ static int in_mem_test(int f, int k, uint32_t count, int depth = 30)
 
     uint32_t nitems = searcher.get_n_items(), nfound = 0;
 
-    CHECK_AND_THROW( nitems != count );
+    CHECK_AND_THROW( nitems == count );
 
     std::vector<uint32_t> results;
 
@@ -147,30 +227,15 @@ static int in_mem_test(int f, int k, uint32_t count, int depth = 30)
 
     std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
 
-    return qual > 0.9 ? 0 : 1/*bad*/;
-}
-
-static int run_tests()
-{
-    if( test(256, 256, 100000) )
-        return 1;
-
-    if( test(64, 128, 1000000) )
-        return 1;
-
-    if( in_mem_test(64, 128, 100000) )
-        return 1;
-
-    return 0;
+    CHECK_AND_THROW( qual > 0.9 );
 }
 
 int main(int argc, char **argv) {
-
-    srand(336);
     try
     {
-        if( run_tests() )
-            throw std::runtime_error("some of the tests failed!");
+        test(256, 256, 100000);
+        test(64, 128, 1000000);
+        in_mem_test(64, 128, 100000);
     }
     catch(std::exception const &e)
     {
