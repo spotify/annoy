@@ -55,7 +55,7 @@ void normalize( float const length, std::vector<float> &v )
         f /= length;
 }
 
-static std::vector<float> GenerateVector( size_t n, float lo, float hi )
+static std::vector<float> GenerateVectorNorm( size_t n, float lo, float hi )
 {
     std::vector<float> v(n);
     float len;
@@ -82,17 +82,89 @@ static std::vector<float> GenerateVector( size_t n, float lo, float hi )
 
 using namespace Annoy;
 
+uint32_t search_with_filtering(PackedAnnoySearcher<uint32_t, float, DotProductPacked16> &searcher, int depth, uint32_t nitems_for_test )
+{
+    size_t const search_k = (size_t)-1;
+    uint32_t nfound = 0;
+    std::vector<std::pair<float, uint32_t>> results;
+    for( uint32_t i = 0; i < nitems_for_test; ++i )
+    {
+        results.clear();
+        searcher.get_nns_by_item_filter(i, depth, search_k, []( float &dist ) {
+            // for DotProduct we must get abs to get real distance similarity
+            dist = std::abs(dist);
+            // also check for minimal quality
+            if( dist > 0.8f )
+                return true;
+            return false; // throw away this result!
+        }, results);
+        // check results
+        for( auto p : results )
+        {
+            // check all distances must be geq 0.1
+            CHECK_AND_THROW( p.first >= 0.8f );
+            if( i == p.second )
+            {
+                CHECK_AND_THROW( is_near(p.first, 1.f, 0.0001f) );
+                ++nfound;
+            }
+        }
+    }
+
+    return nfound;
+}
+
+uint32_t search_with_filtering(PackedAnnoySearcher<uint32_t, float, EuclideanPacked16> &searcher, int depth, uint32_t nitems_for_test )
+{
+    size_t const search_k = (size_t)-1;
+    uint32_t nfound = 0;
+    std::vector<std::pair<float, uint32_t>> results;
+    float const max_dist = 0.6f;
+    for( uint32_t i = 0; i < nitems_for_test; ++i )
+    {
+        results.clear();
+        searcher.get_nns_by_item_filter(i, depth, search_k, [max_dsqr = max_dist * max_dist]( float &dist ) {
+            // for Euclidean we have squared distances here, so bound must be 
+            // squared before comparions!
+            // also check for minimal quality
+            if( dist < max_dsqr )
+            {
+                // distance passed so we can normalize it here!
+                dist = EuclideanPacked16::normalized_distance(dist);
+                return true;
+            }
+            return false; // throw away this result!
+        }, results);
+        // check results
+        for( auto p : results )
+        {
+            // check all distances must be leq 0.6
+            CHECK_AND_THROW( p.first < 0.6f );
+            if( i == p.second )
+            {
+                CHECK_AND_THROW( is_near(p.first, 0.f, 0.0001f) );
+                ++nfound;
+            }
+        }
+    }
+
+    return nfound;
+}
+
+
+template<typename DistT>
 static void test(int f, int k, uint32_t count, int depth = 30)
 {
     // reset srand every time to get same vectors
     srand(336);
-    std::cout << "run test(), f=" << f << " k=" << k << " nvectors=" << count << std::endl;
+    std::cout << "run test() for " << typeid(DistT).name()
+              << ", f=" << f << " k=" << k << " nvectors=" << count << std::endl;
     // create indexer first
     {
-        PackedAnnoyIndexer<uint32_t, float, DotProduct, Kiss32Random> indexer(f, k);
+        PackedAnnoyIndexer<uint32_t, float, typename DistT::UnpackedT, Kiss32Random> indexer(f, k);
         for( uint32_t i = 0; i < count; ++i )
         {
-            auto vec = GenerateVector(f, -1.f, +1.f);
+            auto vec = GenerateVectorNorm(f, -1.f, +1.f);
             indexer.add_item(i, vec.data());
         }
         std::cout << "build with depth=" << depth << " started." << std::endl;
@@ -104,7 +176,7 @@ static void test(int f, int k, uint32_t count, int depth = 30)
 
     // and load from scratch
 
-    PackedAnnoySearcher<uint32_t, float, DotProductPacked16> searcher;
+    PackedAnnoySearcher<uint32_t, float, DistT> searcher;
 
     searcher.load(TMP_FNAME, false);
 
@@ -136,33 +208,7 @@ static void test(int f, int k, uint32_t count, int depth = 30)
     CHECK_AND_THROW( qual > 0.9 );
 
     // check with filtering
-    {
-        nfound = 0;
-        std::vector<std::pair<float, uint32_t>> results;
-        for( uint32_t i = 0; i < nitems_for_test; ++i )
-        {
-            results.clear();
-            searcher.get_nns_by_item_filter(i, depth, search_k, []( float &dist ) {
-                // for DotProduct we must get abs to get real distance similarity
-                dist = std::abs(dist);
-                // also check for minimal quality
-                if( dist > 0.8f )
-                    return true;
-                return false; // throw away this result!
-            }, results);
-            // check results
-            for( auto p : results )
-            {
-                // check all distances must be leq 0.1
-                CHECK_AND_THROW( p.first >= 0.8f );
-                if( i == p.second )
-                {
-                    CHECK_AND_THROW( is_near(p.first, 1.f, 0.0001f) );
-                    ++nfound;
-                }
-            }
-        }
-    }
+    nfound = search_with_filtering(searcher, depth, nitems_for_test);
     qual = nfound / double(nitems_for_test);
 
     std::cout << "scan vectors w/ filtering, with depth=" << depth << " quality=" << qual << std::endl;
@@ -182,7 +228,7 @@ static void in_mem_test(int f, int k, uint32_t count, int depth = 30)
         PackedAnnoyIndexer<uint32_t, float, DotProduct, Kiss32Random> indexer(f, k);
         for( uint32_t i = 0; i < count; ++i )
         {
-            auto vec = GenerateVector(f, -1.f, +1.f);
+            auto vec = GenerateVectorNorm(f, -1.f, +1.f);
             indexer.add_item(i, vec.data());
         }
         std::cout << "build with depth=" << depth << " started." << std::endl;
@@ -233,8 +279,16 @@ static void in_mem_test(int f, int k, uint32_t count, int depth = 30)
 int main(int argc, char **argv) {
     try
     {
-        test(256, 256, 100000);
-        test(64, 128, 1000000);
+        // DotProduct
+        test<DotProductPacked16>(256, 256, 100000);
+        test<DotProductPacked16>(64, 128, 1000000);
+        // and hard case for avx, causes a split
+        test<DotProductPacked16>(40, 64, 100000);
+        // Euclidean
+        test<EuclideanPacked16>(256, 256, 100000);
+        test<EuclideanPacked16>(64, 128, 1000000);
+        // and hard case for avx, causes a split
+        test<EuclideanPacked16>(40, 64, 100000);
         in_mem_test(64, 128, 100000);
     }
     catch(std::exception const &e)

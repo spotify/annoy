@@ -776,8 +776,27 @@ private:
   }
 };
 
+struct EuclideanPacked16 : Euclidean
+{
+  using UnpackedT = Euclidean;
+  typedef uint16_t PackedFloatType;
+  /* we only redefined distance function to work with normal float data on right(y) side
+     and packed vector on left(x) side(on storage?)
+  */
+  template<typename S, typename T>
+  static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
+    return decode_and_euclidean_distance_i16_f32((PackedFloatType const*)x->v, y->v, f);    
+  }
+
+  template<typename S, typename T>
+  static inline T margin(const Node<S, T>* n, const T* y, int f) {
+    return n->a + decode_and_dot_i16_f32((PackedFloatType const*)n->v, y, f);
+  }
+};
+
 struct DotProductPacked16 : DotProduct
 {
+  using UnpackedT = DotProduct;
   typedef uint16_t PackedFloatType;
   /* we only redefined distance function to work with normal float data on right(y) side
      and packed vector on left(x) side(on storage?)
