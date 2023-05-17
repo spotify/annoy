@@ -44,7 +44,7 @@ float vlength( std::vector<float> const &v )
 
     for( float f : v )
         sum += f * f;
-    
+
     return std::sqrt(sum);
 }
 
@@ -124,7 +124,7 @@ uint32_t search_with_filtering(PackedAnnoySearcher<uint32_t, float, EuclideanPac
     {
         results.clear();
         searcher.get_nns_by_item_filter(i, depth, search_k, [max_dsqr = max_dist * max_dist]( float &dist ) {
-            // for Euclidean we have squared distances here, so bound must be 
+            // for Euclidean we have squared distances here, so bound must be
             // squared before comparions!
             // also check for minimal quality
             if( dist < max_dsqr )
@@ -217,7 +217,7 @@ static void test(int f, int k, uint32_t count, int depth = 30)
 }
 
 
-static void in_mem_test(int f, int k, uint32_t count, int depth = 30)
+static double in_mem_test(int f, int k, uint32_t count, int depth = 30)
 {
     std::cout << "run in_mem_test(), f=" << f << " k=" << k << " nvectors=" << count << std::endl;
 
@@ -233,16 +233,16 @@ static void in_mem_test(int f, int k, uint32_t count, int depth = 30)
         }
         std::cout << "build with depth=" << depth << " started." << std::endl;
         indexer.build(depth);
-        std::cout << "building done, save into mmaped block ptr=" 
-                  << loader_n_writer.get_ptr() << std::endl;
         // we can pass nullptr for filename
         bool saved_success = indexer.save_impl(loader_n_writer, nullptr);
+        std::cout << "building done, save into mmaped block ptr="
+                  << loader_n_writer.get_ptr() << std::endl;
         CHECK_AND_THROW(saved_success == true);
     }
 
     // and load from the same memory block
 
-    PackedAnnoySearcher<uint32_t, float, DotProductPacked16, detail::MMapWriter> 
+    PackedAnnoySearcher<uint32_t, float, DotProductPacked16, detail::MMapWriter>
         searcher(std::move(loader_n_writer));
 
     // we can pass nullptr for filename
@@ -273,7 +273,7 @@ static void in_mem_test(int f, int k, uint32_t count, int depth = 30)
 
     std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
 
-    CHECK_AND_THROW( qual > 0.9 );
+    return qual;
 }
 
 int main(int argc, char **argv) {
@@ -289,7 +289,9 @@ int main(int argc, char **argv) {
         test<EuclideanPacked16>(64, 128, 1000000);
         // and hard case for avx, causes a split
         test<EuclideanPacked16>(40, 64, 100000);
-        in_mem_test(64, 128, 100000);
+        CHECK_AND_THROW( in_mem_test(64, 128, 100000) > 0.9 );
+        // in the case we try to make very small index
+        CHECK_AND_THROW( in_mem_test(64, 64, 17) >= 0.25 );
     }
     catch(std::exception const &e)
     {

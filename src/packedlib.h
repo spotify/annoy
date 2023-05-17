@@ -50,7 +50,7 @@ namespace detail {
       f = fopen(filename, "wb");
       if (f == nullptr)
         return false;
-      
+
       return true;
     }
     void write( void const *buf, size_t sz, size_t cnt )
@@ -66,13 +66,13 @@ namespace detail {
   public:
     typedef DataMapping Mapping;
   public:
-    ~MMapWriter() { destroy(); } 
+    ~MMapWriter() { destroy(); }
     bool open( char const */*filename*/, size_t calculated_size )
     {
       void *p = mmap(0, calculated_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
       if( p == MAP_FAILED )
         return false;
-      
+
       maping = p;
       top = static_cast<uint8_t*>(p);
       size = calculated_size;
@@ -138,6 +138,7 @@ public:
   typedef typename D::template Node<S, T> Node;
 
 private:
+  // this flag is used for node_id to separate indices only nodes and original
   static constexpr S const _K_mask = S(1) << S(sizeof(S) * 8 - 1);
 
 protected:
@@ -150,7 +151,6 @@ protected:
   size_t _nodes_size; // capacity of the write buffer
   S _n_nodes; // number of nodes
   Random _random;
-  bool _loaded;
   bool _verbose;
 
   typedef std::vector<S> indices_list_t;
@@ -195,9 +195,6 @@ public:
   }
 
   void build(int q) {
-    if (_loaded)
-      throw std::runtime_error("You can't build a loaded index");
-
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
@@ -214,7 +211,7 @@ public:
           indices.push_back(i);
       }
 
-      _roots.push_back(_make_tree(std::move(indices), true));
+      _roots.push_back(_make_tree(indices, true));
     }
 
     // Also, copy the roots into the last segment of the array
@@ -228,16 +225,6 @@ public:
     _n_nodes += nroots;
 
     if (_verbose) annoylib_showUpdate("has %d nodes\n", _n_nodes);
-  }
-
-  void unbuild() {
-    if (_loaded) {
-      annoylib_showUpdate("You can't unbuild a loaded index\n");
-      return;
-    }
-
-    _roots.clear();
-    _n_nodes = _n_items;
   }
 
   static inline uint32_t maxbits(uint32_t const v)
@@ -348,7 +335,6 @@ public:
 
   void reinitialize() {
     _nodes = nullptr;
-    _loaded = false;
     _n_items = 0;
     _n_nodes = 0;
     _nodes_size = 0;
@@ -394,65 +380,95 @@ protected:
     return get_node_ptr<S, Node>(_nodes, _s, i);
   }
 
-  S _append_indices( vector<S> && indices )
+  S _append_indices( const vector<S>& indices )
   {
     S i = _indices_lists.size();
     _indices_lists.emplace_back( std::move(indices) );
     return i | _K_mask;
   }
 
-  S _make_tree(vector<S > && indices, bool is_root) {
-    S const isz = indices.size();
-    S const max_n_descendants = _K - 1;
+  static double _split_imbalance(const vector<S>& left_indices, const vector<S>& right_indices) {
+    double ls = (double)left_indices.size();
+    double rs = (double)right_indices.size();
+    double f = ls / (ls + rs + 1e-9);  // Avoid 0/0
+    return std::max(f, 1.0 - f);
+  }
+
+  S _make_tree(const vector<S >& indices, bool is_root) {
     // The basic rule is that if we have <= _K items, then it's a leaf node, otherwise it's a split node.
     // There's some regrettable complications caused by the problem that root nodes have to be "special":
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
     // 2. Root nodes with only 1 child need to be a "dummy" parent
     // 3. Due to the _n_items "hack", we need to be careful with the cases where _n_items <= _K or _n_items > _K
-    if (isz == 1 && !is_root)
+    if (indices.size() == 1 && !is_root)
       return indices[0];
 
-    if (isz <= max_n_descendants && (!is_root || _n_items <= max_n_descendants || isz == 1)) {
-      if( is_root )
-        throw std::runtime_error("cannot make root here!");
-      return _append_indices(std::move(indices));
+    if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
+      if( !is_root )
+        // only non-roots can have indices only nodes!
+        return _append_indices(indices);
+
+      _allocate_size(_n_nodes + 1);
+      S item = _n_nodes++;
+      Node* m = _get(item);
+      m->n_descendants = _n_items;
+
+      // Using std::copy instead of a loop seems to resolve issues #3 and #13,
+      // probably because gcc 4.8 goes overboard with optimizations.
+      // Using memcpy instead of std::copy for MSVC compatibility. #235
+      // Only copy when necessary to avoid crash in MSVC 9. #293
+      if (!indices.empty())
+        memcpy(m->children, &indices[0], indices.size() * sizeof(S));
+
+      return item;
     }
 
-    // map indices to nodes pointers
     vector<Node*> children;
-    children.reserve(isz);
-    for (S j : indices) {
+    for (size_t i = 0; i < indices.size(); i++) {
+      S j = indices[i];
       Node* n = _get(j);
-      children.push_back(n);
+      if (n)
+        children.push_back(n);
     }
 
     vector<S> children_indices[2];
-    children_indices[0].reserve(isz / 2 + 1);
-    children_indices[1].reserve(isz / 2 + 1);
-    Node* m = (Node*)malloc(_s); // TODO: avoid
-    D::create_split(children, _f, _s, _random, m);
+    Node* m = (Node*)alloca(_s);
 
-    for (S j : indices) {
-      Node* n = _get(j);
-      bool side = D::side(m, n->v, _f, _random);
-      children_indices[side].push_back(j);
+    for (int attempt = 0; attempt < 3; attempt++) {
+      children_indices[0].clear();
+      children_indices[1].clear();
+      D::create_split(children, _f, _s, _random, m);
+
+      for (size_t i = 0; i < indices.size(); i++) {
+        S j = indices[i];
+        Node* n = _get(j);
+        if (n) {
+          bool side = D::side(m, n->v, _f, _random);
+          children_indices[side].push_back(j);
+        } else {
+          annoylib_showUpdate("No node for index %d?\n", j);
+        }
+      }
+
+      if (_split_imbalance(children_indices[0], children_indices[1]) < 0.95)
+        break;
     }
 
     // If we didn't find a hyperplane, just randomize sides as a last option
-    while (children_indices[0].empty() || children_indices[1].empty()) {
-      if (_verbose && false)
+    while (_split_imbalance(children_indices[0], children_indices[1]) > 0.99) {
+      if (_verbose)
         annoylib_showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
           children_indices[0].size(), children_indices[1].size());
-      if (_verbose && isz > 100000)
-        annoylib_showUpdate("Failed splitting %lu items\n", indices.size());
 
       children_indices[0].clear();
       children_indices[1].clear();
 
       // Set the vector to 0.0
-      memset(m->v, 0, _f * sizeof(T));
+      for (int z = 0; z < _f; z++)
+        m->v[z] = 0;
 
-      for (S j : indices) {
+      for (size_t i = 0; i < indices.size(); i++) {
+        S j = indices[i];
         // Just randomize...
         children_indices[_random.flip()].push_back(j);
       }
@@ -463,13 +479,13 @@ protected:
     m->n_descendants = is_root ? _n_items : (S)indices.size();
     for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
-      m->children[side^flip] = _make_tree(std::move(children_indices[side^flip]), false);
+      m->children[side^flip] = _make_tree(children_indices[side^flip], false);
     }
 
     _allocate_size(_n_nodes + 1);
     S item = _n_nodes++;
+
     memcpy(_get(item), m, _s);
-    free(m);
 
     return item;
   }
@@ -620,7 +636,7 @@ public:
     // but node vector(v[1]) data is need to be aligned to 16 bytes
     char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
          __attribute__((aligned(16)));
-    
+
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     vector<pair<T, S> > nns_dist;
@@ -653,7 +669,7 @@ public:
     // but node vector(v[1]) data is need to be aligned to 16 bytes
     char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
          __attribute__((aligned(16)));
-    
+
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     _get_all_nns(v_node, n, search_k, nns_dist, filter);
@@ -696,12 +712,12 @@ private:
   }
 
   template<typename Filter>
-  void _get_all_nns(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist, 
+  void _get_all_nns(const Node* v_node, size_t n, S search_k, vector<pair<T, S> > &nns_dist,
                     Filter filter) const {
     if (search_k == (S)-1)
       search_k = n * _roots_q.size(); // slightly arbitrary default value
     // alloc node-ids temporary search buffer on the heap
-    // TODO: this is little faster than using stack, 
+    // TODO: this is little faster than using stack,
     // but consider using preallocated memory buffer instead!
     std::unique_ptr<S[]> nns( new S[search_k + _K * 2]);
     // copy prepared queue with roots
@@ -785,7 +801,7 @@ struct EuclideanPacked16 : Euclidean
   */
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    return decode_and_euclidean_distance_i16_f32((PackedFloatType const*)x->v, y->v, f);    
+    return decode_and_euclidean_distance_i16_f32((PackedFloatType const*)x->v, y->v, f);
   }
 
   template<typename S, typename T>

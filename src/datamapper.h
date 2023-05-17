@@ -31,7 +31,7 @@ namespace detail {
       {}
 
     DataMapping() = default;
-    
+
     void const *data = nullptr;
     size_t size = 0;
   };
@@ -101,7 +101,7 @@ public:
 
     Mapping mapping;
     mapping.size = fd_stat.st_size;
-    mapping.data = mmap(0, mapping.size, PROT_READ | PROT_WRITE, 
+    mapping.data = mmap(0, mapping.size, PROT_READ | PROT_WRITE,
                         MAP_SHARED | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
     if (mapping.data == MAP_FAILED) {
       return Mapping();
