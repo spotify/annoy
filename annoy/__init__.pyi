@@ -3,7 +3,7 @@ from typing import Sized, overload
 from typing_extensions import Literal, Protocol
 
 class _Vector(Protocol, Sized):
-    def __getitem__(self, i: int) -> float: ...
+    def __getitem__(self, __index: int) -> float: ...
 
 class AnnoyIndex:
     f: int
