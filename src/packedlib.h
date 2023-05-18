@@ -22,6 +22,14 @@
 #include <algorithm>
 #include <memory>
 #include <iostream>
+#include <alloca.h>
+
+#ifdef __GNUC__
+#  define alloca_aligned(sz) static_cast<char*>(__builtin_alloca_with_align(sz, 16))
+#else
+/* Clang must be generated already aligned stack allocation */
+#  define alloca_aligned(sz) static_cast<char*>(alloca(sz))
+#endif
 
 namespace Annoy {
 
@@ -163,6 +171,8 @@ public:
     , _K(idx_block_len)
     , _verbose(false)
   {
+    if( uint32_t(f) % 8 )
+      throw std::runtime_error("number of element in the vector must be multiply of 8.");
     if( (_K * sizeof(S)) % 16 )
       throw std::runtime_error("size of the index-node must be multiply of 16 bytes, consider using different idx_block_len!");
     reinitialize(); // Reset everything
@@ -283,8 +293,8 @@ public:
       auto iblock_avg_sz = total_size / double(iblocks);
 
       (void)iblock_avg_sz;
-
-      annoylib_showUpdate("iblock avg sz=%f waste=%f\n", iblock_avg_sz, 1.0 - (iblock_avg_sz / (_K - 1 )));
+      if( iblock_avg_sz )
+        annoylib_showUpdate("iblock stats sizes: avg=%.03f max=%d waste=%.03f %%\n", iblock_avg_sz, _K, (1.0 - (iblock_avg_sz / (_K - 1 ))) * 100.);
     }
 
     size_t calculated_size = packed_size * _n_nodes // packed vectors size
@@ -634,9 +644,7 @@ public:
     // init node for comparison from given vector(v)
     // alloc space for that node on the stack!
     // but node vector(v[1]) data is need to be aligned to 16 bytes
-    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
-         __attribute__((aligned(16)));
-
+    char *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     vector<pair<T, S> > nns_dist;
@@ -667,9 +675,7 @@ public:
     // init node for comparison from given vector(v)
     // alloc space for that node on the stack!
     // but node vector(v[1]) data is need to be aligned to 16 bytes
-    char node_alloc_buf[offsetof(Node, v) + _f * sizeof(T)]
-         __attribute__((aligned(16)));
-
+    char *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     _get_all_nns(v_node, n, search_k, nns_dist, filter);
@@ -829,6 +835,8 @@ struct DotProductPacked16 : DotProduct
 };
 
 } // namespace Annoy
+
+#undef alloca_aligned
 
 // vim: tabstop=2 shiftwidth=2
 

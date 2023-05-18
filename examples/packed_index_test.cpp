@@ -162,6 +162,7 @@ static void test(int f, int k, uint32_t count, int depth = 30)
     // create indexer first
     {
         PackedAnnoyIndexer<uint32_t, float, typename DistT::UnpackedT, Kiss32Random> indexer(f, k);
+        indexer.verbose(true);
         for( uint32_t i = 0; i < count; ++i )
         {
             auto vec = GenerateVectorNorm(f, -1.f, +1.f);
@@ -226,6 +227,7 @@ static double in_mem_test(int f, int k, uint32_t count, int depth = 30)
     detail::MMapWriter loader_n_writer;
     {
         PackedAnnoyIndexer<uint32_t, float, DotProduct, Kiss32Random> indexer(f, k);
+        indexer.verbose(true);
         for( uint32_t i = 0; i < count; ++i )
         {
             auto vec = GenerateVectorNorm(f, -1.f, +1.f);
