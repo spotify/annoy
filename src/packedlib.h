@@ -23,6 +23,7 @@
 #include <memory>
 #include <iostream>
 #include <alloca.h>
+#include <assert.h>
 
 #ifdef __GNUC__
 #  define alloca_aligned(sz) static_cast<char*>(__builtin_alloca_with_align(sz, 16))
@@ -75,6 +76,19 @@ namespace detail {
     typedef DataMapping Mapping;
   public:
     ~MMapWriter() { destroy(); }
+    MMapWriter() = default;
+    MMapWriter( MMapWriter const& ) = delete;
+    MMapWriter( MMapWriter && o )
+      : maping(o.maping)
+      , top(static_cast<uint8_t*>(o.maping))
+      , size(o.size)
+      , mlocked(o.mlocked)
+    {
+        o.maping = nullptr;
+    }
+
+    MMapWriter& operator == ( MMapWriter && ) = delete;
+    MMapWriter& operator == ( MMapWriter const & ) = delete;
     bool open( char const */*filename*/, size_t calculated_size )
     {
       void *p = mmap(0, calculated_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
@@ -112,6 +126,7 @@ namespace detail {
     }
 
     void* get_ptr() const { return maping; }
+    size_t get_size() const { return size; }
   private:
     void destroy() {
       if( maping ) {
@@ -410,10 +425,16 @@ protected:
     // 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants, regardless of how many descendants they actually have
     // 2. Root nodes with only 1 child need to be a "dummy" parent
     // 3. Due to the _n_items "hack", we need to be careful with the cases where _n_items <= _K or _n_items > _K
-    if (indices.size() == 1 && !is_root)
-      return indices[0];
 
-    if (indices.size() <= (size_t)_K && (!is_root || (size_t)_n_items <= (size_t)_K || indices.size() == 1)) {
+    S const isz = indices.size();
+
+    if (isz == 1 && !is_root)
+      return indices[0];
+    // NOTE: this is very important thing, since we operates only with aligned blocks
+    // we cannot store more than _K - 1 indices, first element in the block is number of indices
+    S const max_n_descendants = _K - 1;
+
+    if (isz <= max_n_descendants && (!is_root || (size_t)_n_items <= (size_t)max_n_descendants || isz == 1)) {
       if( !is_root )
         // only non-roots can have indices only nodes!
         return _append_indices(indices);
@@ -428,13 +449,13 @@ protected:
       // Using memcpy instead of std::copy for MSVC compatibility. #235
       // Only copy when necessary to avoid crash in MSVC 9. #293
       if (!indices.empty())
-        memcpy(m->children, &indices[0], indices.size() * sizeof(S));
+        memcpy(m->children, &indices[0], isz * sizeof(S));
 
       return item;
     }
 
     vector<Node*> children;
-    for (size_t i = 0; i < indices.size(); i++) {
+    for (S i = 0; i < isz; i++) {
       S j = indices[i];
       Node* n = _get(j);
       if (n)
@@ -449,7 +470,7 @@ protected:
       children_indices[1].clear();
       D::create_split(children, _f, _s, _random, m);
 
-      for (size_t i = 0; i < indices.size(); i++) {
+      for (S i = 0; i < isz; i++) {
         S j = indices[i];
         Node* n = _get(j);
         if (n) {
@@ -477,7 +498,7 @@ protected:
       for (int z = 0; z < _f; z++)
         m->v[z] = 0;
 
-      for (size_t i = 0; i < indices.size(); i++) {
+      for (S i = 0; i < isz; i++) {
         S j = indices[i];
         // Just randomize...
         children_indices[_random.flip()].push_back(j);
@@ -486,7 +507,7 @@ protected:
 
     int flip = (children_indices[0].size() > children_indices[1].size());
 
-    m->n_descendants = is_root ? _n_items : (S)indices.size();
+    m->n_descendants = is_root ? _n_items : (S)isz;
     for (int side = 0; side < 2; side++) {
       // run _make_tree for the smallest child first (for cache locality)
       m->children[side^flip] = _make_tree(children_indices[side^flip], false);
