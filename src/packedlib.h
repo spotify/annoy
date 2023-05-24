@@ -273,18 +273,6 @@ public:
   bool save_impl(FWriter &w, const char* filename) {
     // calc size of packed node
     size_t packed_size = offsetof(Node, v) + _f * sizeof(uint16_t);
-    // allocate new buffer
-    void *packed_nodes = malloc(packed_size * _n_nodes);
-    std::unique_ptr<void, decltype( &free )> membuf_safer(packed_nodes, free);
-    // repack nodes to the new buffer directly
-    for (S i = 0; i < _n_nodes; i++) {
-      Node *node = get_node_ptr<S, Node>(_nodes, _s, i);
-      Node *packed = get_node_ptr<S, Node>(packed_nodes, packed_size, i);
-      // pack and copy to new buffer
-      memcpy(packed, node, offsetof(Node, v));
-      pack_float_vector_i16(node->v, (uint16_t*)packed->v, _f);
-    }
-
     size_t const iblocks = _indices_lists.size();
 
     if (_verbose) {
@@ -305,11 +293,11 @@ public:
                  "total number of maxbits=%zd\n",
                  _n_items, _n_nodes, iblocks * _K * sizeof(S), iblocks, total_bits);
 
-      auto iblock_avg_sz = total_size / double(iblocks);
-
-      (void)iblock_avg_sz;
-      if( iblock_avg_sz )
+      if( iblocks ) {
+        auto iblock_avg_sz = total_size / double(iblocks);
+        (void)iblock_avg_sz;
         annoylib_showUpdate("iblock stats sizes: avg=%.03f max=%d waste=%.03f %%\n", iblock_avg_sz, _K, (1.0 - (iblock_avg_sz / (_K - 1 ))) * 100.);
+      }
     }
 
     size_t calculated_size = packed_size * _n_nodes // packed vectors size
@@ -336,8 +324,17 @@ public:
       }
       w.write(index_write_block, sizeof(index_write_block), 1);
     }
-    // and nodes data
-    w.write(packed_nodes, packed_size, _n_nodes);
+    // and nodes data compress node data one by one
+    // allocate tmp buffer
+    void *packed_nodes = (Node*)alloca(packed_size);
+    for (S i = 0; i < _n_nodes; i++) {
+      Node *node = get_node_ptr<S, Node>(_nodes, _s, i);
+      Node *packed = get_node_ptr<S, Node>(packed_nodes, packed_size, 0);
+      // pack and copy to new buffer
+      memcpy(packed, node, offsetof(Node, v));
+      pack_float_vector_i16(node->v, (uint16_t*)packed->v, _f);
+      w.write(packed_nodes, packed_size, 1);
+    }
     // header goes to the tail
     // write header only at tail of file to keep strict alignment in memory
     // for much faster memory access
@@ -364,6 +361,7 @@ public:
     _n_nodes = 0;
     _nodes_size = 0;
     _roots.clear();
+    _indices_lists.clear();
   }
 
   void unload() {

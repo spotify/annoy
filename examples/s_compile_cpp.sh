@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 OPTS="-mavx2 -O2"
 
