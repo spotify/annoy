@@ -259,7 +259,6 @@ static double in_mem_test(int f, int k, uint32_t count, int depth = 30)
     size_t const search_k = (size_t)-1;
 
     uint32_t nitems_for_test = std::min(nitems, uint32_t(nitems * 0.5));
-
     std::cout << "scan start, nitems_for_test=" << nitems_for_test << std::endl;
 
     for( uint32_t i = 0; i < nitems_for_test; ++i )
@@ -271,7 +270,7 @@ static double in_mem_test(int f, int k, uint32_t count, int depth = 30)
             ++nfound;
     }
 
-    double const qual = nfound / double(nitems_for_test);
+    double const qual = nitems_for_test ? nfound / double(nitems_for_test) : 0.;
 
     std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
 
@@ -294,6 +293,13 @@ int main(int argc, char **argv) {
         CHECK_AND_THROW( in_mem_test(64, 128, 100000) > 0.9 );
         // in the case we try to make very small index
         CHECK_AND_THROW( in_mem_test(64, 64, 17) >= 0.25 );
+        // edge cases
+        for( int v_sz : { 64, 128, 256, 512 } )
+            for( int i_sz : { 16, 32, 64, 128, 512 } )
+                for( int c_sz : { 0, 1, 3, 17, 33, 200 } )
+                    for( int depth : { 30, 50, 100, 200 } )
+                        if( v_sz >= i_sz )
+                            CHECK_AND_THROW( in_mem_test(v_sz, i_sz, c_sz, depth) >= 0 );
     }
     catch(std::exception const &e)
     {

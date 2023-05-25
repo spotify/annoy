@@ -179,7 +179,7 @@ protected:
   typedef std::vector<S> indices_list_t;
   std::deque<indices_list_t>  _indices_lists;
 public:
-
+  PackedAnnoyIndexer(int f) : PackedAnnoyIndexer(f, f) {}
   PackedAnnoyIndexer(int f, S idx_block_len)
     : _f(f)
     , _s(offsetof(Node, v) + _f * sizeof(T))
@@ -190,6 +190,9 @@ public:
       throw std::runtime_error("number of element in the vector must be multiply of 8.");
     if( (_K * sizeof(S)) % 16 )
       throw std::runtime_error("size of the index-node must be multiply of 16 bytes, consider using different idx_block_len!");
+    if( _K > S(f) )
+      throw std::runtime_error("size of index-node cannot be greater than vector length!");
+
     reinitialize(); // Reset everything
   }
 
@@ -282,7 +285,7 @@ public:
       for( auto const &i : _indices_lists )
       {
         total_size += i.size();
-        uint32_t const *idx = i.data(), *e = idx + i.size();
+        uint32_t const *idx = reinterpret_cast<uint32_t const*>(i.data()), *e = idx + i.size();
         uint32_t mb = get_max_bits(idx, e);
         min_max_bit = std::min(min_max_bit, mb);
         max_max_bit = std::max(max_max_bit, mb);
@@ -538,7 +541,7 @@ public:
   typedef std::unique_ptr<Node, decltype( &free )> NodeUPtrType;
   typedef typename DataMapper::Mapping DataMapping;
 private:
-  static constexpr S const _K_mask = S(1) << S(sizeof(S) * 8 - 1);
+  static constexpr S const _K_mask = S(1UL) << S(sizeof(S) * 8 - 1);
   static constexpr S const _K_mask_clear = _K_mask - 1;
 protected:
   typedef std::pair<T, S>               qpair_t;
@@ -593,13 +596,14 @@ public:
 
     size_t sizeof_indices = nindices * sizeof(S);
 
-    S n_nodes = (S)((_mapping.size - sizeof_indices) / _s);
+    size_t n_nodes = (S)((_mapping.size - sizeof_indices) / _s);
 
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     std::vector<S> roots;
     roots.clear();
     S m = -1;
-    for (S i = n_nodes - 1; i >= 0; i--) {
+    // WARN: using here forced signed type(long) to eliminate bug with S == unsigned type and empty base
+    for (long i = n_nodes - 1; i >= 0; i--) {
       S k = _get(i)->n_descendants;
       if (m == S(-1) || k == m) {
         roots.push_back(i);
@@ -754,7 +758,7 @@ private:
     S nns_cnt = 0;
     // collect candidates ID's w/o collecting weights to reduce bandwidth penalty
     // due to dups in candidates
-    do {
+    while( !q.empty() ) {
       const pair<T, S>& top = q.front();
       T d = top.first;
       S fi = top.second, i = fi & _K_mask_clear;
@@ -786,7 +790,9 @@ private:
         nns_cnt += *idx;
         memcpy(dest, dst, *idx * sizeof(S));
       }
-    } while (nns_cnt < search_k && !q.empty());
+      if( nns_cnt >= search_k )
+        break;
+    }
 
     // sort by ID to eliminate dups
     std::sort(nns.get(), nns.get() + nns_cnt);
