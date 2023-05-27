@@ -935,7 +935,7 @@ public:
 #ifndef _MSC_VER
     _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
 #else
-    _fd = _open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
+    _fd = _open(file, _O_RDWR | _O_CREAT | _O_TRUNC, (int) 0600);
 #endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
@@ -1086,7 +1086,7 @@ public:
 #ifndef _MSC_VER
     _fd = open(filename, O_RDONLY, (int)0400);
 #else
-    _fd = _open(filename, O_RDONLY, (int)0400);
+    _fd = _open(filename, _O_RDONLY, (int)0400);
 #endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
