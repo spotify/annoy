@@ -26,7 +26,7 @@
 #include <assert.h>
 
 #ifdef __GNUC__
-#  define alloca_aligned(sz) static_cast<char*>(__builtin_alloca_with_align(sz, 16))
+#  define alloca_aligned(sz) static_cast<char*>(__builtin_alloca_with_align(sz, 64))
 #else
 /* Clang must be generated already aligned stack allocation */
 #  define alloca_aligned(sz) static_cast<char*>(alloca(sz))
@@ -91,7 +91,10 @@ namespace detail {
     MMapWriter& operator == ( MMapWriter const & ) = delete;
     bool open( char const */*filename*/, size_t calculated_size )
     {
-      void *p = mmap(0, calculated_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+
+      void *p = calculated_size ? mmap(0, calculated_size, PROT_READ | PROT_WRITE,
+                                      MAP_PRIVATE | MAP_ANONYMOUS, 0, 0)
+                                : nullptr;
       if( p == MAP_FAILED )
         return false;
 
@@ -101,7 +104,8 @@ namespace detail {
 
 #if defined(MADV_DONTDUMP)
       // Exclude from a core dump those pages
-      madvise(p, calculated_size, MADV_DONTDUMP);
+      if (p != nullptr)
+        madvise(p, calculated_size, MADV_DONTDUMP);
 #endif
       return true;
     }
@@ -227,17 +231,26 @@ public:
 
     _n_nodes = _n_items;
     while (1) {
-      if (q == -1 && _n_nodes >= _n_items * 2)
+      if (q == -1)
+      {
+        if (_n_nodes >= _n_items * 2)
+          break;
+      }
+      else if (_roots.size() >= (size_t)q)
         break;
-      if (q != -1 && _roots.size() >= (size_t)q)
-        break;
+
       if (_verbose) annoylib_showUpdate("pass %zd...\n", _roots.size());
+
 
       vector<S> indices;
       for (S i = 0; i < _n_items; i++) {
           if (_get(i)->n_descendants >= 1) // Issue #223
           indices.push_back(i);
       }
+
+      // cannot make roots w/o items
+      if( indices.empty() )
+        break;
 
       _roots.push_back(_make_tree(indices, true));
     }
@@ -436,7 +449,7 @@ protected:
     S const max_n_descendants = _K - 1;
 
     if (isz <= max_n_descendants && (!is_root || (size_t)_n_items <= (size_t)max_n_descendants || isz == 1)) {
-      if( !is_root )
+      if (!is_root)
         // only non-roots can have indices only nodes!
         return _append_indices(indices);
 
@@ -598,6 +611,8 @@ public:
 
     size_t n_nodes = (S)((_mapping.size - sizeof_indices) / _s);
 
+
+
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     std::vector<S> roots;
     roots.clear();
@@ -623,7 +638,7 @@ public:
       _roots_q.emplace_back(Distance::template pq_initial_value<T>(), r);
     }
     std::make_heap(_roots_q.begin(), _roots_q.end());
-    _n_items = m;
+    _n_items = m != -1 ? m : 0;
 
     return true;
   }

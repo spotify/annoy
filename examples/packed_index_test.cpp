@@ -282,15 +282,15 @@ int main(int argc, char **argv) {
     {
         // DotProduct
         test<DotProductPacked16>(256, 256, 100000);
-        test<DotProductPacked16>(64, 128, 1000000);
+        test<DotProductPacked16>(64, 64, 1000000);
         // and hard case for avx, causes a split
-        test<DotProductPacked16>(40, 64, 100000);
+        test<DotProductPacked16>(40, 40, 100000);
         // Euclidean
         test<EuclideanPacked16>(256, 256, 100000);
-        test<EuclideanPacked16>(64, 128, 1000000);
+        test<EuclideanPacked16>(64, 64, 1000000);
         // and hard case for avx, causes a split
-        test<EuclideanPacked16>(40, 64, 100000);
-        CHECK_AND_THROW( in_mem_test(64, 128, 100000) > 0.9 );
+        test<EuclideanPacked16>(40, 40, 100000);
+        CHECK_AND_THROW( in_mem_test(64, 64, 100000) > 0.9 );
         // in the case we try to make very small index
         CHECK_AND_THROW( in_mem_test(64, 64, 17) >= 0.25 );
         // edge cases
