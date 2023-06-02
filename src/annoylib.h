@@ -932,7 +932,11 @@ public:
     
   bool on_disk_build(const char* file, char** error=NULL) {
     _on_disk = true;
+#ifndef _MSC_VER
     _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
+#else
+    _fd = _open(file, _O_RDWR | _O_CREAT | _O_TRUNC, (int) 0600);
+#endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
       _fd = 0;
@@ -1013,7 +1017,11 @@ public:
       return true;
     } else {
       // Delete file if it already exists (See issue #335)
+#ifndef _MSC_VER
       unlink(filename);
+#else
+      _unlink(filename);
+#endif
 
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
@@ -1050,12 +1058,20 @@ public:
 
   void unload() {
     if (_on_disk && _fd) {
+#ifndef _MSC_VER
       close(_fd);
+#else
+      _close(_fd);
+#endif
       munmap(_nodes, _s * _nodes_size);
     } else {
       if (_fd) {
         // we have mmapped data
+#ifndef _MSC_VER
         close(_fd);
+#else
+        _close(_fd);
+#endif
         munmap(_nodes, _n_nodes * _s);
       } else if (_nodes) {
         // We have heap allocated data
@@ -1067,7 +1083,11 @@ public:
   }
 
   bool load(const char* filename, bool prefault=false, char** error=NULL) {
+#ifndef _MSC_VER
     _fd = open(filename, O_RDONLY, (int)0400);
+#else
+    _fd = _open(filename, _O_RDONLY, (int)0400);
+#endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
       _fd = 0;
