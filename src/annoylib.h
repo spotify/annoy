@@ -1135,7 +1135,7 @@ public:
     _loaded = true;
     _built = true;
     _n_items = m;
-    if (_verbose) annoylib_showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
+    if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), m);
     return true;
   }
 
@@ -1325,7 +1325,7 @@ protected:
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (_split_imbalance(children_indices[0], children_indices[1]) > 0.99) {
       if (_verbose)
-        annoylib_showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
+        annoylib_showUpdate("\tNo hyperplane found (left has %zu children, right has %zu children)\n",
           children_indices[0].size(), children_indices[1].size());
 
       children_indices[0].clear();
