@@ -37,7 +37,7 @@ namespace detail {
   };
 
 
-  DataMapping clone_mmap( DataMapping m, int flags )
+  inline DataMapping clone_mmap( DataMapping m, int flags )
   {
     void *mmaped = mmap(0, m.size, PROT_READ | PROT_WRITE, flags, -1, 0);
     if (mmaped == MAP_FAILED) {
