@@ -36,6 +36,23 @@ namespace detail {
     size_t size = 0;
   };
 
+
+  DataMapping clone_mmap( DataMapping m, int flags )
+  {
+    void *mmaped = mmap(0, m.size, PROT_READ | PROT_WRITE, flags, -1, 0);
+    if (mmaped == MAP_FAILED) {
+      return DataMapping();
+    }
+#if defined(MADV_DONTDUMP)
+    // Exclude from a core dump those pages
+    madvise(mmaped, m.size, MADV_DONTDUMP);
+#endif
+
+    memcpy(mmaped, m.data, m.size);
+
+    return DataMapping(mmaped, m.size);
+  }
+
 } // namespace detail
 
 
@@ -76,6 +93,11 @@ public:
       munmap(const_cast<void*>(mapping.data), mapping.size);
     }
   }
+
+  Mapping clone( Mapping m ) const {
+    return clone_mmap(m, MAP_ANONYMOUS | MAP_PRIVATE);
+  }
+
 };
 
 // Anonymous HugeTLB mapping.
@@ -131,6 +153,10 @@ public:
     if (mapping.data) {
       munmap(const_cast<void*>(mapping.data), mapping.size);
     }
+  }
+
+  Mapping clone( Mapping m ) const {
+    return clone_mmap(m, MAP_SHARED | MAP_ANONYMOUS | MAP_HUGETLB);
   }
 };
 

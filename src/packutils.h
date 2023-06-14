@@ -62,7 +62,7 @@ inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__rest
   }
 }
 
-void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t d )
+inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t d )
 {
   __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);
   while( d >= 16  )
@@ -91,7 +91,7 @@ void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__
   }
 }
 
-float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
+inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
 {
   float sum;
   __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);

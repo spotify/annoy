@@ -217,8 +217,38 @@ static void test(int f, int k, uint32_t count, int depth = 30)
     CHECK_AND_THROW( qual > 0.9 );
 }
 
+template<typename S>
+static double generic_selftest( S *searcher, uint32_t count, int depth )
+{
+    uint32_t nitems = searcher->get_n_items(), nfound = 0;
 
-static double in_mem_test(int f, int k, uint32_t count, int depth = 30)
+    CHECK_AND_THROW( nitems == count );
+
+    std::vector<uint32_t> results;
+
+    size_t const search_k = (size_t)-1;
+
+    uint32_t nitems_for_test = std::min(nitems, uint32_t(nitems * 0.5));
+    std::cout << "scan start, nitems_for_test=" << nitems_for_test << std::endl;
+
+    for( uint32_t i = 0; i < nitems_for_test; ++i )
+    {
+        // try to locate it in scan
+        results.clear();
+        searcher->get_nns_by_item(i, depth, search_k, &results, nullptr);
+        if( std::find(results.begin(), results.end(), i) != results.end() )
+            ++nfound;
+    }
+
+    double const qual = nitems_for_test ? nfound / double(nitems_for_test) : 0.;
+
+    std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
+
+    return qual;
+}
+
+
+static double in_mem_test(int f, int k, uint32_t count, int depth = 30, bool clone = false)
 {
     std::cout << "run in_mem_test(), f=" << f << " k=" << k << " nvectors=" << count << std::endl;
 
@@ -243,38 +273,33 @@ static double in_mem_test(int f, int k, uint32_t count, int depth = 30)
     }
 
     // and load from the same memory block
+    using Searcher = PackedAnnoySearcher<uint32_t, float, DotProductPacked16, detail::MMapWriter>;
 
-    PackedAnnoySearcher<uint32_t, float, DotProductPacked16, detail::MMapWriter>
-        searcher(std::move(loader_n_writer));
+    Searcher searcher(std::move(loader_n_writer));
 
     // we can pass nullptr for filename
     searcher.load(nullptr, false);
 
-    uint32_t nitems = searcher.get_n_items(), nfound = 0;
+    double qual1 = generic_selftest(&searcher, count, depth);
 
-    CHECK_AND_THROW( nitems == count );
-
-    std::vector<uint32_t> results;
-
-    size_t const search_k = (size_t)-1;
-
-    uint32_t nitems_for_test = std::min(nitems, uint32_t(nitems * 0.5));
-    std::cout << "scan start, nitems_for_test=" << nitems_for_test << std::endl;
-
-    for( uint32_t i = 0; i < nitems_for_test; ++i )
+    if( clone )
     {
-        // try to locate it in scan
-        results.clear();
-        searcher.get_nns_by_item(i, depth, search_k, &results, nullptr);
-        if( std::find(results.begin(), results.end(), i) != results.end() )
-            ++nfound;
+        std::unique_ptr<Searcher> c( searcher.clone() );
+
+        double qual2 = generic_selftest(c.get(), count, depth);
+
+        CHECK_AND_THROW( qual1 == qual2 );
+
+        // and clone of clone
+        {
+            std::unique_ptr<Searcher> c2( c->clone() );
+            double qual3 = generic_selftest(c2.get(), count, depth);
+
+            CHECK_AND_THROW( qual1 == qual3 );
+        }
     }
 
-    double const qual = nitems_for_test ? nfound / double(nitems_for_test) : 0.;
-
-    std::cout << "scan with depth=" << depth << " quality=" << qual << std::endl;
-
-    return qual;
+    return qual1;
 }
 
 int main(int argc, char **argv) {
@@ -290,7 +315,8 @@ int main(int argc, char **argv) {
         test<EuclideanPacked16>(64, 64, 1000000);
         // and hard case for avx, causes a split
         test<EuclideanPacked16>(40, 40, 100000);
-        CHECK_AND_THROW( in_mem_test(64, 64, 100000) > 0.9 );
+        // test in mem and clones
+        CHECK_AND_THROW( in_mem_test(64, 64, 10000, 30, true) > 0.9 );
         // in the case we try to make very small index
         CHECK_AND_THROW( in_mem_test(64, 64, 17) >= 0.25 );
         // edge cases

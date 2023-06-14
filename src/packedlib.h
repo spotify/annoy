@@ -26,10 +26,10 @@
 #include <assert.h>
 
 #ifdef __GNUC__
-#  define alloca_aligned(sz) static_cast<char*>(__builtin_alloca_with_align(sz, 64))
+#  define alloca_aligned(sz) __builtin_alloca_with_align(sz, 64)
 #else
 /* Clang must be generated already aligned stack allocation */
-#  define alloca_aligned(sz) static_cast<char*>(alloca(sz))
+#  define alloca_aligned(sz) alloca(sz)
 #endif
 
 namespace Annoy {
@@ -131,6 +131,10 @@ namespace detail {
 
     void* get_ptr() const { return maping; }
     size_t get_size() const { return size; }
+    
+    Mapping clone( Mapping m ) const {
+      return clone_mmap(m, MAP_ANONYMOUS | MAP_PRIVATE);
+    }
   private:
     void destroy() {
       if( maping ) {
@@ -588,6 +592,34 @@ public:
     _mapper.unmap(_mapping);
   }
 
+  // WARNING!
+  // this is not a regular clone function
+  // this function completely clone memory storages
+  // this can be useful to avoid memory bank conflicts and offcore-loads
+  // but it's too dangerous to regular user, so don't use me if you not Jedi, sorry...
+  PackedAnnoySearcher* clone() const
+  {
+    std::unique_ptr<PackedAnnoySearcher> n{ new PackedAnnoySearcher() };
+    if( nullptr == _nodes )
+      throw std::runtime_error("index must be loaded!");
+
+    n->_f = _f;
+    n->_s = _s;
+    n->_K = _K;
+    n->_n_items = _n_items;
+    n->_roots_q = _roots_q;
+
+    n->_mapping = _mapper.clone(_mapping);
+
+    if( nullptr == n->_mapping.data )
+      throw std::runtime_error("failed to clone mapper data");
+
+    // do proper offset for nodes
+    n->_nodes = (char*)n->_mapping.data + size_t((char const*)_nodes - (char const*)_mapping.data);
+
+    return n.release();
+  }
+
   void get_item(S item, T* v) const {
     Node* m = _get(item);
     decode_vector_i16_f32((uint16_t const*)m->v, v, _f);
@@ -648,8 +680,8 @@ public:
   // 2. preload from storage into memory via MADV_WILLNEED.
   // 3. use THP if you disable it on your system via MADV_HUGEPAGE.
   // 4. something special ;)
-  bool madvise(int flags) {
-      return madvise(_mapping.data, _mapping.size, flags) == 0;
+  bool madvise(int flags) const {
+      return ::madvise(const_cast<void*>(_mapping.data), _mapping.size, flags) == 0;
   }
 
   T get_distance(S i, S j) const {
@@ -657,9 +689,9 @@ public:
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
-    float __attribute__((aligned(16))) mv[_f];
+    T *mv = static_cast<T*>(alloca_aligned(_f * sizeof(T)));
     const Node* m = _get(item);
-    decode_vector_i16_f32((uint16_t const*)m->v, mv, _f);
+    decode_vector_i16_f32((PackedFloatType const*)m->v, mv, _f);
     get_nns_by_vector(mv, n, search_k, result, distances);
   }
 
@@ -682,7 +714,7 @@ public:
     // init node for comparison from given vector(v)
     // alloc space for that node on the stack!
     // but node vector(v[1]) data is need to be aligned to 16 bytes
-    char *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
+    void *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     vector<pair<T, S> > nns_dist;
@@ -713,7 +745,7 @@ public:
     // init node for comparison from given vector(v)
     // alloc space for that node on the stack!
     // but node vector(v[1]) data is need to be aligned to 16 bytes
-    char *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
+    void *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
     Node* v_node = mk_node(v, _f, node_alloc_buf);
 
     _get_all_nns(v_node, n, search_k, nns_dist, filter);
@@ -722,9 +754,9 @@ public:
   // same as above but referenced himself
   template<typename Filter>
   void get_nns_by_item_filter(S item, size_t n, size_t search_k, Filter filter, vector<pair<T, S> > &nns_dist) const {
-    float __attribute__((aligned(16))) mv[_f];
+    T *mv = static_cast<T*>(alloca_aligned(_f * sizeof(T)));
     const Node* m = _get(item);
-    decode_vector_i16_f32((uint16_t const*)m->v, mv, _f);
+    decode_vector_i16_f32((PackedFloatType const*)m->v, mv, _f);
     get_nns_by_vector_filter(mv, n, search_k, filter, nns_dist);
   }
 
