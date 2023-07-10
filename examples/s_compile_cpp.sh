@@ -2,7 +2,7 @@
 
 set -e
 
-OPTS="-mavx2 -O2"
+OPTS="-O2 -DNDEBUG"
 
 SANITIZER_OPTS="-O1 -g -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined"
 

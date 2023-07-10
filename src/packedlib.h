@@ -334,12 +334,13 @@ public:
       size_t const isz = i.size();
       index_write_block[0] = isz;
       S *data_start = index_write_block + 1;
-      memset(data_start, 0, sizeof(index_write_block) - sizeof(S));
       memcpy(data_start, i.data(), isz * sizeof(S));
+      // need to be sorted for future delta-coding
+      assert( std::is_sorted(data_start, data_start + isz) );
       if( isz < _K - 1 )
       {
         data_start += isz;
-        // zeroing bytes left for stability
+        // zeroing bytes in tail for stability
         memset(data_start, 0, sizeof(index_write_block) - ((isz + 1) * sizeof(S)));
       }
       w.write(index_write_block, sizeof(index_write_block), 1);
@@ -426,7 +427,7 @@ protected:
   S _append_indices( const vector<S>& indices )
   {
     S i = _indices_lists.size();
-    _indices_lists.emplace_back( std::move(indices) );
+    _indices_lists.emplace_back( indices );
     return i | _K_mask;
   }
 
@@ -564,7 +565,7 @@ protected:
   typedef std::pair<T, S>               qpair_t;
   typedef std::vector<qpair_t>          queue_t;
 protected:
-  int _f;
+  S _f;
   S _s; // Size of each node
   S _K; // Max number of descendants to fit into node
   S _n_items; // number of ordinal nodes(i.e leaf)
@@ -685,7 +686,12 @@ public:
   }
 
   T get_distance(S i, S j) const {
-    return D::normalized_distance(D::distance(_get(i), _get(j), _f));
+    T *mv = static_cast<T*>(alloca_aligned(_f * sizeof(T)));
+    const Node* m = _get(j);
+    decode_vector_i16_f32((PackedFloatType const*)m->v, mv, _f);
+    void *node_alloc_buf = alloca_aligned(offsetof(Node, v) + _f * sizeof(T));
+    Node* v_node = mk_node(mv, _f, node_alloc_buf);
+    return D::normalized_distance(D::distance(_get(i), v_node, _f));
   }
 
   void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) const {
@@ -762,6 +768,14 @@ public:
 
   S get_n_items() const {
     return _n_items;
+  }
+
+  S get_n_trees() const {
+    return (S)_roots_q.size();
+  }
+
+  S get_f() const {
+    return _f;
   }
 
 private:
@@ -870,6 +884,9 @@ private:
   }
 };
 
+
+/* NOTE: in all packed methods we assume that left side is packed but right side is not */
+
 struct EuclideanPacked16 : Euclidean
 {
   using UnpackedT = Euclidean;
@@ -905,6 +922,7 @@ struct DotProductPacked16 : DotProduct
     return decode_and_dot_i16_f32((PackedFloatType const*)n->v, y, f) + (n->dot_factor * n->dot_factor);
   }
 };
+
 
 } // namespace Annoy
 

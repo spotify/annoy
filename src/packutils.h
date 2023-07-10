@@ -105,11 +105,11 @@ inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float cons
       __m256i s  = _mm256_lddqu_si256( (__m256i const*)(in) );
       __m256i ai = _mm256_srai_epi32(_mm256_unpacklo_epi16(s, s), 16);
       __m256 a = _mm256_mul_ps(_mm256_cvtepi32_ps(ai), mm1);
-      mx = _mm256_loadu_ps(y);
+      mx = _mm256_load_ps(y);
       __m256i bi = _mm256_srai_epi32(_mm256_unpackhi_epi16(s, s), 16);
       msum1 = _mm256_add_ps (msum1, _mm256_mul_ps (a, mx));
       __m256 b = _mm256_mul_ps(_mm256_cvtepi32_ps(bi), mm1);
-      my = _mm256_loadu_ps(y + 8);
+      my = _mm256_load_ps(y + 8);
       msum2 = _mm256_add_ps (msum2, _mm256_mul_ps (b, my));
       in += 16;
       y += 16;
@@ -241,10 +241,6 @@ inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__res
 
 inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
 {
-  // fetch couple of lines to trigger hardware prefetch
-  __builtin_prefetch((uint8_t const*)in + 64);
-  __builtin_prefetch((uint8_t const*)in + 128);
-  __builtin_prefetch((uint8_t const*)in + 192);
   __m128 m1 = _mm_set1_ps(1.f / 32767.f);
   __m128 msum1 = _mm_setzero_ps(), msum2 = _mm_setzero_ps();
   __m128 mx, my;
