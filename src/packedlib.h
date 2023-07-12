@@ -671,7 +671,7 @@ public:
       _roots_q.emplace_back(Distance::template pq_initial_value<T>(), r);
     }
     std::make_heap(_roots_q.begin(), _roots_q.end());
-    _n_items = m != -1 ? m : 0;
+    _n_items = m != S(-1) ? m : 0;
 
     return true;
   }

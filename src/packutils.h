@@ -21,20 +21,131 @@
 #include <immintrin.h>
 #include <stdint.h>
 
-
-#if not defined(__SSSE3__)
-# error "You need to enable SSSE3 instructions for this file or higher!(-mssse3)"
-#endif
-
 #ifndef NO_MANUAL_VECTORIZATION
-# if defined(__AVX2__)
+# if defined(__AVX512F__) && defined(__AVX512BW__)
+#   define USE_AVX512
+# elif defined(__AVX2__)
 #   define USE_AVX2
 # endif
 #endif
 
 namespace Annoy {
 
-#if defined(USE_AVX2)
+#if defined(USE_AVX512)
+
+inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
+{
+  float sum;
+  __m512 mm1 = _mm512_set1_ps(1.f / 32767.f);
+  __m512 msum1 = _mm512_setzero_ps(), msum2 = _mm512_setzero_ps();
+  __m512 mx, my;
+  while( d >= 32  )
+  {
+      // every step decoded into 16 floats
+      // sadly but we need to use here unaligned load
+      // due to 16 byte offset for vector, not 32 byte!
+      __m512i s  = _mm512_loadu_si512( (__m512i const*)(in) );
+      __m512i ai = _mm512_srai_epi32(_mm512_unpacklo_epi16(s, s), 16);
+      __m512 a = _mm512_mul_ps(_mm512_cvtepi32_ps(ai), mm1);
+      mx = _mm512_load_ps(y);
+      __m512i bi = _mm512_srai_epi32(_mm512_unpackhi_epi16(s, s), 16);
+      msum1 = _mm512_add_ps (msum1, _mm512_mul_ps (a, mx));
+      __m512 b = _mm512_mul_ps(_mm512_cvtepi32_ps(bi), mm1);
+      my = _mm512_load_ps(y + 16);
+      msum2 = _mm512_add_ps (msum2, _mm512_mul_ps (b, my));
+      in += 32;
+      y += 32;
+      d -= 32;
+  }
+  // sum all together
+  sum = _mm512_reduce_add_ps(_mm512_add_ps(msum1, msum2));
+
+  while( d )
+  {
+    // every step decoded into 8 floats
+    // use here slow _mm_dp_ps instruction since is no loop here
+    __m128 m1 = _mm_set1_ps(1.f / 32767.f);
+    __m128i s  = _mm_load_si128( (__m128i const*)(in) );
+    __m128i ai = _mm_srai_epi32(_mm_unpacklo_epi16(s, s), 16);
+    __m128 a = _mm_mul_ps(_mm_cvtepi32_ps(ai), m1);
+    __m128 mx = _mm_load_ps (y);
+    __m128i bi = _mm_srai_epi32(_mm_unpackhi_epi16(s, s), 16);
+    __m128 mdot = _mm_dp_ps (a, mx, 0xff);
+    __m128 b = _mm_mul_ps(_mm_cvtepi32_ps(bi), m1);
+    __m128 my = _mm_load_ps (y + 4);
+    __m128 mdot2 = _mm_dp_ps (b, my, 0xff);
+    __m128 msum = _mm_add_ps (mdot, mdot2);
+    sum += _mm_cvtss_f32(msum);
+    in += 8;
+    y += 8;
+    d -= 8;
+  }
+
+  return sum;
+}
+
+inline float decode_and_euclidean_distance_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
+{
+
+  float sum;
+  __m512 mm1 = _mm512_set1_ps(1.f / 32767.f);
+  __m512 msum1 = _mm512_setzero_ps(), msum2 = _mm512_setzero_ps();
+  __m512 mx, my;
+  while( d >= 32  )
+  {
+      // every step decoded into 16 floats
+      // sadly but we need to use here unaligned load
+      // due to 16 byte offset for vector, not 32 byte!
+      __m512i s  = _mm512_loadu_si512( (__m512i const*)(in) );
+      __m512i ai = _mm512_srai_epi32(_mm512_unpacklo_epi16(s, s), 16);
+      __m512 a = _mm512_mul_ps(_mm512_cvtepi32_ps(ai), mm1);
+      mx = _mm512_loadu_ps(y);
+      __m512i bi = _mm512_srai_epi32(_mm512_unpackhi_epi16(s, s), 16);
+      __m512 d1 = _mm512_sub_ps (a, mx);
+      msum1 = _mm512_add_ps (msum1, _mm512_mul_ps (d1, d1));
+      __m512 b = _mm512_mul_ps(_mm512_cvtepi32_ps(bi), mm1);
+      my = _mm512_loadu_ps(y + 16);
+      __m512 d2 = _mm512_sub_ps (b, my);
+      msum2 = _mm512_add_ps (msum2, _mm512_mul_ps (d2, d2));
+      in += 32;
+      y += 32;
+      d -= 32;
+  }
+  // sum all together
+  sum = _mm512_reduce_add_ps(_mm512_add_ps(msum1, msum2));
+
+  // here can be 0/8 left, so do check and calc tail if exists
+  while( d )
+  {
+    __m128 m1 = _mm_set1_ps(1.f / 32767.f);
+    __m128 msum1 = _mm_setzero_ps();
+    __m128 mx, my;
+    __m128i s  = _mm_load_si128( (__m128i const*)(in) );
+    __m128i ai = _mm_srai_epi32(_mm_unpacklo_epi16(s, s), 16);
+    __m128 a = _mm_mul_ps(_mm_cvtepi32_ps(ai), m1);
+    mx = _mm_load_ps (y);
+    __m128i bi = _mm_srai_epi32(_mm_unpackhi_epi16(s, s), 16);
+    __m128 d1 = _mm_sub_ps (a, mx);
+    msum1 = _mm_add_ps (msum1, _mm_mul_ps (d1, d1));
+    __m128 b = _mm_mul_ps(_mm_cvtepi32_ps(bi), m1);
+    my = _mm_load_ps (y + 4);
+    __m128 d2 = _mm_sub_ps (b, my);
+    msum1 = _mm_add_ps (msum1, _mm_mul_ps (d2, d2));
+    msum1 = _mm_hadd_ps (msum1, msum1);
+    msum1 = _mm_hadd_ps (msum1, msum1);
+    sum += _mm_cvtss_f32 (msum1);
+    in += 8;
+    y += 8;
+    d -= 8;
+  }
+
+
+  return sum;
+}
+
+#endif
+
+#if defined(USE_AVX2) || defined(USE_AVX512)
 
 inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
 {
@@ -61,6 +172,10 @@ inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__rest
     _mm_store_si128((__m128i*)out, _mm_packs_epi32(ai, bi));
   }
 }
+
+#endif
+
+#if defined(USE_AVX2) || defined(USE_AVX512)
 
 inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t d )
 {
@@ -90,6 +205,10 @@ inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__res
       _mm_storeu_ps(out + 4, b);
   }
 }
+
+#endif
+
+#if defined(USE_AVX2)
 
 inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
 {
@@ -205,7 +324,13 @@ inline float decode_and_euclidean_distance_i16_f32( uint16_t const *__restrict__
   return sum;
 }
 
-#else
+#endif
+
+#if !defined(USE_AVX2) && !defined(USE_AVX512)
+
+#if not defined(__SSSE3__)
+# error "You need to enable SSSE3 instructions for this file or higher!(-mssse3)"
+#endif
 
 inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
 {
