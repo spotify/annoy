@@ -33,17 +33,44 @@ namespace Annoy {
 
 #if defined(USE_AVX512)
 
+
+inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
+{
+  __m512 mm1 = _mm512_set1_ps(32767.f);
+  while( d >= 32 )
+  {
+      __m512 a = _mm512_loadu_ps(x);
+      __m512 b = _mm512_loadu_ps(x + 8);
+      __m512i ai = _mm512_cvtps_epi32(_mm512_mul_ps(a, mm1));
+      __m512i bi = _mm512_cvtps_epi32(_mm512_mul_ps(b, mm1));
+      _mm512_storeu_si512((__m512i*)out, _mm512_packs_epi32(ai, bi));
+      x += 32;
+      out += 32;
+      d -= 32;
+  }
+
+  if( d )
+  {
+    __m128 m1 = _mm_set1_ps(32767.f);
+    __m128 a = _mm_loadu_ps(x);
+    __m128 b = _mm_loadu_ps(x + 4);
+    __m128i ai = _mm_cvtps_epi32(_mm_mul_ps(a, m1));
+    __m128i bi = _mm_cvtps_epi32(_mm_mul_ps(b, m1));
+    _mm_store_si128((__m128i*)out, _mm_packs_epi32(ai, bi));
+  }
+}
+
 inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
 {
   float sum;
   __m512 mm1 = _mm512_set1_ps(1.f / 32767.f);
   __m512 msum1 = _mm512_setzero_ps(), msum2 = _mm512_setzero_ps();
   __m512 mx, my;
-  while( d >= 32  )
+  while( d >= 32 )
   {
       // every step decoded into 16 floats
       // sadly but we need to use here unaligned load
-      // due to 16 byte offset for vector, not 32 byte!
+      // due to 16 byte offset for vector, not 64 byte!
       __m512i s  = _mm512_loadu_si512( (__m512i const*)(in) );
       __m512i ai = _mm512_srai_epi32(_mm512_unpacklo_epi16(s, s), 16);
       __m512 a = _mm512_mul_ps(_mm512_cvtepi32_ps(ai), mm1);
@@ -86,21 +113,22 @@ inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float cons
 
 inline float decode_and_euclidean_distance_i16_f32( uint16_t const *__restrict__ in, float const *__restrict__ y, uint32_t d )
 {
-
   float sum;
   __m512 mm1 = _mm512_set1_ps(1.f / 32767.f);
   __m512 msum1 = _mm512_setzero_ps(), msum2 = _mm512_setzero_ps();
   __m512 mx, my;
-  while( d >= 32  )
+  while( d >= 32 )
   {
       // every step decoded into 16 floats
       // sadly but we need to use here unaligned load
-      // due to 16 byte offset for vector, not 32 byte!
+      // due to 16 byte offset for vector, not 64 byte!
       __m512i s  = _mm512_loadu_si512( (__m512i const*)(in) );
-      __m512i ai = _mm512_srai_epi32(_mm512_unpacklo_epi16(s, s), 16);
+      __m512i ai = _mm512_cvtepi16_epi32(_mm512_castsi512_si256(s));
+      //__m512i ai = _mm512_srai_epi32(_mm512_unpacklo_epi16(s, s), 16);
       __m512 a = _mm512_mul_ps(_mm512_cvtepi32_ps(ai), mm1);
       mx = _mm512_loadu_ps(y);
-      __m512i bi = _mm512_srai_epi32(_mm512_unpackhi_epi16(s, s), 16);
+      __m512i bi = _mm512_cvtepi16_epi32(_mm512_extracti32x8_epi32(s, 1));
+      //__m512i bi = _mm512_srai_epi32(_mm512_unpackhi_epi16(s, s), 16);
       __m512 d1 = _mm512_sub_ps (a, mx);
       msum1 = _mm512_add_ps (msum1, _mm512_mul_ps (d1, d1));
       __m512 b = _mm512_mul_ps(_mm512_cvtepi32_ps(bi), mm1);
@@ -114,7 +142,7 @@ inline float decode_and_euclidean_distance_i16_f32( uint16_t const *__restrict__
   // sum all together
   sum = _mm512_reduce_add_ps(_mm512_add_ps(msum1, msum2));
 
-  // here can be 0/8 left, so do check and calc tail if exists
+  // here can be 0/8/16/24 left, so do check and calc tail if exists
   while( d )
   {
     __m128 m1 = _mm_set1_ps(1.f / 32767.f);
@@ -145,12 +173,12 @@ inline float decode_and_euclidean_distance_i16_f32( uint16_t const *__restrict__
 
 #endif
 
-#if defined(USE_AVX2) || defined(USE_AVX512)
+#if defined(USE_AVX2)
 
 inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__restrict__ out, uint32_t d )
 {
   __m256 mm1 = _mm256_set1_ps(32767.f);
-  while( d >= 16  )
+  while( d >= 16 )
   {
       __m256 a = _mm256_loadu_ps(x);
       __m256 b = _mm256_loadu_ps(x + 8);
@@ -180,7 +208,7 @@ inline void pack_float_vector_i16( float const *__restrict__ x, uint16_t *__rest
 inline void decode_vector_i16_f32( uint16_t const *__restrict__ in, float *__restrict__ out, uint32_t d )
 {
   __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);
-  while( d >= 16  )
+  while( d >= 16 )
   {
       __m256i s  = _mm256_loadu_si256( (__m256i const*)(in) );
       __m256i ai = _mm256_srai_epi32(_mm256_unpacklo_epi16(s, s), 16);
@@ -216,7 +244,7 @@ inline float decode_and_dot_i16_f32( uint16_t const *__restrict__ in, float cons
   __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);
   __m256 msum1 = _mm256_setzero_ps(), msum2 = _mm256_setzero_ps();
   __m256 mx, my;
-  while( d >= 16  )
+  while( d >= 16 )
   {
       // every step decoded into 16 floats
       // sadly but we need to use here unaligned load
@@ -270,7 +298,7 @@ inline float decode_and_euclidean_distance_i16_f32( uint16_t const *__restrict__
   __m256 mm1 = _mm256_set1_ps(1.f / 32767.f);
   __m256 msum1 = _mm256_setzero_ps(), msum2 = _mm256_setzero_ps();
   __m256 mx, my;
-  while( d >= 16  )
+  while( d >= 16 )
   {
       // every step decoded into 16 floats
       // sadly but we need to use here unaligned load
