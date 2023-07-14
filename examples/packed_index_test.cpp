@@ -388,52 +388,66 @@ static double in_mem_test(int f, int k, uint32_t count, int depth = 30, bool clo
 
 void basic_packutils_test()
 {
-    COMPARE_FL( euclidean_distance(test_vector, test_vector, 512), 0.f, 0.00001f );
-    __attribute__ ((aligned (16))) uint16_t packed[512] = {0};
-    __attribute__ ((aligned (16))) float unpacked[512] = {0};
-    pack_float_vector_i16(test_vector, packed, 512);
-    decode_vector_i16_f32(packed, unpacked, 512);
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32(packed, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_dot_i16_f32(packed, test_vector, 512), 1.f, 0.0002f );
-    std::vector<float> tvv(test_vector, test_vector + 512);
-    float vlen = vlength(tvv);
-    normalize(vlen, tvv);
-    COMPARE_FL( vlength(tvv), 1.f, 0.0001f );
-    COMPARE_FL( vlength(unpacked, 512), 1.f, 0.0001f );
-
-    // binary compatible test across all packing/unpacking methods
-
-#if defined(USE_AVX512)
-    __attribute__ ((aligned (16))) uint16_t packed_avx32[512] = {0};
-    __attribute__ ((aligned (16))) float unpacked_avx32[512] = {0};
-    pack_float_vector_i16_avx32(test_vector, packed_avx32, 512);
-    CHECK_AND_THROW( memcmp(packed, packed_avx32, sizeof(packed)) == 0 );
-
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx32(packed, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx32(packed_avx32, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed_avx32, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_dot_i16_f32_avx32(packed, test_vector, 512), 1.f, 0.0002f );
-
-    decode_vector_i16_f32_avx32(packed, unpacked_avx32, 512);
-    CHECK_AND_THROW( memcmp(unpacked, unpacked_avx32, sizeof(packed)) == 0 );
-#endif
-#if defined(USE_AVX2)
+    __attribute__ ((aligned (64))) uint16_t packed[512] = {0};
+    __attribute__ ((aligned (64))) float unpacked[512] = {0};
+    #if defined(USE_AVX512)
+    __attribute__ ((aligned (64))) uint16_t packed_avx32[512] = {0};
+    __attribute__ ((aligned (64))) float unpacked_avx32[512] = {0};
+    #endif
+     #if defined(USE_AVX2)
     __attribute__ ((aligned (16))) uint16_t packed_avx16[512] = {0};
     __attribute__ ((aligned (16))) float unpacked_avx16[512] = {0};
-    pack_float_vector_i16_avx16(test_vector, packed_avx16, 512);
-    CHECK_AND_THROW( memcmp(packed, packed_avx16, sizeof(packed)) == 0 );
+    #endif
 
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx16(packed, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed_avx16, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_dot_i16_f32_avx16(packed, test_vector, 512), 1.f, 0.0002f );
+    COMPARE_FL( euclidean_distance(test_vector, test_vector, 512), 0.f, 0.00001f );
+
+    for( uint32_t const D : { 128, 136, 224, 256, 512 } )
+    {
+        std::cout << "performing basic utils test for width: " << D << std::endl;
+        // renormalize vector
+        std::vector<float> tvv(test_vector, test_vector + D);
+        float const *test_vector = tvv.data();
+        float vlen = vlength(tvv);
+        size_t const sz_packed = sizeof(uint16_t) * D;
+        size_t const sz_unpacked = sizeof(float) * D;
+        normalize(vlen, tvv);
+        COMPARE_FL( vlength(tvv), 1.f, 0.0001f );
+        pack_float_vector_i16(test_vector, packed, D);
+        decode_vector_i16_f32(packed, unpacked, D);
+        COMPARE_FL( vlength(unpacked, D), 1.f, 0.0001f );
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32(packed, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_dot_i16_f32(packed, test_vector, D), 1.f, 0.0002f );
+        // binary compatible test across all packing/unpacking methods
+
+    #if defined(USE_AVX512)
+
+        pack_float_vector_i16_avx32(test_vector, packed_avx32, D);
+        CHECK_AND_THROW( memcmp(packed, packed_avx32, sz_packed) == 0 );
+
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx32(packed, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx32(packed_avx32, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed_avx32, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_dot_i16_f32_avx32(packed, test_vector, D), 1.f, 0.0002f );
+
+        decode_vector_i16_f32_avx32(packed, unpacked_avx32, D);
+        CHECK_AND_THROW( memcmp(unpacked, unpacked_avx32, sz_unpacked) == 0 );
+    #endif
+    #if defined(USE_AVX2)
+        pack_float_vector_i16_avx16(test_vector, packed_avx16, D);
+        CHECK_AND_THROW( memcmp(packed, packed_avx16, sz_packed) == 0 );
+
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx16(packed, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed_avx16, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_dot_i16_f32_avx16(packed, test_vector, D), 1.f, 0.0002f );
 
 
-    decode_vector_i16_f32_avx16(packed, unpacked_avx16, 512);
-    CHECK_AND_THROW( memcmp(unpacked, unpacked_avx16, sizeof(packed)) == 0 );
-#endif
+        decode_vector_i16_f32_avx16(packed, unpacked_avx16, D);
+        CHECK_AND_THROW( memcmp(unpacked, unpacked_avx16, sz_unpacked) == 0 );
+    #endif
 
-    COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed, test_vector, 512), 0.f, 0.00001f );
-    COMPARE_FL( decode_and_dot_i16_f32_sse(packed, test_vector, 512), 1.f, 0.0002f );
+        COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed, test_vector, D), 0.f, 0.00001f );
+        COMPARE_FL( decode_and_dot_i16_f32_sse(packed, test_vector, D), 1.f, 0.0002f );
+    }
 }
 
 int main(int argc, char **argv) {
