@@ -89,7 +89,14 @@ static std::vector<float> GenerateVectorNorm( size_t n, float lo, float hi )
     return v;
 }
 
-#define CHECK_AND_THROW(eq) { if( !(eq) ) throw std::runtime_error("CHECK FAILED: " #eq " at line: " + std::to_string(__LINE__)); }
+#define CHECK_AND_THROW(eq) \
+    { if( !(eq) ) throw std::runtime_error("CHECK FAILED: " #eq " at line: " \
+    + std::to_string(__LINE__)); }
+
+#define COMPARE_FL(ev, val, acc) \
+    { { auto real = ev; if( !is_near(real, val, acc) )\
+    throw std::runtime_error("COMPARE FLOATS FAILED: " #ev " must be equal to: " #val \
+    " but has: " + std::to_string(real) + " at line: " + std::to_string(__LINE__)); } }
 
 using namespace Annoy;
 
@@ -378,23 +385,62 @@ static double in_mem_test(int f, int k, uint32_t count, int depth = 30, bool clo
     return qual1;
 }
 
+
+void basic_packutils_test()
+{
+    COMPARE_FL( euclidean_distance(test_vector, test_vector, 512), 0.f, 0.00001f );
+    __attribute__ ((aligned (16))) uint16_t packed[512] = {0};
+    __attribute__ ((aligned (16))) float unpacked[512] = {0};
+    pack_float_vector_i16(test_vector, packed, 512);
+    decode_vector_i16_f32(packed, unpacked, 512);
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32(packed, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_dot_i16_f32(packed, test_vector, 512), 1.f, 0.0002f );
+    std::vector<float> tvv(test_vector, test_vector + 512);
+    float vlen = vlength(tvv);
+    normalize(vlen, tvv);
+    COMPARE_FL( vlength(tvv), 1.f, 0.0001f );
+    COMPARE_FL( vlength(unpacked, 512), 1.f, 0.0001f );
+
+    // binary compatible test across all packing/unpacking methods
+
+#if defined(USE_AVX512)
+    __attribute__ ((aligned (16))) uint16_t packed_avx32[512] = {0};
+    __attribute__ ((aligned (16))) float unpacked_avx32[512] = {0};
+    pack_float_vector_i16_avx32(test_vector, packed_avx32, 512);
+    CHECK_AND_THROW( memcmp(packed, packed_avx32, sizeof(packed)) == 0 );
+
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx32(packed, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx32(packed_avx32, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed_avx32, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_dot_i16_f32_avx32(packed, test_vector, 512), 1.f, 0.0002f );
+
+    decode_vector_i16_f32_avx32(packed, unpacked_avx32, 512);
+    CHECK_AND_THROW( memcmp(unpacked, unpacked_avx32, sizeof(packed)) == 0 );
+#endif
+#if defined(USE_AVX2)
+    __attribute__ ((aligned (16))) uint16_t packed_avx16[512] = {0};
+    __attribute__ ((aligned (16))) float unpacked_avx16[512] = {0};
+    pack_float_vector_i16_avx16(test_vector, packed_avx16, 512);
+    CHECK_AND_THROW( memcmp(packed, packed_avx16, sizeof(packed)) == 0 );
+
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32_avx16(packed, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed_avx16, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_dot_i16_f32_avx16(packed, test_vector, 512), 1.f, 0.0002f );
+
+
+    decode_vector_i16_f32_avx16(packed, unpacked_avx16, 512);
+    CHECK_AND_THROW( memcmp(unpacked, unpacked_avx16, sizeof(packed)) == 0 );
+#endif
+
+    COMPARE_FL( decode_and_euclidean_distance_i16_f32_sse(packed, test_vector, 512), 0.f, 0.00001f );
+    COMPARE_FL( decode_and_dot_i16_f32_sse(packed, test_vector, 512), 1.f, 0.0002f );
+}
+
 int main(int argc, char **argv) {
     try
     {
         // basic utils
-        {
-            CHECK_AND_THROW( is_near(euclidean_distance(test_vector, test_vector, 512), 0.f, 0.00001f) );
-            __attribute__ ((aligned (16))) uint16_t packed[512] = {0};
-            __attribute__ ((aligned (16))) float unpacked[512] = {0};
-            pack_float_vector_i16(test_vector, packed, 512);
-            decode_vector_i16_f32(packed, unpacked, 512);
-            CHECK_AND_THROW( is_near(decode_and_euclidean_distance_i16_f32(packed, test_vector, 512), 0.f, 0.00001f) );
-            std::vector<float> tvv(test_vector, test_vector + 512);
-            float vlen = vlength(tvv);
-            normalize(vlen, tvv);
-            CHECK_AND_THROW( is_near(vlength(tvv), 1.f, 0.0001f) );
-            CHECK_AND_THROW( is_near(vlength(unpacked, 512), 1.f, 0.0001f) );
-        }
+        basic_packutils_test();
         // DotProduct
         test<DotProductPacked16>(256, 256, 100000);
         test<DotProductPacked16>(64, 64, 1000000);
