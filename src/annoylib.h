@@ -1011,7 +1011,11 @@ public:
     
   bool on_disk_build(const char* file, char** error=NULL) {
     _on_disk = true;
+#ifndef _MSC_VER
     _fd = open(file, O_RDWR | O_CREAT | O_TRUNC, (int) 0600);
+#else
+    _fd = _open(file, _O_RDWR | _O_CREAT | _O_TRUNC, (int) 0600);
+#endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
       _fd = 0;
@@ -1095,7 +1099,11 @@ public:
       return true;
     } else {
       // Delete file if it already exists (See issue #335)
+#ifndef _MSC_VER
       unlink(filename);
+#else
+      _unlink(filename);
+#endif
 
       FILE *f = fopen(filename, "wb");
       if (f == NULL) {
@@ -1132,12 +1140,20 @@ public:
 
   void unload() {
     if (_on_disk && _fd) {
+#ifndef _MSC_VER
       close(_fd);
+#else
+      _close(_fd);
+#endif
       munmap(_nodes, _s * _nodes_size);
     } else {
       if (_fd) {
         // we have mmapped data
+#ifndef _MSC_VER
         close(_fd);
+#else
+        _close(_fd);
+#endif
         munmap(_nodes, _n_nodes * _s);
       } else if (_nodes) {
         // We have heap allocated data
@@ -1149,7 +1165,11 @@ public:
   }
 
   bool load(const char* filename, bool prefault=false, char** error=NULL) {
+#ifndef _MSC_VER
     _fd = open(filename, O_RDONLY, (int)0400);
+#else
+    _fd = _open(filename, _O_RDONLY, (int)0400);
+#endif
     if (_fd == -1) {
       set_error_from_errno(error, "Unable to open");
       _fd = 0;
@@ -1197,7 +1217,7 @@ public:
     _loaded = true;
     _built = true;
     _n_items = m;
-    if (_verbose) annoylib_showUpdate("found %lu roots with degree %d\n", _roots.size(), m);
+    if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), m);
     return true;
   }
 
@@ -1387,7 +1407,7 @@ protected:
     // If we didn't find a hyperplane, just randomize sides as a last option
     while (_split_imbalance(children_indices[0], children_indices[1]) > 0.99) {
       if (_verbose)
-        annoylib_showUpdate("\tNo hyperplane found (left has %ld children, right has %ld children)\n",
+        annoylib_showUpdate("\tNo hyperplane found (left has %zu children, right has %zu children)\n",
           children_indices[0].size(), children_indices[1].size());
 
       children_indices[0].clear();
