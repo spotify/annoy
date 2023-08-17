@@ -65,7 +65,7 @@ def _get_index(dataset, custom_distance=None, custom_dim=None):
 
 
 def _test_index(dataset, exp_accuracy, custom_metric=None, custom_dim=None):
-    annoy, dataset_f, dataset = self._get_index(dataset, custom_metric, custom_dim)
+    annoy, dataset_f, dataset = _get_index(dataset, custom_metric, custom_dim)
 
     n, k = 0, 0
 
