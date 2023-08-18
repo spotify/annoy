@@ -61,7 +61,7 @@ def _get_index(dataset, custom_distance=None, custom_dim=None):
         annoy.save(index_fn)
     else:
         annoy.load(index_fn)
-    return annoy, dataset_f
+    return annoy, dataset_f, dataset
 
 
 def _test_index(dataset, exp_accuracy, custom_metric=None, custom_dim=None):
@@ -99,6 +99,7 @@ def test_nytimes_16():
 
 def test_lastfm_dot(self):
     _test_index('lastfm-64-dot', 60.00, 'dot', 64)
+
 
 def test_lastfm_angular(self):
     _test_index('lastfm-64-dot', 60.00, 'angular', 65)
