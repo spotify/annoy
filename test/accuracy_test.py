@@ -97,9 +97,9 @@ def test_nytimes_16():
     _test_index("nytimes-16-angular", 80.00)
 
 
-def test_lastfm_dot(self):
+def test_lastfm_dot():
     _test_index('lastfm-64-dot', 60.00, 'dot', 64)
 
 
-def test_lastfm_angular(self):
+def test_lastfm_angular():
     _test_index('lastfm-64-dot', 60.00, 'angular', 65)
