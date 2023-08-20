@@ -358,11 +358,6 @@ inline float euclidean_distance<float>(const float* x, const float* y, int f) {
 
 #endif
 
- 
-template<typename T>
-inline T get_norm(T* v, int f) {
-  return sqrt(dot(v, v, f));
-}
 
 template<typename T, typename Random, typename Distance, typename Node>
 inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool cosine, Node* p, Node* q) {
@@ -391,18 +386,16 @@ inline void two_means(const vector<Node*>& nodes, int f, Random& random, bool co
     size_t k = random.index(count);
     T di = ic * Distance::distance(p, nodes[k], f),
       dj = jc * Distance::distance(q, nodes[k], f);
-    T norm = cosine ? get_norm(nodes[k]->v, f) : 1;
+    T norm = cosine ? Distance::template get_norm<T, Node>(nodes[k], f) : 1;
     if (!(norm > T(0))) {
       continue;
     }
     if (di < dj) {
-      for (int z = 0; z < f; z++)
-        p->v[z] = (p->v[z] * ic + nodes[k]->v[z] / norm) / (ic + 1);
+      Distance::update_mean(p, nodes[k], norm, ic, f);
       Distance::init_node(p, f);
       ic++;
     } else if (dj < di) {
-      for (int z = 0; z < f; z++)
-        q->v[z] = (q->v[z] * jc + nodes[k]->v[z] / norm) / (jc + 1);
+      Distance::update_mean(q, nodes[k], norm, jc, f);
       Distance::init_node(q, f);
       jc++;
     }
@@ -417,6 +410,12 @@ struct Base {
     // on the entire set of nodes passed into this index.
   }
 
+  template<typename T, typename S, typename Node>
+  static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    // Override this in specific metric structs below if you need to do any post-processing
+    // on the entire set of nodes passed into this index.
+  }
+
   template<typename Node>
   static inline void zero_value(Node* dest) {
     // Initialize any fields that require sane defaults within this node.
@@ -428,12 +427,23 @@ struct Base {
   }
 
   template<typename T, typename Node>
+  static inline T get_norm(Node* node, int f) {
+      return sqrt(dot(node->v, node->v, f));
+  }
+
+  template<typename T, typename Node>
   static inline void normalize(Node* node, int f) {
-    T norm = get_norm(node->v, f);
+    T norm = Base::get_norm<T, Node>(node, f);
     if (norm > 0) {
       for (int z = 0; z < f; z++)
         node->v[z] /= norm;
     }
+  }
+
+  template<typename T, typename Node>
+  static inline void update_mean(Node* mean, Node* new_node, T norm, int c, int f) {
+      for (int z = 0; z < f; z++)
+        mean->v[z] = (mean->v[z] * c + new_node->v[z] / norm) / (c + 1);
   }
 };
 
@@ -486,6 +496,10 @@ struct Angular : Base {
       return (bool)random.flip();
   }
   template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    return side(n, y->v, f, random);
+  }
+  template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
     Node<S, T>* p = (Node<S, T>*)alloca(s);
     Node<S, T>* q = (Node<S, T>*)alloca(s);
@@ -525,20 +539,50 @@ struct DotProduct : Angular {
   template<typename S, typename T>
   struct Node {
     /*
-     * This is an extension of the Angular node with an extra attribute for the scaled norm.
+     * This is an extension of the Angular node with extra attributes for the DotProduct metric.
+     * It has dot_factor which is needed to reduce the task to Angular distance metric (see the preprocess method)
+     * and also a built flag that helps to compute exact dot products when an index is already built.
      */
     S n_descendants;
     S children[2]; // Will possibly store more than 2
     T dot_factor;
+    T norm;
+    bool built;
     T v[ANNOYLIB_V_ARRAY_SIZE];
   };
 
   static const char* name() {
     return "dot";
   }
+
+  template<typename T, typename Node>
+  static inline T get_norm(Node* node, int f) {
+      return sqrt(dot(node->v, node->v, f) + node->dot_factor * node->dot_factor);
+  }
+
+  template<typename T, typename Node>
+  static inline void update_mean(Node* mean, Node* new_node, T norm, int c, int f) {
+      for (int z = 0; z < f; z++)
+        mean->v[z] = (mean->v[z] * c + new_node->v[z] / norm) / (c + 1);
+      mean->dot_factor = (mean->dot_factor * c + new_node->dot_factor / norm) / (c + 1);
+  }
+
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
-    return -dot(x->v, y->v, f);
+    if (x->built || y->built) {
+      // When index is already built, we don't need angular distances to retrieve NNs
+      // Thus, we can return dot product scores itself
+      return -dot(x->v, y->v, f);
+    }
+
+    // Calculated by analogy with the angular case
+    T pp = x->norm ? x->norm : dot(x->v, x->v, f) + x->dot_factor * x->dot_factor;
+    T qq = y->norm ? y->norm : dot(y->v, y->v, f) + y->dot_factor * y->dot_factor;
+    T pq = dot(x->v, y->v, f) + x->dot_factor * y->dot_factor;
+    T ppqq = pp * qq;
+
+    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    else return 2.0;
   }
 
   template<typename Node>
@@ -548,6 +592,8 @@ struct DotProduct : Angular {
 
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
+    n->built = false;
+    n->norm = dot(n->v, n->v, f) + n->dot_factor * n->dot_factor;
   }
 
   template<typename T, typename Node>
@@ -581,7 +627,21 @@ struct DotProduct : Angular {
 
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
-    return dot(n->v, y, f) + (n->dot_factor * n->dot_factor);
+    return dot(n->v, y, f);
+  }
+
+  template<typename S, typename T>
+  static inline T margin(const Node<S, T>* n, const Node<S, T>* y, int f) {
+    return dot(n->v, y->v, f) + n->dot_factor * y->dot_factor;
+  }
+
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    T dot = margin(n, y, f);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return (bool)random.flip();
   }
 
   template<typename S, typename T, typename Random>
@@ -609,6 +669,7 @@ struct DotProduct : Angular {
       T d = dot(node->v, node->v, f);
       T norm = d < 0 ? 0 : sqrt(d);
       node->dot_factor = norm;
+      node->built = false;
     }
 
     // Step two: find the maximum norm
@@ -627,7 +688,17 @@ struct DotProduct : Angular {
       T squared_norm_diff = pow(max_norm, static_cast<T>(2.0)) - pow(node_norm, static_cast<T>(2.0));
       T dot_factor = squared_norm_diff < 0 ? 0 : sqrt(squared_norm_diff);
 
+      node->norm = pow(max_norm, static_cast<T>(2.0));
       node->dot_factor = dot_factor;
+    }
+  }
+
+  template<typename T, typename S, typename Node>
+  static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    for (S i = 0; i < node_count; i++) {
+      Node* node = get_node_ptr<S, Node>(nodes, _s, i);
+      // When an index is built, we will remember it in index item nodes to compute distances differently
+      node->built = true;
     }
   }
 };
@@ -679,6 +750,10 @@ struct Hamming : Base {
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
     return margin(n, y, f);
+  }
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    return side(n, y->v, f, random);
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
@@ -747,6 +822,10 @@ struct Minkowski : Base {
       return (dot > 0);
     else
       return (bool)random.flip();
+  }
+  template<typename S, typename T, typename Random>
+  static inline bool side(const Node<S, T>* n, const Node<S, T>* y, int f, Random& random) {
+    return side(n, y->v, f, random);
   }
   template<typename T>
   static inline T pq_distance(T distance, T margin, int child_nr) {
@@ -991,6 +1070,9 @@ public:
       }
       _nodes_size = _n_nodes;
     }
+
+    D::template postprocess<T, S, Node>(_nodes, _s, _n_items, _f);
+
     _built = true;
     return true;
   }
@@ -1310,7 +1392,7 @@ protected:
         S j = indices[i];
         Node* n = _get(j);
         if (n) {
-          bool side = D::side(m, n->v, _f, _random);
+          bool side = D::side(m, n, _f, _random);
           children_indices[side].push_back(j);
         } else {
           annoylib_showUpdate("No node for index %d?\n", j);

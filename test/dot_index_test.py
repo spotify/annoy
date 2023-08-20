@@ -59,6 +59,7 @@ def test_dist():
     i.add_item(0, [0, 1])
     i.add_item(1, [1, 1])
     i.add_item(2, [0, 0])
+    i.build(10)
 
     assert i.get_distance(0, 1) == pytest.approx(1.0)
     assert i.get_distance(1, 2) == pytest.approx(0.0)
@@ -161,3 +162,4 @@ def test_distance_consistency():
                 numpy.dot(i.get_item_vector(a), i.get_item_vector(b))
             )
         assert dist == pytest.approx(i.get_distance(a, b))
+
