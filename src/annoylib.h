@@ -913,6 +913,7 @@ class AnnoyIndexInterface {
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual vector<uint8_t> serialize(char** error=NULL) = 0;
+  virtual bool deserialize(const vector<uint8_t> bytes, bool prefault=false, char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -1229,6 +1230,53 @@ public:
     }
 
     return vector<uint8_t>(_nodes, _nodes + _n_nodes * _s);
+  }
+
+  bool deserialize(const vector<uint8_t> bytes, bool prefault=false, char** error=NULL) {
+    if (bytes.size() == 0) {
+      set_error_from_errno(error, "Size of bytes is zero");
+      return false;
+    }
+
+    if (bytes.size() % _s) {
+      // Something is fishy with this index!
+      set_error_from_errno(error, "Index size is not a multiple of vector size. Ensure you are opening using the same metric you used to create the index.");
+      return false;
+    }
+
+    int flags = MAP_SHARED;
+    if (prefault) {
+#ifdef MAP_POPULATE
+      flags |= MAP_POPULATE;
+#else
+      annoylib_showUpdate("prefault is set to true, but MAP_POPULATE is not defined on this platform");
+#endif
+    }
+
+    _nodes = (Node*)bytes.data();
+    _n_nodes = (S)(bytes.size() / _s);
+
+    _roots.clear();
+    S m = -1;
+
+    for (S i = _n_nodes - 1; i >= 0; i--) {
+      S k = _get(i)->n_descendants;
+      if (m == -1 || k == m) {
+        _roots.push_back(i);
+        m = k;
+      } else {
+        break;
+      }
+    }
+
+    // hacky fix: since the last root precedes the copy of all roots, delete it
+    if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
+      _roots.pop_back();
+    _loaded = true;
+    _built = true;
+    _n_items = m;
+    if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), m);
+    return true;
   }
 
   T get_distance(S i, S j) const {
