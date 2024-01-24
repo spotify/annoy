@@ -16,6 +16,7 @@
 #include "kissrandom.h"
 #include "Python.h"
 #include "structmember.h"
+#include "bytesobject.h"
 #include <exception>
 #if defined(_MSC_VER) && _MSC_VER == 1500
 typedef signed __int32    int32_t;
@@ -230,6 +231,45 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
     return NULL;
 
   if (!self->ptr->save(filename, prefault, &error)) {
+    PyErr_SetString(PyExc_IOError, error);
+    free(error);
+    return NULL;
+  }
+  Py_RETURN_TRUE;
+}
+
+static PyObject *
+py_an_serialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
+  bool prefault = false;
+  if (!self->ptr) 
+    return NULL;
+
+  vector<uint8_t> bytes = self->ptr->serialize(NULL);
+
+  return PyBytes_FromStringAndSize((const char*)bytes.data(), bytes.size());
+}
+
+static PyObject *
+py_an_deserialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
+  PyObject* bytes;
+  bool prefault = false;
+  if (!self->ptr) 
+    return NULL;
+
+  static char const * kwlist[] = {"bytes", "prefault", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|b", (char**)kwlist, &bytes, &prefault))
+    return NULL;
+
+  if (!PyBytes_Check(bytes)) {
+    PyErr_SetString(PyExc_TypeError, "Expected bytes");
+    return NULL;
+  }
+
+  vector<uint8_t> v(PyBytes_Size(bytes));
+  memcpy(v.data(), PyBytes_AsString(bytes), v.size());
+
+  char* error;
+  if (!self->ptr->deserialize(&v, prefault, &error)) {
     PyErr_SetString(PyExc_IOError, error);
     free(error);
     return NULL;
@@ -576,6 +616,8 @@ py_an_set_seed(py_annoy *self, PyObject *args) {
 static PyMethodDef AnnoyMethods[] = {
   {"load",	(PyCFunction)py_an_load, METH_VARARGS | METH_KEYWORDS, "Loads (mmaps) an index from disk."},
   {"save",	(PyCFunction)py_an_save, METH_VARARGS | METH_KEYWORDS, "Saves the index to disk."},
+  {"serialize",  (PyCFunction)py_an_serialize, METH_VARARGS | METH_KEYWORDS, "Serializes the index to bytes."},
+  {"deserialize", (PyCFunction)py_an_deserialize, METH_VARARGS | METH_KEYWORDS, "Deserializes the index from bytes."},
   {"get_nns_by_item",(PyCFunction)py_an_get_nns_by_item, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to item `i`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to vector `vector`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
