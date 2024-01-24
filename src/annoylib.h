@@ -1229,7 +1229,7 @@ public:
       return {};
     }
 
-    return vector<uint8_t>(_nodes, _nodes + _n_nodes * _s);
+    return vector<uint8_t>((uint8_t*)_nodes, (uint8_t*)_nodes + _n_nodes * _s);
   }
 
   bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) {
