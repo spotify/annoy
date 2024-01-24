@@ -912,6 +912,7 @@ class AnnoyIndexInterface {
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
+  virtual vector<uint8_t> serialize(char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -1219,6 +1220,15 @@ public:
     _n_items = m;
     if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), m);
     return true;
+  }
+
+  vector<uint8_t> serialize(char** error=NULL) {
+    if (!_built) {
+      set_error_from_string(error, "Index cannot be serialized if it hasn't been built");
+      return {};
+    }
+
+    return vector<uint8_t>(_nodes, _nodes + _n_nodes * _s);
   }
 
   T get_distance(S i, S j) const {
