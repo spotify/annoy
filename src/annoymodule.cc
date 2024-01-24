@@ -240,7 +240,6 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 static PyObject *
 py_an_serialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
-  bool prefault = false;
   if (!self->ptr) 
     return NULL;
 
@@ -251,29 +250,37 @@ py_an_serialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
 
 static PyObject *
 py_an_deserialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
-  PyObject* bytes;
+  PyObject* bytes_object;
+  char *error;
   bool prefault = false;
   if (!self->ptr) 
     return NULL;
 
   static char const * kwlist[] = {"bytes", "prefault", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|b", (char**)kwlist, &bytes, &prefault))
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "S|b", (char**)kwlist, &bytes_object, &prefault))
     return NULL;
 
-  if (!PyBytes_Check(bytes)) {
+  if (bytes_object == NULL) {
     PyErr_SetString(PyExc_TypeError, "Expected bytes");
     return NULL;
   }
 
-  vector<uint8_t> v(PyBytes_Size(bytes));
-  memcpy(v.data(), PyBytes_AsString(bytes), v.size());
+  if (!PyBytes_Check(bytes_object)) {
+    PyErr_SetString(PyExc_TypeError, "Expected bytes");
+    return NULL;
+  }
 
-  char* error;
+  Py_ssize_t length = PyBytes_Size(bytes_object);
+  uint8_t* raw_bytes = (uint8_t*)PyBytes_AsString(bytes_object);
+  vector<uint8_t> v(raw_bytes, raw_bytes + length);
+
   if (!self->ptr->deserialize(&v, prefault, &error)) {
     PyErr_SetString(PyExc_IOError, error);
     free(error);
     return NULL;
   }
+
   Py_RETURN_TRUE;
 }
 

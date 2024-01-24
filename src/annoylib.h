@@ -1253,7 +1253,10 @@ public:
 #endif
     }
 
-    _nodes = (Node*)bytes->data();
+    _allocate_size((S)(bytes->size() / _s));
+
+    memcpy(_nodes, bytes->data(), bytes->size());
+
     _n_nodes = (S)(bytes->size() / _s);
 
     _roots.clear();
@@ -1272,6 +1275,7 @@ public:
     // hacky fix: since the last root precedes the copy of all roots, delete it
     if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
       _roots.pop_back();
+
     _loaded = true;
     _built = true;
     _n_items = m;
