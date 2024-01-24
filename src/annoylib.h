@@ -913,7 +913,7 @@ class AnnoyIndexInterface {
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual vector<uint8_t> serialize(char** error=NULL) = 0;
-  virtual bool deserialize(const vector<uint8_t> bytes, bool prefault=false, char** error=NULL) = 0;
+  virtual bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -1232,13 +1232,13 @@ public:
     return vector<uint8_t>(_nodes, _nodes + _n_nodes * _s);
   }
 
-  bool deserialize(const vector<uint8_t> bytes, bool prefault=false, char** error=NULL) {
-    if (bytes.size() == 0) {
+  bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) {
+    if (bytes->empty()) {
       set_error_from_errno(error, "Size of bytes is zero");
       return false;
     }
 
-    if (bytes.size() % _s) {
+    if (bytes->size() % _s) {
       // Something is fishy with this index!
       set_error_from_errno(error, "Index size is not a multiple of vector size. Ensure you are opening using the same metric you used to create the index.");
       return false;
@@ -1253,8 +1253,8 @@ public:
 #endif
     }
 
-    _nodes = (Node*)bytes.data();
-    _n_nodes = (S)(bytes.size() / _s);
+    _nodes = (Node*)bytes->data();
+    _n_nodes = (S)(bytes->size() / _s);
 
     _roots.clear();
     S m = -1;
