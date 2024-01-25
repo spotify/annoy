@@ -177,10 +177,10 @@ public:
   static int deserialize(lua_State* L) {
     Impl* self = getAnnoy(L, 1);
     int nargs = lua_gettop(L);
-    const char* bytes_buffer = luaL_checkstring(L, 2);
-    size_t bytes_buffer_size = strlen(bytes_buffer);
+    const char* bytes_buffer = lua_tostring(L, 2);
+    size_t bytes_buffer_size = lua_rawlen(L, 2);
     vector<uint8_t> bytes(bytes_buffer, bytes_buffer + bytes_buffer_size);
-    self->deserialize(bytes);
+    self->deserialize(&bytes);
 
     return 1;
   }
@@ -281,6 +281,8 @@ public:
       {"build", &ThisClass::build},
       {"save", &ThisClass::save},
       {"load", &ThisClass::load},
+      {"serialize", &ThisClass::serialize},
+      {"deserialize", &ThisClass::deserialize},
       {"unload", &ThisClass::unload},
       {"get_nns_by_item", &ThisClass::get_nns_by_item},
       {"get_nns_by_vector", &ThisClass::get_nns_by_vector},
