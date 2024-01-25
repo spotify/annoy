@@ -164,6 +164,27 @@ public:
     return 1;
   }
 
+  static int serialize(lua_State* L) {
+    Impl* self = getAnnoy(L, 1);
+    int nargs = lua_gettop(L);
+    vector<uint8_t> bytes = self->serialize();
+
+    lua_pushlstring(L, (const char*) bytes.data(), bytes.size());
+
+    return 1;
+  }
+
+  static int deserialize(lua_State* L) {
+    Impl* self = getAnnoy(L, 1);
+    int nargs = lua_gettop(L);
+    const char* bytes_buffer = luaL_checkstring(L, 2);
+    size_t bytes_buffer_size = strlen(bytes_buffer);
+    vector<uint8_t> bytes(bytes_buffer, bytes_buffer + bytes_buffer_size);
+    self->deserialize(bytes);
+
+    return 1;
+  }
+
   static int unload(lua_State* L) {
     Impl* self = getAnnoy(L, 1);
     self->unload();
