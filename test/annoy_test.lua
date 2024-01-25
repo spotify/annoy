@@ -496,6 +496,30 @@ describe("index test", function()
         assert.same(u, y)
     end)
 
+    it("serialize_deserialize", function()
+        local f = 2
+        local i = AnnoyIndex(f, 'euclidean')
+        i:add_item(0, {2, 2})
+        i:add_item(1, {3, 2})
+        i:add_item(2, {3, 3})
+        i:add_item(3, {4, 4})
+        i:add_item(4, {5, 5})
+        i:build(10)
+
+        local bytes = i:serialize()
+
+        local j = AnnoyIndex(f, 'euclidean')
+
+        j:deserialize(bytes)
+
+        local item_count = 4
+
+        local first_items = i:get_nns_by_item(0, item_count)
+        local second_items = j:get_nns_by_item(0, item_count)
+
+        assert.same(first_items, second_items)
+    end)
+
     it("on_disk_build", function()
         local f = 2
         local i = AnnoyIndex(f, 'euclidean')
