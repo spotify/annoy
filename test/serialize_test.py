@@ -57,4 +57,7 @@ def test_serialize_after_load():
     index2.load(save_path)
 
     assert index1.serialize() == index2.serialize()
+    assert index1.get_n_items() == index2.get_n_items()
+    assert index1.get_n_trees() == index2.get_n_trees()
+    assert index1.get_nns_by_item(0, index1.get_n_items()) == index2.get_nns_by_item(0, index1.get_n_items())
 
