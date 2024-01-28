@@ -1229,18 +1229,30 @@ public:
       return {};
     }
 
-    return vector<uint8_t>((uint8_t*)_nodes, (uint8_t*)_nodes + _n_nodes * _s);
+    vector<uint8_t> bytes {};
+
+    S n_items = _n_items;
+    S n_nodes = _n_nodes;
+    size_t roots_size = _roots.size();
+    S nodes_size = _nodes_size;
+
+    bytes.insert(bytes.end(), (uint8_t*)&n_items, (uint8_t*)&n_items + sizeof(n_items));
+    bytes.insert(bytes.end(), (uint8_t*)&n_nodes, (uint8_t*)&n_nodes + sizeof(n_nodes));
+    bytes.insert(bytes.end(), (uint8_t*)&roots_size, (uint8_t*)&roots_size + sizeof(roots_size));
+    bytes.insert(bytes.end(), (uint8_t*)&nodes_size, (uint8_t*)&nodes_size + sizeof(nodes_size));
+
+    uint8_t* roots_buffer = (uint8_t*)_roots.data();
+    bytes.insert(bytes.end(), roots_buffer, roots_buffer + _roots.size() * sizeof(S));
+
+    uint8_t* nodes_buffer = (uint8_t*)_nodes;
+    bytes.insert(bytes.end(), nodes_buffer, nodes_buffer + _n_nodes * _s);
+
+    return bytes;
   }
 
   bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) {
     if (bytes->empty()) {
       set_error_from_errno(error, "Size of bytes is zero");
-      return false;
-    }
-
-    if (bytes->size() % _s) {
-      // Something is fishy with this index!
-      set_error_from_errno(error, "Index size is not a multiple of vector size. Ensure you are opening using the same metric you used to create the index.");
       return false;
     }
 
@@ -1253,33 +1265,33 @@ public:
 #endif
     }
 
-    _allocate_size((S)(bytes->size() / _s));
+    uint8_t* bytes_buffer = (uint8_t*)bytes->data();
 
-    memcpy(_nodes, bytes->data(), bytes->size());
+    _n_items = *(S*)bytes_buffer;
+    bytes_buffer += sizeof(S);
 
-    _n_nodes = (S)(bytes->size() / _s);
+    _n_nodes = *(S*)bytes_buffer;
+    bytes_buffer += sizeof(S);
+
+    size_t roots_size = *(size_t*)bytes_buffer;
+    bytes_buffer += sizeof(size_t);
+
+    _nodes_size = *(S*)bytes_buffer;
+    bytes_buffer += sizeof(S);
 
     _roots.clear();
-    S m = -1;
+    _roots.resize(roots_size);
+    _roots.assign((S*) bytes_buffer, (S*) bytes_buffer + roots_size);
+    bytes_buffer += roots_size * sizeof(S);
 
-    for (S i = _n_nodes - 1; i >= 0; i--) {
-      S k = _get(i)->n_descendants;
-      if (m == -1 || k == m) {
-        _roots.push_back(i);
-        m = k;
-      } else {
-        break;
-      }
-    }
+    _allocate_size(_n_nodes * _s);
 
-    // hacky fix: since the last root precedes the copy of all roots, delete it
-    if (_roots.size() > 1 && _get(_roots.front())->children[0] == _get(_roots.back())->children[0])
-      _roots.pop_back();
+    memcpy(_nodes, bytes_buffer, _n_nodes * _s);
 
     _loaded = true;
     _built = true;
-    _n_items = m;
-    if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), m);
+
+    if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), _n_items);
     return true;
   }
 
