@@ -912,7 +912,7 @@ class AnnoyIndexInterface {
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
-  virtual vector<uint8_t> serialize(char** error=NULL) = 0;
+  virtual vector<uint8_t> serialize(char** error=NULL) const = 0;
   virtual bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -1223,7 +1223,7 @@ public:
     return true;
   }
 
-  vector<uint8_t> serialize(char** error=NULL) {
+  vector<uint8_t> serialize(char** error=NULL) const {
     if (!_built) {
       set_error_from_string(error, "Index cannot be serialized if it hasn't been built");
       return {};
