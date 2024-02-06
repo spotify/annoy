@@ -1245,7 +1245,7 @@ public:
     bytes.insert(bytes.end(), roots_buffer, roots_buffer + _roots.size() * sizeof(S));
 
     uint8_t* nodes_buffer = (uint8_t*)_nodes;
-    bytes.insert(bytes.end(), nodes_buffer, nodes_buffer + _n_nodes * _s);
+    bytes.insert(bytes.end(), nodes_buffer, nodes_buffer + _nodes_size * _s);
 
     return bytes;
   }
@@ -1270,13 +1270,13 @@ public:
     _n_items = *(S*)bytes_buffer;
     bytes_buffer += sizeof(S);
 
-    _n_nodes = *(S*)bytes_buffer;
+    S n_nodes = *(S*)bytes_buffer;
     bytes_buffer += sizeof(S);
 
     size_t roots_size = *(size_t*)bytes_buffer;
     bytes_buffer += sizeof(size_t);
 
-    _nodes_size = *(S*)bytes_buffer;
+    S nodes_size = *(S*)bytes_buffer;
     bytes_buffer += sizeof(S);
 
     _roots.clear();
@@ -1284,10 +1284,11 @@ public:
     _roots.assign((S*) bytes_buffer, (S*) bytes_buffer + roots_size);
     bytes_buffer += roots_size * sizeof(S);
 
-    _allocate_size(_n_nodes * _s);
+    _allocate_size((S) nodes_size);
 
-    memcpy(_nodes, bytes_buffer, _n_nodes * _s);
+    memcpy(_nodes, bytes_buffer, nodes_size * _s);
 
+    _n_nodes = n_nodes;
     _loaded = true;
     _built = true;
 
