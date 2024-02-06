@@ -16,6 +16,7 @@
 #include "kissrandom.h"
 #include "Python.h"
 #include "structmember.h"
+#include "bytesobject.h"
 #include <exception>
 #if defined(_MSC_VER) && _MSC_VER == 1500
 typedef signed __int32    int32_t;
@@ -96,6 +97,8 @@ public:
   bool save(const char* filename, bool prefault, char** error) { return _index.save(filename, prefault, error); };
   void unload() { _index.unload(); };
   bool load(const char* filename, bool prefault, char** error) { return _index.load(filename, prefault, error); };
+  vector<uint8_t> serialize(char** error) const { return _index.serialize(error); };
+  bool deserialize(vector<uint8_t>* bytes, bool prefault, char** error) { return _index.deserialize(bytes, prefault, error); };
   float get_distance(int32_t i, int32_t j) const { return _index.get_distance(i, j); };
   void get_nns_by_item(int32_t item, size_t n, int search_k, vector<int32_t>* result, vector<float>* distances) const {
     if (distances) {
@@ -235,6 +238,51 @@ py_an_save(py_annoy *self, PyObject *args, PyObject *kwargs) {
   Py_RETURN_TRUE;
 }
 
+static PyObject *
+py_an_serialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
+  if (!self->ptr) 
+    return NULL;
+
+  vector<uint8_t> bytes = self->ptr->serialize(NULL);
+
+  return PyBytes_FromStringAndSize((const char*)bytes.data(), bytes.size());
+}
+
+static PyObject *
+py_an_deserialize(py_annoy *self, PyObject *args, PyObject *kwargs) {
+  PyObject* bytes_object;
+  char *error;
+  bool prefault = false;
+  if (!self->ptr) 
+    return NULL;
+
+  static char const * kwlist[] = {"bytes", "prefault", NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "S|b", (char**)kwlist, &bytes_object, &prefault))
+    return NULL;
+
+  if (bytes_object == NULL) {
+    PyErr_SetString(PyExc_TypeError, "Expected bytes");
+    return NULL;
+  }
+
+  if (!PyBytes_Check(bytes_object)) {
+    PyErr_SetString(PyExc_TypeError, "Expected bytes");
+    return NULL;
+  }
+
+  Py_ssize_t length = PyBytes_Size(bytes_object);
+  uint8_t* raw_bytes = (uint8_t*)PyBytes_AsString(bytes_object);
+  vector<uint8_t> v(raw_bytes, raw_bytes + length);
+
+  if (!self->ptr->deserialize(&v, prefault, &error)) {
+    PyErr_SetString(PyExc_IOError, error);
+    free(error);
+    return NULL;
+  }
+
+  Py_RETURN_TRUE;
+}
 
 PyObject*
 get_nns_to_python(const vector<int32_t>& result, const vector<float>& distances, int include_distances) {
@@ -575,6 +623,8 @@ py_an_set_seed(py_annoy *self, PyObject *args) {
 static PyMethodDef AnnoyMethods[] = {
   {"load",	(PyCFunction)py_an_load, METH_VARARGS | METH_KEYWORDS, "Loads (mmaps) an index from disk."},
   {"save",	(PyCFunction)py_an_save, METH_VARARGS | METH_KEYWORDS, "Saves the index to disk."},
+  {"serialize",  (PyCFunction)py_an_serialize, METH_VARARGS | METH_KEYWORDS, "Serializes the index to bytes."},
+  {"deserialize", (PyCFunction)py_an_deserialize, METH_VARARGS | METH_KEYWORDS, "Deserializes the index from bytes."},
   {"get_nns_by_item",(PyCFunction)py_an_get_nns_by_item, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to item `i`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS | METH_KEYWORDS, "Returns the `n` closest items to vector `vector`.\n\n:param search_k: the query will inspect up to `search_k` nodes.\n`search_k` gives you a run-time tradeoff between better accuracy and speed.\n`search_k` defaults to `n_trees * n` if not provided.\n\n:param include_distances: If `True`, this function will return a\n2 element tuple of lists. The first list contains the `n` closest items.\nThe second list contains the corresponding distances."},
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, "Returns the vector for item `i` that was previously added."},
