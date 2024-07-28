@@ -69,6 +69,6 @@ A simple test is supplied in test/annoy_test.go.
 Discuss
 -------
 
-There might be some memory leaks. See [this issue](https://github.com/swig/swig/issues/2292).
+Memroy leak in the previous versions has been fixed thanks to https://github.com/swig/swig/issues/2292. (memory leak fix is implemented in https://github.com/Rikanishu/annoy-go)
 
 Go glue written by Taneli Leppä (@rosmo). You can contact me via email (see https://github.com/rosmo).
