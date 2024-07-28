@@ -22,6 +22,7 @@ import (
 
 	"github.com/spotify/annoy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -125,15 +126,17 @@ func (suite *AnnoyTestSuite) TestOnDiskBuild() {
 	index.Unload()
 	index.Load("go_test.ann")
 
-	var result []int
-	index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
-	assert.Equal(suite.T(), []int{2, 1, 0}, result)
+	result := annoy.NewAnnoyVectorInt()
+	defer result.Free()
 
-	index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
-	assert.Equal(suite.T(), []int{0, 1, 2}, result)
+	index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, result)
+	assert.Equal(suite.T(), []int32{2, 1, 0}, result.ToSlice())
 
-	index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
-	assert.Equal(suite.T(), []int{2, 0, 1}, result)
+	index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, result)
+	assert.Equal(suite.T(), []int32{0, 1, 2}, result.ToSlice())
+
+	index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, result)
+	assert.Equal(suite.T(), []int32{2, 0, 1}, result.ToSlice())
 
 	annoy.DeleteAnnoyIndexAngular(index)
 
@@ -141,21 +144,58 @@ func (suite *AnnoyTestSuite) TestOnDiskBuild() {
 }
 
 func (suite *AnnoyTestSuite) TestGetNnsByVector() {
+	t := suite.T()
 	index := annoy.NewAnnoyIndexAngular(3)
 	index.AddItem(0, []float32{0, 0, 1})
 	index.AddItem(1, []float32{0, 1, 0})
 	index.AddItem(2, []float32{1, 0, 0})
 	index.Build(10)
 
-	var result []int
-	index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
-	assert.Equal(suite.T(), []int{2, 1, 0}, result)
+	t.Run("regular", func(t *testing.T) {
+		result := annoy.NewAnnoyVectorInt()
+		defer result.Free()
 
-	index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
-	assert.Equal(suite.T(), []int{0, 1, 2}, result)
+		index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, result)
+		assert.Equal(t, []int32{2, 1, 0}, result.ToSlice())
 
-	index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
-	assert.Equal(suite.T(), []int{2, 0, 1}, result)
+		index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, result)
+		assert.Equal(t, []int32{0, 1, 2}, result.ToSlice())
+
+		index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, result)
+		assert.Equal(t, []int32{2, 0, 1}, result.ToSlice())
+	})
+
+	t.Run("with copying", func(t *testing.T) {
+		result := annoy.NewAnnoyVectorInt()
+		defer result.Free()
+
+		var notAllocated []int32
+		index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, result)
+		result.Copy(&notAllocated)
+		assert.Equal(t, []int32{2, 1, 0}, notAllocated)
+
+		// to make sure it will be overwritten
+		var alreadyAllocated = make([]int32, 10)
+		for i := 0; i < len(alreadyAllocated); i++ {
+			alreadyAllocated[i] = -1
+		}
+		index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, result)
+		result.Copy(&alreadyAllocated)
+		assert.Equal(t, []int32{2, 1, 0}, alreadyAllocated)
+
+		var alreadyAllocatedCap = make([]int32, 0, 00)
+		index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, result)
+		result.Copy(&alreadyAllocatedCap)
+		assert.Equal(t, []int32{2, 1, 0}, alreadyAllocatedCap)
+	})
+
+	t.Run("with inner array", func(t *testing.T) {
+		result := annoy.NewAnnoyVectorInt()
+		defer result.Free()
+
+		index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, result)
+		assert.Equal(t, []int32{2, 1, 0}, result.InnerArray())
+	})
 
 	annoy.DeleteAnnoyIndexAngular(index)
 }
@@ -167,12 +207,14 @@ func (suite *AnnoyTestSuite) TestGetNnsByItem() {
 	index.AddItem(2, []float32{0, 0, 1})
 	index.Build(10)
 
-	var result []int
-	index.GetNnsByItem(0, 3, -1, &result)
-	assert.Equal(suite.T(), []int{0, 1, 2}, result)
+	var result = annoy.NewAnnoyVectorInt()
+	defer result.Free()
 
-	index.GetNnsByItem(1, 3, -1, &result)
-	assert.Equal(suite.T(), []int{1, 0, 2}, result)
+	index.GetNnsByItem(0, 3, -1, result)
+	assert.Equal(suite.T(), []int32{0, 1, 2}, result.ToSlice())
+
+	index.GetNnsByItem(1, 3, -1, result)
+	assert.Equal(suite.T(), []int32{1, 0, 2}, result.ToSlice())
 
 	annoy.DeleteAnnoyIndexAngular(index)
 }
@@ -184,16 +226,17 @@ func (suite *AnnoyTestSuite) TestGetItem() {
 	index.AddItem(2, []float32{0, 0, 1})
 	index.Build(10)
 
-	var result []float32
+	var result = annoy.NewAnnoyVectorFloat()
+	defer result.Free()
 
-	index.GetItem(0, &result)
-	assert.Equal(suite.T(), []float32{2, 1, 0}, result)
+	index.GetItem(0, result)
+	assert.Equal(suite.T(), []float32{2, 1, 0}, result.ToSlice())
 
-	index.GetItem(1, &result)
-	assert.Equal(suite.T(), []float32{1, 2, 0}, result)
+	index.GetItem(1, result)
+	assert.Equal(suite.T(), []float32{1, 2, 0}, result.ToSlice())
 
-	index.GetItem(2, &result)
-	assert.Equal(suite.T(), []float32{0, 0, 1}, result)
+	index.GetItem(2, result)
+	assert.Equal(suite.T(), []float32{0, 0, 1}, result.ToSlice())
 
 	annoy.DeleteAnnoyIndexAngular(index)
 }
@@ -241,14 +284,15 @@ func (suite *AnnoyTestSuite) TestLargeEuclideanIndex() {
 		index.AddItem(j+1, y)
 	}
 	index.Build(10)
+	result := annoy.NewAnnoyVectorInt()
+	defer result.Free()
 	for j := 0; j < 10000; j += 2 {
-		var result []int
-		index.GetNnsByItem(j, 2, -1, &result)
+		index.GetNnsByItem(j, 2, -1, result)
 
-		assert.Equal(suite.T(), result, []int{j, j + 1})
+		require.Equal(suite.T(), result.ToSlice(), []int32{int32(j), int32(j + 1)})
 
-		index.GetNnsByItem(j+1, 2, -1, &result)
-		assert.Equal(suite.T(), result, []int{j + 1, j})
+		index.GetNnsByItem(j+1, 2, -1, result)
+		require.Equal(suite.T(), result.ToSlice(), []int32{int32(j) + 1, int32(j)})
 	}
 	annoy.DeleteAnnoyIndexEuclidean(index)
 }

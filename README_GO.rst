@@ -48,9 +48,10 @@ Go code example
        t = annoy.NewAnnoyIndexAngular(f)
        t.Load("test.ann")
        
-       var result []int
-       t.GetNnsByItem(0, 1000, -1, &result)
-       fmt.Printf("%v\n", result)
+       result := annoyindex.NewAnnoyVectorInt()
+       defer result.Free()
+       t.GetNnsByItem(0, 1000, -1, result)
+       fmt.Printf("%v\n", result.ToSlice())
   
   }
   
