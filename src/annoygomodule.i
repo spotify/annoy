@@ -1,4 +1,4 @@
-%module annoyindex
+%module annoy
 
 namespace Annoy {}
 

@@ -12,247 +12,247 @@
 # the License.
 */
 
-package annoyindex_test
+package annoy_test
 
 import (
-       "annoyindex"
-       "os"
-       "testing"
-       "math"
-       "math/rand"
-       "github.com/stretchr/testify/assert"
-       "github.com/stretchr/testify/suite"
+	"math"
+	"math/rand"
+	"os"
+	"testing"
+
+	"github.com/spotify/annoy"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type AnnoyTestSuite struct {
-    suite.Suite
+	suite.Suite
 }
 
 func Round(f float64) float64 {
-    return math.Floor(f + 0.5)
+	return math.Floor(f + 0.5)
 }
 
-func RoundPlus(f float64, places int) (float64) {
-     shift := math.Pow(10, float64(places))
-     return Round(f * shift) / shift
+func RoundPlus(f float64, places int) float64 {
+	shift := math.Pow(10, float64(places))
+	return Round(f*shift) / shift
 }
 
 func (suite *AnnoyTestSuite) SetupTest() {
 }
 
 func (suite *AnnoyTestSuite) TestFileHandling() {
-     index := annoyindex.NewAnnoyIndexAngular(3)
-     index.AddItem(0, []float32{0, 0, 1})
-     index.AddItem(1, []float32{0, 1, 0})
-     index.AddItem(2, []float32{1, 0, 0})
-     index.Build(10)
+	index := annoy.NewAnnoyIndexAngular(3)
+	index.AddItem(0, []float32{0, 0, 1})
+	index.AddItem(1, []float32{0, 1, 0})
+	index.AddItem(2, []float32{1, 0, 0})
+	index.Build(10)
 
-     index.Save("go_test.ann")
+	index.Save("go_test.ann")
 
-     info, err := os.Stat("go_test.ann")
-     if err != nil {
-        assert.Fail(suite.T(), "Failed to create file, file not found")
-     }
-     if info.Size() == 0 {
-        assert.Fail(suite.T(), "Failed to create file, file size zero")
-     }
+	info, err := os.Stat("go_test.ann")
+	if err != nil {
+		assert.Fail(suite.T(), "Failed to create file, file not found")
+	}
+	if info.Size() == 0 {
+		assert.Fail(suite.T(), "Failed to create file, file size zero")
+	}
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 
-     index = annoyindex.NewAnnoyIndexAngular(3)
-     if ret := index.Load("go_test.ann"); ret == false {
-        assert.Fail(suite.T(), "Failed to load file")
-     }
+	index = annoy.NewAnnoyIndexAngular(3)
+	if ret := index.Load("go_test.ann"); ret == false {
+		assert.Fail(suite.T(), "Failed to load file")
+	}
 
-     os.Remove("go_test.ann")
-     index.Save("go_test2.ann", false)
+	os.Remove("go_test.ann")
+	index.Save("go_test2.ann", false)
 
-     info, err = os.Stat("go_test2.ann")
-     if err != nil {
-        assert.Fail(suite.T(), "Failed to create file without prefault, file not found")
-     }
-     if info.Size() == 0 {
-        assert.Fail(suite.T(), "Failed to create file without prefault, file size zero")
-     }
+	info, err = os.Stat("go_test2.ann")
+	if err != nil {
+		assert.Fail(suite.T(), "Failed to create file without prefault, file not found")
+	}
+	if info.Size() == 0 {
+		assert.Fail(suite.T(), "Failed to create file without prefault, file size zero")
+	}
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 
-     index = annoyindex.NewAnnoyIndexAngular(3)
-     if ret := index.Load("go_test2.ann", false); ret == false {
-        assert.Fail(suite.T(), "Failed to load file without prefault")
-     }
+	index = annoy.NewAnnoyIndexAngular(3)
+	if ret := index.Load("go_test2.ann", false); ret == false {
+		assert.Fail(suite.T(), "Failed to load file without prefault")
+	}
 
-     os.Remove("go_test2.ann")
-     index.Save("go_test3.ann", true)
+	os.Remove("go_test2.ann")
+	index.Save("go_test3.ann", true)
 
-     info, err = os.Stat("go_test3.ann")
-     if err != nil {
-        assert.Fail(suite.T(), "Failed to create file allowing prefault, file not found")
-     }
-     if info.Size() == 0 {
-        assert.Fail(suite.T(), "Failed to create file allowing prefault, file size zero")
-     }
+	info, err = os.Stat("go_test3.ann")
+	if err != nil {
+		assert.Fail(suite.T(), "Failed to create file allowing prefault, file not found")
+	}
+	if info.Size() == 0 {
+		assert.Fail(suite.T(), "Failed to create file allowing prefault, file size zero")
+	}
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 
-     index = annoyindex.NewAnnoyIndexAngular(3)
-     if ret := index.Load("go_test3.ann", true); ret == false {
-        assert.Fail(suite.T(), "Failed to load file allowing prefault")
-     }
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	index = annoy.NewAnnoyIndexAngular(3)
+	if ret := index.Load("go_test3.ann", true); ret == false {
+		assert.Fail(suite.T(), "Failed to load file allowing prefault")
+	}
+	annoy.DeleteAnnoyIndexAngular(index)
 
-     os.Remove("go_test3.ann")
+	os.Remove("go_test3.ann")
 }
 
 func (suite *AnnoyTestSuite) TestOnDiskBuild() {
-     index := annoyindex.NewAnnoyIndexAngular(3)
-     index.OnDiskBuild("go_test.ann");
+	index := annoy.NewAnnoyIndexAngular(3)
+	index.OnDiskBuild("go_test.ann")
 
-     info, err := os.Stat("go_test.ann")
-     if err != nil {
-        assert.Fail(suite.T(), "Failed to create file, file not found")
-     }
-     if info.Size() == 0 {
-        assert.Fail(suite.T(), "Failed to create file, file size zero")
-     }
+	info, err := os.Stat("go_test.ann")
+	if err != nil {
+		assert.Fail(suite.T(), "Failed to create file, file not found")
+	}
+	if info.Size() == 0 {
+		assert.Fail(suite.T(), "Failed to create file, file size zero")
+	}
 
-     index.AddItem(0, []float32{0, 0, 1})
-     index.AddItem(1, []float32{0, 1, 0})
-     index.AddItem(2, []float32{1, 0, 0})
-     index.Build(10)
+	index.AddItem(0, []float32{0, 0, 1})
+	index.AddItem(1, []float32{0, 1, 0})
+	index.AddItem(2, []float32{1, 0, 0})
+	index.Build(10)
 
-     index.Unload();
-     index.Load("go_test.ann");
+	index.Unload()
+	index.Load("go_test.ann")
 
-     var result []int
-     index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
-     assert.Equal(suite.T(), []int{2, 1, 0}, result)
+	var result []int
+	index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
+	assert.Equal(suite.T(), []int{2, 1, 0}, result)
 
-     index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
-     assert.Equal(suite.T(), []int{0, 1, 2}, result)
+	index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
+	assert.Equal(suite.T(), []int{0, 1, 2}, result)
 
-     index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
-     assert.Equal(suite.T(), []int{2, 0, 1}, result)
+	index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
+	assert.Equal(suite.T(), []int{2, 0, 1}, result)
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 
-     os.Remove("go_test.ann")
+	os.Remove("go_test.ann")
 }
 
 func (suite *AnnoyTestSuite) TestGetNnsByVector() {
-     index := annoyindex.NewAnnoyIndexAngular(3)
-     index.AddItem(0, []float32{0, 0, 1})
-     index.AddItem(1, []float32{0, 1, 0})
-     index.AddItem(2, []float32{1, 0, 0})
-     index.Build(10)
+	index := annoy.NewAnnoyIndexAngular(3)
+	index.AddItem(0, []float32{0, 0, 1})
+	index.AddItem(1, []float32{0, 1, 0})
+	index.AddItem(2, []float32{1, 0, 0})
+	index.Build(10)
 
-     var result []int
-     index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
-     assert.Equal(suite.T(), []int{2, 1, 0}, result)
+	var result []int
+	index.GetNnsByVector([]float32{3, 2, 1}, 3, -1, &result)
+	assert.Equal(suite.T(), []int{2, 1, 0}, result)
 
-     index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
-     assert.Equal(suite.T(), []int{0, 1, 2}, result)
+	index.GetNnsByVector([]float32{1, 2, 3}, 3, -1, &result)
+	assert.Equal(suite.T(), []int{0, 1, 2}, result)
 
-     index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
-     assert.Equal(suite.T(), []int{2, 0, 1}, result)
+	index.GetNnsByVector([]float32{2, 0, 1}, 3, -1, &result)
+	assert.Equal(suite.T(), []int{2, 0, 1}, result)
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 }
 
 func (suite *AnnoyTestSuite) TestGetNnsByItem() {
-     index := annoyindex.NewAnnoyIndexAngular(3)
-     index.AddItem(0, []float32{2, 1, 0})
-     index.AddItem(1, []float32{1, 2, 0})
-     index.AddItem(2, []float32{0, 0, 1})
-     index.Build(10)
+	index := annoy.NewAnnoyIndexAngular(3)
+	index.AddItem(0, []float32{2, 1, 0})
+	index.AddItem(1, []float32{1, 2, 0})
+	index.AddItem(2, []float32{0, 0, 1})
+	index.Build(10)
 
-     var result []int
-     index.GetNnsByItem(0, 3, -1, &result)
-     assert.Equal(suite.T(), []int{0, 1, 2}, result)
+	var result []int
+	index.GetNnsByItem(0, 3, -1, &result)
+	assert.Equal(suite.T(), []int{0, 1, 2}, result)
 
-     index.GetNnsByItem(1, 3, -1, &result)
-     assert.Equal(suite.T(), []int{1, 0, 2}, result)
+	index.GetNnsByItem(1, 3, -1, &result)
+	assert.Equal(suite.T(), []int{1, 0, 2}, result)
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 }
 
 func (suite *AnnoyTestSuite) TestGetItem() {
-     index := annoyindex.NewAnnoyIndexAngular(3)
-     index.AddItem(0, []float32{2, 1, 0})
-     index.AddItem(1, []float32{1, 2, 0})
-     index.AddItem(2, []float32{0, 0, 1})
-     index.Build(10)
+	index := annoy.NewAnnoyIndexAngular(3)
+	index.AddItem(0, []float32{2, 1, 0})
+	index.AddItem(1, []float32{1, 2, 0})
+	index.AddItem(2, []float32{0, 0, 1})
+	index.Build(10)
 
-     var result []float32
+	var result []float32
 
-     index.GetItem(0, &result)
-     assert.Equal(suite.T(), []float32{2, 1, 0}, result)
+	index.GetItem(0, &result)
+	assert.Equal(suite.T(), []float32{2, 1, 0}, result)
 
-     index.GetItem(1, &result)
-     assert.Equal(suite.T(), []float32{1, 2, 0}, result)
+	index.GetItem(1, &result)
+	assert.Equal(suite.T(), []float32{1, 2, 0}, result)
 
-     index.GetItem(2, &result)
-     assert.Equal(suite.T(), []float32{0, 0, 1}, result)
+	index.GetItem(2, &result)
+	assert.Equal(suite.T(), []float32{0, 0, 1}, result)
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 }
 
-
 func (suite *AnnoyTestSuite) TestGetDistance() {
-     index := annoyindex.NewAnnoyIndexAngular(2)
-     index.AddItem(0, []float32{0, 1})
-     index.AddItem(1, []float32{1, 1})
-     index.Build(10)
+	index := annoy.NewAnnoyIndexAngular(2)
+	index.AddItem(0, []float32{0, 1})
+	index.AddItem(1, []float32{1, 1})
+	index.Build(10)
 
-     assert.Equal(suite.T(), RoundPlus(math.Pow(2 * (1.0 - math.Pow(2, -0.5)), 0.5), 3), RoundPlus(float64(index.GetDistance(0, 1)), 3))
+	assert.Equal(suite.T(), RoundPlus(math.Pow(2*(1.0-math.Pow(2, -0.5)), 0.5), 3), RoundPlus(float64(index.GetDistance(0, 1)), 3))
 
-     annoyindex.DeleteAnnoyIndexAngular(index)
+	annoy.DeleteAnnoyIndexAngular(index)
 }
 
 func (suite *AnnoyTestSuite) TestGetDotProductDistance() {
-    index := annoyindex.NewAnnoyIndexDotProduct(2)
-    index.AddItem(0, []float32{0, 1})
-    index.AddItem(1, []float32{1, 1})
-    index.Build(10)
+	index := annoy.NewAnnoyIndexDotProduct(2)
+	index.AddItem(0, []float32{0, 1})
+	index.AddItem(1, []float32{1, 1})
+	index.Build(10)
 
-    assert.True(suite.T(),
-        math.Abs(1.0-float64(index.GetDistance(0, 1))) < 0.00001)
+	assert.True(suite.T(),
+		math.Abs(1.0-float64(index.GetDistance(0, 1))) < 0.00001)
 
-    annoyindex.DeleteAnnoyIndexDotProduct(index)
+	annoy.DeleteAnnoyIndexDotProduct(index)
 }
 
 func (suite *AnnoyTestSuite) TestLargeEuclideanIndex() {
-     index := annoyindex.NewAnnoyIndexEuclidean(10)
+	index := annoy.NewAnnoyIndexEuclidean(10)
 
-     for j := 0; j < 10000; j += 2 {
-         p := make([]float32, 0, 10)
-         for i := 0; i < 10; i++ {
-	     p = append(p, rand.Float32())
-	 }
-	 x := make([]float32, 0, 10)
-	 for i := 0; i < 10; i++ {
-	     x = append(x, 1 + p[i] + rand.Float32() * 1e-2)
-	 }
-	 y := make([]float32, 0, 10)
-	 for i := 0; i < 10; i++ {
-	     y = append(y, 1 + p[i] + rand.Float32() * 1e-2)
-	 }
-	 index.AddItem(j, x)
-	 index.AddItem(j + 1, y)
-     }
-     index.Build(10)
-     for j := 0; j < 10000; j += 2 {
-         var result []int
-	 index.GetNnsByItem(j, 2, -1, &result)
+	for j := 0; j < 10000; j += 2 {
+		p := make([]float32, 0, 10)
+		for i := 0; i < 10; i++ {
+			p = append(p, rand.Float32())
+		}
+		x := make([]float32, 0, 10)
+		for i := 0; i < 10; i++ {
+			x = append(x, 1+p[i]+rand.Float32()*1e-2)
+		}
+		y := make([]float32, 0, 10)
+		for i := 0; i < 10; i++ {
+			y = append(y, 1+p[i]+rand.Float32()*1e-2)
+		}
+		index.AddItem(j, x)
+		index.AddItem(j+1, y)
+	}
+	index.Build(10)
+	for j := 0; j < 10000; j += 2 {
+		var result []int
+		index.GetNnsByItem(j, 2, -1, &result)
 
-         assert.Equal(suite.T(), result, []int{j, j + 1})
+		assert.Equal(suite.T(), result, []int{j, j + 1})
 
-	 index.GetNnsByItem(j + 1, 2, -1, &result)
-	 assert.Equal(suite.T(), result, []int{j + 1, j})
-     }
-     annoyindex.DeleteAnnoyIndexEuclidean(index)
+		index.GetNnsByItem(j+1, 2, -1, &result)
+		assert.Equal(suite.T(), result, []int{j + 1, j})
+	}
+	annoy.DeleteAnnoyIndexEuclidean(index)
 }
 
 func TestAnnoyTestSuite(t *testing.T) {
-    suite.Run(t, new(AnnoyTestSuite))
+	suite.Run(t, new(AnnoyTestSuite))
 }
