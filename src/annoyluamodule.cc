@@ -164,6 +164,27 @@ public:
     return 1;
   }
 
+  static int serialize(lua_State* L) {
+    Impl* self = getAnnoy(L, 1);
+    int nargs = lua_gettop(L);
+    vector<uint8_t> bytes = self->serialize();
+
+    lua_pushlstring(L, (const char*) bytes.data(), bytes.size());
+
+    return 1;
+  }
+
+  static int deserialize(lua_State* L) {
+    Impl* self = getAnnoy(L, 1);
+    int nargs = lua_gettop(L);
+    const char* bytes_buffer = lua_tostring(L, 2);
+    size_t bytes_buffer_size = lua_rawlen(L, 2);
+    vector<uint8_t> bytes(bytes_buffer, bytes_buffer + bytes_buffer_size);
+    self->deserialize(&bytes);
+
+    return 1;
+  }
+
   static int unload(lua_State* L) {
     Impl* self = getAnnoy(L, 1);
     self->unload();
@@ -260,6 +281,8 @@ public:
       {"build", &ThisClass::build},
       {"save", &ThisClass::save},
       {"load", &ThisClass::load},
+      {"serialize", &ThisClass::serialize},
+      {"deserialize", &ThisClass::deserialize},
       {"unload", &ThisClass::unload},
       {"get_nns_by_item", &ThisClass::get_nns_by_item},
       {"get_nns_by_vector", &ThisClass::get_nns_by_vector},

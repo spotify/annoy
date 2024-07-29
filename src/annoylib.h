@@ -912,6 +912,8 @@ class AnnoyIndexInterface {
   virtual bool save(const char* filename, bool prefault=false, char** error=NULL) = 0;
   virtual void unload() = 0;
   virtual bool load(const char* filename, bool prefault=false, char** error=NULL) = 0;
+  virtual vector<uint8_t> serialize(char** error=NULL) const = 0;
+  virtual bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) = 0;
   virtual T get_distance(S i, S j) const = 0;
   virtual void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
   virtual void get_nns_by_vector(const T* w, size_t n, int search_k, vector<S>* result, vector<T>* distances) const = 0;
@@ -1218,6 +1220,79 @@ public:
     _built = true;
     _n_items = m;
     if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), m);
+    return true;
+  }
+
+  vector<uint8_t> serialize(char** error=NULL) const {
+    if (!_built) {
+      set_error_from_string(error, "Index cannot be serialized if it hasn't been built");
+      return {};
+    }
+
+    vector<uint8_t> bytes {};
+
+    S n_items = _n_items;
+    S n_nodes = _n_nodes;
+    size_t roots_size = _roots.size();
+    S nodes_size = _nodes_size;
+
+    bytes.insert(bytes.end(), (uint8_t*)&n_items, (uint8_t*)&n_items + sizeof(n_items));
+    bytes.insert(bytes.end(), (uint8_t*)&n_nodes, (uint8_t*)&n_nodes + sizeof(n_nodes));
+    bytes.insert(bytes.end(), (uint8_t*)&roots_size, (uint8_t*)&roots_size + sizeof(roots_size));
+    bytes.insert(bytes.end(), (uint8_t*)&nodes_size, (uint8_t*)&nodes_size + sizeof(nodes_size));
+
+    uint8_t* roots_buffer = (uint8_t*)_roots.data();
+    bytes.insert(bytes.end(), roots_buffer, roots_buffer + _roots.size() * sizeof(S));
+
+    uint8_t* nodes_buffer = (uint8_t*)_nodes;
+    bytes.insert(bytes.end(), nodes_buffer, nodes_buffer + _nodes_size * _s);
+
+    return bytes;
+  }
+
+  bool deserialize(vector<uint8_t>* bytes, bool prefault=false, char** error=NULL) {
+    if (bytes->empty()) {
+      set_error_from_errno(error, "Size of bytes is zero");
+      return false;
+    }
+
+    int flags = MAP_SHARED;
+    if (prefault) {
+#ifdef MAP_POPULATE
+      flags |= MAP_POPULATE;
+#else
+      annoylib_showUpdate("prefault is set to true, but MAP_POPULATE is not defined on this platform");
+#endif
+    }
+
+    uint8_t* bytes_buffer = (uint8_t*)bytes->data();
+
+    _n_items = *(S*)bytes_buffer;
+    bytes_buffer += sizeof(S);
+
+    S n_nodes = *(S*)bytes_buffer;
+    bytes_buffer += sizeof(S);
+
+    size_t roots_size = *(size_t*)bytes_buffer;
+    bytes_buffer += sizeof(size_t);
+
+    S nodes_size = *(S*)bytes_buffer;
+    bytes_buffer += sizeof(S);
+
+    _roots.clear();
+    _roots.resize(roots_size);
+    _roots.assign((S*) bytes_buffer, (S*) bytes_buffer + roots_size);
+    bytes_buffer += roots_size * sizeof(S);
+
+    _allocate_size((S) nodes_size);
+
+    memcpy(_nodes, bytes_buffer, nodes_size * _s);
+
+    _n_nodes = n_nodes;
+    _loaded = true;
+    _built = true;
+
+    if (_verbose) annoylib_showUpdate("found %zu roots with degree %d\n", _roots.size(), _n_items);
     return true;
   }
 

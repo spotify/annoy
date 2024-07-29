@@ -106,6 +106,51 @@ func (suite *AnnoyTestSuite) TestFileHandling() {
 	os.Remove("go_test3.ann")
 }
 
+func (suite *AnnoyTestSuite) TestSerialization() {
+     index := annoyindex.NewAnnoyIndexAngular(3)
+     index.AddItem(0, []float32{0, 0, 1})
+     index.AddItem(1, []float32{0, 1, 0})
+     index.AddItem(2, []float32{1, 0, 0})
+     index.Build(10)
+
+     bytes := index.Serialize()
+
+     index2 := annoyindex.NewAnnoyIndexAngular(3)
+
+     success := index2.Deserialize(bytes)
+
+     if !success {
+         assert.Fail(suite.T(), "Failed to deserialize")
+     }
+
+     itemCountIsSame := index.GetNItems() == index2.GetNItems()
+
+     if !itemCountIsSame {
+         assert.Fail(suite.T(), "Item count is not the same")
+     }
+
+     var resultIndex []int
+     var resultIndex2 []int
+
+     itemCount := index.GetNItems()
+
+     index.GetNnsByItem(0, itemCount, -1, &resultIndex)
+     index2.GetNnsByItem(0, itemCount, -1, &resultIndex2)
+
+     itemsAreSame := true
+
+     for index := 0; index < itemCount; index++ {
+         if resultIndex[index] != resultIndex2[index] {
+             itemsAreSame = false
+             break
+         }
+     }
+
+     if !itemsAreSame {
+         assert.Fail(suite.T(), "Items are not the same")
+     }
+}
+
 func (suite *AnnoyTestSuite) TestOnDiskBuild() {
 	index := annoy.NewAnnoyIndexAngular(3)
 	index.OnDiskBuild("go_test.ann")
