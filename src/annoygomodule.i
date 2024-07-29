@@ -1,4 +1,4 @@
-%module annoyindex
+%module annoy
 
 namespace Annoy {}
 
@@ -9,6 +9,7 @@ namespace Annoy {}
 
 // const float *
 %typemap(gotype) (const float *)  "[]float32"
+%typemap(gotype) (int32_t)  "int32"
 
 %typemap(in) (const float *)
 %{
@@ -19,57 +20,6 @@ namespace Annoy {}
        w.push_back(v[i]);
     }
     $1 = &w[0];
-%}
-
-// vector<int32_t> *
-%typemap(gotype) (vector<int32_t> *)  "*[]int"
-
-%typemap(in) (vector<int32_t> *)
-%{
-  $1 = new vector<int32_t>();
-%}
-
-%typemap(freearg) (vector<int32_t> *)
-%{
-  delete $1;
-%}
-
-%typemap(argout) (vector<int32_t> *)
-%{
-  {
-    $input->len = $1->size();
-    $input->cap = $1->size();
-    $input->array = malloc($input->len * sizeof(intgo));
-    for (int i = 0; i < $1->size(); i++) {
-        ((intgo *)$input->array)[i] = (intgo)(*$1)[i];
-    }
-  }
-%}
-
-
-// vector<float> *
-%typemap(gotype) (vector<float> *)  "*[]float32"
-
-%typemap(in) (vector<float> *)
-%{
-  $1 = new vector<float>();
-%}
-
-%typemap(freearg) (vector<float> *)
-%{
-  delete $1;
-%}
-
-%typemap(argout) (vector<float> *)
-%{
-  {
-    $input->len = $1->size();
-    $input->cap = $1->size();
-    $input->array = malloc($input->len * sizeof(float));
-    for (int i = 0; i < $1->size(); i++) {
-        ((float *)$input->array)[i] = (float)(*$1)[i];
-    }
-  }
 %}
 
 
@@ -86,6 +36,106 @@ namespace Annoy {}
   free($1);
 %}
 
+
+%ignore fill_from_vector;
+%rename(X_RawAnnoyVectorInt) AnnoyVectorInt;
+%rename(X_RawAnnoyVectorFloat) AnnoyVectorFloat;
+
+%insert(go_wrapper) %{
+
+type AnnoyVectorInt interface {
+  X_RawAnnoyVectorInt
+  ToSlice() []int32
+  Copy(in *[]int32)
+  InnerArray() []int32
+  Free()
+}
+
+func NewAnnoyVectorInt() AnnoyVectorInt {
+    vec := NewX_RawAnnoyVectorInt()
+    return vec.(SwigcptrX_RawAnnoyVectorInt)
+}
+
+func (p SwigcptrX_RawAnnoyVectorInt) ToSlice() []int32 {
+    var out []int32
+    p.Copy(&out)
+    return out
+}
+
+func (p SwigcptrX_RawAnnoyVectorInt) Copy(in *[]int32)  {
+    out := *in
+    inner := p.InnerArray()
+    if cap(out) >= len(inner) {
+        if len(out) != len(inner) {
+          out = out[:len(inner)]
+        }
+    } else {
+        out = make([]int32, len(inner))
+    }
+
+    copy(out, inner)
+    *in = out
+}
+
+func (p SwigcptrX_RawAnnoyVectorInt) Free() {
+    DeleteX_RawAnnoyVectorInt(p)
+}
+
+func (p SwigcptrX_RawAnnoyVectorInt) InnerArray() []int32 {
+	length := p.Len()
+    ptr := unsafe.Pointer(p.ArrayPtr())
+	return ((*[1 << 30]int32)(ptr))[:length:length]
+}
+
+%}
+
+%insert(go_wrapper) %{
+
+type AnnoyVectorFloat interface {
+  X_RawAnnoyVectorFloat
+  ToSlice() []float32
+  Copy(in *[]float32)
+  InnerArray() []float32
+  Free()
+}
+
+func NewAnnoyVectorFloat() AnnoyVectorFloat {
+    vec := NewX_RawAnnoyVectorFloat()
+    return vec.(SwigcptrX_RawAnnoyVectorFloat)
+}
+
+func (p SwigcptrX_RawAnnoyVectorFloat) ToSlice() []float32 {
+    var out []float32
+    p.Copy(&out)
+    return out
+}
+
+func (p SwigcptrX_RawAnnoyVectorFloat) Copy(in *[]float32)  {
+    out := *in
+    inner := p.InnerArray()
+    if cap(out) >= len(inner) {
+        if len(out) != len(inner) {
+          out = out[:len(inner)]
+        }
+    } else {
+        out = make([]float32, len(inner))
+    }
+
+    copy(out, inner)
+    *in = out
+}
+
+func (p SwigcptrX_RawAnnoyVectorFloat) Free() {
+    DeleteX_RawAnnoyVectorFloat(p)
+}
+
+func (p SwigcptrX_RawAnnoyVectorFloat) InnerArray() []float32 {
+    length := p.Len()
+    ptr := unsafe.Pointer(p.ArrayPtr())
+    return ((*[1 << 30]float32)(ptr))[:length:length]
+}
+
+%}
 
 /* Let's just grab the original header file here */
 %include "annoygomodule.h"
