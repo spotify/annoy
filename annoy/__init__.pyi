@@ -1,5 +1,5 @@
 
-from typing import Sized, overload
+from typing import Sized, overload, TypeAlias
 from typing_extensions import Literal, Protocol
 
 AnnoyMetric: TypeAlias = Literal["angular", "euclidean", "manhattan", "hamming", "dot"]
