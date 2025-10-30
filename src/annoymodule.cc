@@ -179,7 +179,7 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
   int f;
   static char const * kwlist[] = {"f", "metric", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|s", (char**)kwlist, &f, &metric))
-    return (int) NULL;
+    return -1;
   return 0;
 }
 
