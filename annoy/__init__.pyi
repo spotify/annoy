@@ -1,13 +1,15 @@
 
-from typing import Sized, overload
+from typing import Sized, overload, TypeAlias
 from typing_extensions import Literal, Protocol
+
+AnnoyMetric: TypeAlias = Literal["angular", "euclidean", "manhattan", "hamming", "dot"]
 
 class _Vector(Protocol, Sized):
     def __getitem__(self, __index: int) -> float: ...
 
 class AnnoyIndex:
     f: int
-    def __init__(self, f: int, metric: Literal["angular", "euclidean", "manhattan", "hamming", "dot"]) -> None: ...
+    def __init__(self, f: int, metric: AnnoyMetric) -> None: ...
     def load(self, fn: str, prefault: bool = ...) -> Literal[True]: ...
     def save(self, fn: str, prefault: bool = ...) -> Literal[True]: ...
     @overload
