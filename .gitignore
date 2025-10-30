@@ -1,5 +1,6 @@
 *.egg-info/
 *.egg/
+*.eggs/
 *.so
 *.o
 build/
