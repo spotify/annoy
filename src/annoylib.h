@@ -1531,6 +1531,7 @@ class AnnoyIndexSingleThreadedBuildPolicy {
 public:
   template<typename S, typename T, typename D, typename Random>
   static void build(AnnoyIndex<S, T, D, Random, AnnoyIndexSingleThreadedBuildPolicy>* annoy, int q, int n_threads) {
+    (void)n_threads; // silence unused variable warnings.
     AnnoyIndexSingleThreadedBuildPolicy threaded_build_policy;
     annoy->thread_build(q, 0, threaded_build_policy);
   }
