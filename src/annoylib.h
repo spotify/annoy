@@ -1227,7 +1227,7 @@ public:
     for (S x = _n_nodes; x > 0; x--) { // S may be unsigned, so don't use >= 0 to terminate
       S i = x - 1;
       S k = _get(i)->n_descendants;
-      if (m == static_cast<S>(-1) || k == m) { // first expression is still valid if S is unsigned, as m would be the largest possible number of descendants
+      if (m == static_cast<S>(-1) || k == m) { // first condition is still valid if S is unsigned, as m would be the largest possible number of descendants
         _roots.push_back(i);
         m = k;
       } else {

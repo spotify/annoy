@@ -65,10 +65,10 @@ using namespace Annoy;
 //#define ANNOYLIB_UNSIGNED_INDEX
 #ifdef ANNOYLIB_UNSIGNED_INDEX
 #define Index_t uint32_t
-#define ITEMF "I"
+#define INDEXF "I"
 #else
 #define Index_t int32_t
-#define ITEMF "i"
+#define INDEXF "i"
 #endif
 
 template class Annoy::AnnoyIndexInterface<Index_t, float>;
@@ -296,7 +296,9 @@ get_nns_to_python(const vector<Index_t>& result, const vector<float>& distances,
 
 bool check_constraints(py_annoy *self, Index_t item, bool building) {
 #ifdef ANNOYLIB_UNSIGNED_INDEX
-  if (item == static_cast<Index_t>(-1)) { // explicit -1 check is for tests with an unsigned Index_t.
+  // Special cased for unit tests, and besides, no item should have an index equal to the maximum,
+  // otherwise get_n_items() would not be representable.
+  if (item == static_cast<Index_t>(-1)) {
     PyErr_SetString(PyExc_IndexError, "Item index out of range");
     return false;
   }
@@ -322,7 +324,7 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
     return NULL;
 
   static char const * kwlist[] = {"i", "n", "search_k", "include_distances", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, ITEMF ITEMF "|" ITEMF ITEMF, (char**)kwlist, &item, &n, &search_k, &include_distances))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, INDEXF INDEXF "|" INDEXF INDEXF, (char**)kwlist, &item, &n, &search_k, &include_distances))
     return NULL;
 
   if (!check_constraints(self, item, false)) {
@@ -379,7 +381,7 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args, PyObject *kwargs) {
     return NULL;
 
   static char const * kwlist[] = {"vector", "n", "search_k", "include_distances", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O" ITEMF "|" ITEMF ITEMF, (char**)kwlist, &v, &n, &search_k, &include_distances))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O" INDEXF "|" INDEXF INDEXF, (char**)kwlist, &v, &n, &search_k, &include_distances))
     return NULL;
 
   vector<float> w(self->f);
@@ -403,7 +405,7 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   Index_t item;
   if (!self->ptr) 
     return NULL;
-  if (!PyArg_ParseTuple(args, ITEMF, &item))
+  if (!PyArg_ParseTuple(args, INDEXF, &item))
     return NULL;
 
   if (!check_constraints(self, item, false)) {
@@ -439,7 +441,7 @@ py_an_add_item(py_annoy *self, PyObject *args, PyObject* kwargs) {
   if (!self->ptr) 
     return NULL;
   static char const * kwlist[] = {"i", "vector", NULL};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, ITEMF "O", (char**)kwlist, &item, &v))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, INDEXF "O", (char**)kwlist, &item, &v))
     return NULL;
 
   if (!check_constraints(self, item, true)) {
@@ -534,7 +536,7 @@ py_an_get_distance(py_annoy *self, PyObject *args) {
   Index_t i, j;
   if (!self->ptr) 
     return NULL;
-  if (!PyArg_ParseTuple(args, ITEMF ITEMF, &i, &j))
+  if (!PyArg_ParseTuple(args, INDEXF INDEXF, &i, &j))
     return NULL;
 
   if (!check_constraints(self, i, false) || !check_constraints(self, j, false)) {
