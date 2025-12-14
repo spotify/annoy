@@ -12,7 +12,7 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
-        signed: [true, false]
+        unsigned: [true, false]
 
     steps:
       - uses: actions/checkout@v3 # Pull the repository
@@ -20,10 +20,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Use unsigned
-        if: ${{ !matrix.signed }}
+      - name: Use unsigned indices
+        if: ${{ !matrix.unsigned }}
         run: |
-          cat src/annoymodule.cc | sed "s/int32_t Index_t/uint32_t Index_t/" | sed "s/ITEMF \"i\"/ITEMF \"I\"/" > .tmp
+          cat src/annoymodule.cc | sed "s/.*\(#define ANNOYLIB_UNSIGNED_INDEX\)/\1/" > .tmp
+          cmp .tmp src/annoymodule.cc && exit 1 # ensure a change was actually made.
           mv .tmp src/annoymodule.cc
 
       - run: pip install .

@@ -62,9 +62,14 @@ using namespace Annoy;
   typedef AnnoyIndexSingleThreadedBuildPolicy AnnoyIndexThreadedBuildPolicy;
 #endif
 
-#include <type_traits>
-typedef int32_t Index_t;
+//#define ANNOYLIB_UNSIGNED_INDEX
+#ifdef ANNOYLIB_UNSIGNED_INDEX
+#define Index_t uint32_t
+#define ITEMF "I"
+#else
+#define Index_t int32_t
 #define ITEMF "i"
+#endif
 
 template class Annoy::AnnoyIndexInterface<Index_t, float>;
 
@@ -178,6 +183,8 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
 
 static int 
 py_an_init(py_annoy *self, PyObject *args, PyObject *kwargs) {
+  (void)self; // silence unused variable warnings.
+
   // Seems to be needed for Python 3
   const char *metric = NULL;
   int f;
@@ -288,17 +295,17 @@ get_nns_to_python(const vector<Index_t>& result, const vector<float>& distances,
 
 
 bool check_constraints(py_annoy *self, Index_t item, bool building) {
-  if constexpr(std::is_signed<Index_t>::value) {
-      if (item < 0) {
-        PyErr_SetString(PyExc_IndexError, "Item index can not be negative");
-        return false;
-      }
-  } else {
-      if (item < 0 || item == static_cast<Index_t>(-1)) { // explicit -1 check is for tests with an unsigned Index_t.
-        PyErr_SetString(PyExc_IndexError, "Item index out of range");
-        return false;
-      }
+#ifdef ANNOYLIB_UNSIGNED_INDEX
+  if (item == static_cast<Index_t>(-1)) { // explicit -1 check is for tests with an unsigned Index_t.
+    PyErr_SetString(PyExc_IndexError, "Item index out of range");
+    return false;
   }
+#else
+  if (item < 0) {
+    PyErr_SetString(PyExc_IndexError, "Item index can not be negative");
+    return false;
+  }
+#endif
 
   if (!building && item >= self->ptr->get_n_items()) {
     PyErr_SetString(PyExc_IndexError, "Item index larger than the largest item index");
