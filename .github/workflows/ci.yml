@@ -14,12 +14,20 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
+        signed: [true, false]
 
     steps:
       - uses: actions/checkout@v3 # Pull the repository
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Use unsigned
+        if: ${{ !matrix.signed }}
+        run: |
+          cat src/annoymodule.cc | sed "s/int32_t Index_t/uint32_t Index_t/" | sed "s/ITEMF \"i\"/ITEMF \"I\"/" > .tmp
+          mv .tmp src/annoymodule.cc
+
       - run: pip install .
       - run: pip install h5py numpy pytest
       - run: pytest -v

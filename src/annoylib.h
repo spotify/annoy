@@ -1224,9 +1224,10 @@ public:
     // Find the roots by scanning the end of the file and taking the nodes with most descendants
     _roots.clear();
     S m = -1;
-    for (S i = _n_nodes - 1; i >= 0; i--) {
+    for (S x = _n_nodes; x > 0; x--) { // S may be unsigned, so don't use >= 0 to terminate
+      S i = x - 1;
       S k = _get(i)->n_descendants;
-      if (m == -1 || k == m) {
+      if (m == static_cast<S>(-1) || k == m) { // first expression is still valid if S is unsigned, as m would be the largest possible number of descendants
         _roots.push_back(i);
         m = k;
       } else {
@@ -1505,7 +1506,7 @@ protected:
     // To avoid calculating distance multiple times for any items, sort by id
     std::sort(nns.begin(), nns.end());
     vector<pair<T, S> > nns_dist;
-    S last = -1;
+    S last = -1; // Safe sentinel for unsigned S; all indices must be less than the max value of S, otherwise get_n_items() would overflow.
     for (size_t i = 0; i < nns.size(); i++) {
       S j = nns[i]; 
       if (j == last)
