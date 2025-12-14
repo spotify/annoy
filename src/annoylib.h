@@ -408,17 +408,29 @@ struct Base {
   static inline void preprocess(void* nodes, size_t _s, const S node_count, const int f) {
     // Override this in specific metric structs below if you need to do any pre-processing
     // on the entire set of nodes passed into this index.
+
+    (void)nodes; // silence unused variable warnings.
+    (void)_s;
+    (void)node_count;
+    (void)f;
   }
 
   template<typename T, typename S, typename Node>
   static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
     // Override this in specific metric structs below if you need to do any post-processing
     // on the entire set of nodes passed into this index.
+
+    (void)nodes; // silence unused variable warnings.
+    (void)_s;
+    (void)node_count;
+    (void)f;
   }
 
   template<typename Node>
   static inline void zero_value(Node* dest) {
     // Initialize any fields that require sane defaults within this node.
+
+    (void)dest; // silence unused variable warnings.
   }
 
   template<typename T, typename Node>
@@ -695,6 +707,7 @@ struct DotProduct : Angular {
 
   template<typename T, typename S, typename Node>
   static inline void postprocess(void* nodes, size_t _s, const S node_count, const int f) {
+    (void)f; // silence unused variable warnings.
     for (S i = 0; i < node_count; i++) {
       Node* node = get_node_ptr<S, Node>(nodes, _s, i);
       // When an index is built, we will remember it in index item nodes to compute distances differently
@@ -743,12 +756,14 @@ struct Hamming : Base {
   }
   template<typename S, typename T>
   static inline bool margin(const Node<S, T>* n, const T* y, int f) {
+    (void)f; // silence unused variable warnings.
     static const size_t n_bits = sizeof(T) * 8;
     T chunk = n->v[0] / n_bits;
     return (y[chunk] & (static_cast<T>(1) << (n_bits - 1 - (n->v[0] % n_bits)))) != 0;
   }
   template<typename S, typename T, typename Random>
   static inline bool side(const Node<S, T>* n, const T* y, int f, Random& random) {
+    (void)random; // silence unused variable warnings.
     return margin(n, y, f);
   }
   template<typename S, typename T, typename Random>
@@ -757,6 +772,7 @@ struct Hamming : Base {
   }
   template<typename S, typename T, typename Random>
   static inline void create_split(const vector<Node<S, T>*>& nodes, int f, size_t s, Random& random, Node<S, T>* n) {
+    (void)s; // silence unused variable warnings.
     size_t cur_size = 0;
     size_t i = 0;
     int dim = f * 8 * sizeof(T);
@@ -796,6 +812,8 @@ struct Hamming : Base {
   }
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
+    (void)n; // silence unused variable warnings.
+    (void)f;
   }
   static const char* name() {
     return "hamming";
@@ -864,6 +882,8 @@ struct Euclidean : Minkowski {
   }
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
+    (void)n; // silence unused variable warnings.
+    (void)f;
   }
   static const char* name() {
     return "euclidean";
@@ -895,6 +915,8 @@ struct Manhattan : Minkowski {
   }
   template<typename S, typename T>
   static inline void init_node(Node<S, T>* n, int f) {
+    (void)n; // silence unused variable warnings.
+    (void)f;
   }
   static const char* name() {
     return "manhattan";
