@@ -470,7 +470,7 @@ struct Angular : Base {
       T norm;
     };
     T v[ANNOYLIB_V_ARRAY_SIZE];
-  };
+ } __attribute__((__packed__));
   template<typename S, typename T>
   static inline T distance(const Node<S, T>* x, const Node<S, T>* y, int f) {
     // want to calculate (a/|a| - b/|b|)^2
@@ -549,7 +549,7 @@ struct DotProduct : Angular {
     T norm;
     bool built;
     T v[ANNOYLIB_V_ARRAY_SIZE];
-  };
+   } __attribute__((__packed__));
 
   static const char* name() {
     return "dot";
@@ -709,8 +709,7 @@ struct Hamming : Base {
     S n_descendants;
     S children[2];
     T v[ANNOYLIB_V_ARRAY_SIZE];
-  };
-
+ } __attribute__((__packed__));
   static const size_t max_iterations = 20;
 
   template<typename T>
@@ -810,7 +809,7 @@ struct Minkowski : Base {
     T a; // need an extra constant term to determine the offset of the plane
     S children[2];
     T v[ANNOYLIB_V_ARRAY_SIZE];
-  };
+ } __attribute__((__packed__));
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {
     return n->a + dot(n->v, y, f);

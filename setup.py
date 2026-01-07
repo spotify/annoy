@@ -47,7 +47,7 @@ if platform.machine() == 'x86_64':
         extra_compile_args += ['-march=native',]
 
 if os.name != 'nt':
-    extra_compile_args += ['-O3', '-ffast-math', '-fno-associative-math']
+    extra_compile_args += ['-O3']
 
 # Add multithreaded build flag for all platforms using Python 3 and
 # for non-Windows Python 2 platforms
