@@ -39,7 +39,7 @@ Summary of features
 * Small memory usage
 * Lets you share memory between multiple processes
 * Index creation is separate from lookup (in particular you can not add more items once the tree has been created)
-* Native Python support, tested with 2.7, 3.6, and 3.7.
+* Native Python support, tested with 3.7–3.13.
 * Build index on disk to enable indexing big datasets that won't fit into memory (contributed by `Rene Hollander <https://github.com/ReneHollander>`__)
 
 Python code example
