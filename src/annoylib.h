@@ -1467,6 +1467,7 @@ protected:
       S i = top.second;
       Node* nd = _get(i);
       q.pop();
+      if (i < 0 || i >= _n_nodes) continue;  // bound the file-controlled node index before deref
       if (nd->n_descendants == 1 && i < _n_items) {
         nns.push_back(i);
       } else if (nd->n_descendants <= _K) {
