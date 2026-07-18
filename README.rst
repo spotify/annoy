@@ -127,8 +127,8 @@ More info
 * `Andy Sloane <https://github.com/a1k0n>`__ provides a `Java version of Annoy <https://github.com/spotify/annoy-java>`__ although currently limited to cosine and read-only.
 * `Pishen Tsai <https://github.com/pishen>`__ provides a `Scala wrapper of Annoy <https://github.com/pishen/annoy4s>`__ which uses JNA to call the C++ library of Annoy.
 * `Atsushi Tatsuma <https://github.com/yoshoku>`__ provides `Ruby bindings for Annoy <https://github.com/yoshoku/annoy.rb>`__.
-* There is `experimental support for Go <https://github.com/spotify/annoy/blob/master/README_GO.rst>`__ provided by `Taneli Leppä <https://github.com/rosmo>`__.
-* `Boris Nagaev <https://github.com/starius>`__ wrote `Lua bindings <https://github.com/spotify/annoy/blob/master/README_Lua.md>`__.
+* There is `experimental support for Go <https://github.com/spotify/annoy/blob/main/README_GO.rst>`__ provided by `Taneli Leppä <https://github.com/rosmo>`__.
+* `Boris Nagaev <https://github.com/starius>`__ wrote `Lua bindings <https://github.com/spotify/annoy/blob/main/README_Lua.md>`__.
 * During part of Spotify Hack Week 2016 (and a bit afterward), `Jim Kang <https://github.com/jimkang>`__ wrote `Node bindings <https://github.com/jimkang/annoy-node>`__ for Annoy.
 * `Min-Seok Kim <https://github.com/mskimm>`__ built a `Scala version <https://github.com/mskimm/ann4s>`__ of Annoy.
 * `hanabi1224 <https://github.com/hanabi1224>`__ built a read-only `Rust version <https://github.com/hanabi1224/RuAnnoy>`__ of Annoy, together with **dotnet, jvm and dart** read-only bindings.
