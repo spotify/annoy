@@ -305,6 +305,11 @@ py_an_get_nns_by_item(py_annoy *self, PyObject *args, PyObject *kwargs) {
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ii|ii", (char**)kwlist, &item, &n, &search_k, &include_distances))
     return NULL;
 
+  if (n < 0) {
+    PyErr_SetString(PyExc_ValueError, "Number of neighbors cannot be negative.");
+    return NULL;
+  }
+
   if (!check_constraints(self, item, false)) {
     return NULL;
   }
@@ -361,6 +366,11 @@ py_an_get_nns_by_vector(py_annoy *self, PyObject *args, PyObject *kwargs) {
   static char const * kwlist[] = {"vector", "n", "search_k", "include_distances", NULL};
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|ii", (char**)kwlist, &v, &n, &search_k, &include_distances))
     return NULL;
+
+  if (n < 0) {
+    PyErr_SetString(PyExc_ValueError, "Number of neighbors cannot be negative.");
+    return NULL;
+  }
 
   vector<float> w(self->f);
   if (!convert_list_to_vector(v, self->f, &w)) {
