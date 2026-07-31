@@ -1226,7 +1226,8 @@ public:
   }
 
   void get_nns_by_item(S item, size_t n, int search_k, vector<S>* result, vector<T>* distances) const {
-    // TODO: handle OOB
+    if (item < 0 || item >= _n_nodes)
+      return;
     const Node* m = _get(item);
     _get_all_nns(m->v, n, search_k, result, distances);
   }
@@ -1465,11 +1466,19 @@ protected:
       const pair<T, S>& top = q.top();
       T d = top.first;
       S i = top.second;
-      Node* nd = _get(i);
       q.pop();
+      // i comes from the file (a child index), so it must be bounded before it
+      // is turned into a pointer, not merely before that pointer is read.
+      if (i < 0 || i >= _n_nodes)
+        continue;
+      Node* nd = _get(i);
       if (nd->n_descendants == 1 && i < _n_items) {
         nns.push_back(i);
       } else if (nd->n_descendants <= _K) {
+        // n_descendants is file controlled here too; zero is legitimate (an
+        // empty leaf), negative is not, and would run the copy backwards.
+        if (nd->n_descendants < 0)
+          continue;
         const S* dst = nd->children;
         nns.insert(nns.end(), dst, &dst[nd->n_descendants]);
       } else {
@@ -1489,6 +1498,10 @@ protected:
       if (j == last)
         continue;
       last = j;
+      // the entries copied out of a leaf's children[] above are file controlled
+      // and reach _get() here without ever passing through the loop guard.
+      if (j < 0 || j >= _n_nodes)
+        continue;
       if (_get(j)->n_descendants == 1)  // This is only to guard a really obscure case, #284
         nns_dist.push_back(make_pair(D::distance(v_node, _get(j), _f), j));
     }
