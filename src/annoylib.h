@@ -480,7 +480,7 @@ struct Angular : Base {
     T qq = y->norm ? y->norm : dot(y->v, y->v, f);
     T pq = dot(x->v, y->v, f);
     T ppqq = pp * qq;
-    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    if (ppqq > 0) return memcmp(x->v, y->v, f * sizeof(T)) == 0 ? 0 : 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
   template<typename S, typename T>
