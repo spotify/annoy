@@ -56,8 +56,6 @@ def _get_index(dataset, custom_distance=None, custom_dim=None):
                 v = v[:f]
             annoy.add_item(i, v)
 
-        if dataset == "nytimes-16-angular":
-            annoy.set_seed(42)
         print("building index")
         annoy.build(10)
         annoy.save(index_fn)
