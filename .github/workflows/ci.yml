@@ -23,3 +23,20 @@ jobs:
       - run: pip install .
       - run: pip install h5py numpy pytest
       - run: pytest -v
+
+  unit-tests-windows-arm:
+    runs-on: windows-11-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v3 # Pull the repository
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: arm64
+      - run: pip install .
+      - run: pip install h5py numpy pytest
+      - run: pytest -v
