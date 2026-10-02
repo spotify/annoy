@@ -480,8 +480,26 @@ struct Angular : Base {
     T qq = y->norm ? y->norm : dot(y->v, y->v, f);
     T pq = dot(x->v, y->v, f);
     T ppqq = pp * qq;
-    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
-    else return 2.0; // cos is 0
+    if (ppqq >= numeric_limits<T>::min() && ppqq <= numeric_limits<T>::max())
+      return 2.0 - 2.0 * pq / sqrt(ppqq);
+
+    // Rescale when squared norms or their product underflow or overflow.
+    // Keep the stored vectors unchanged for compatibility with existing indexes.
+    T x_scale = 0, y_scale = 0;
+    for (int z = 0; z < f; z++) {
+      x_scale = std::max(x_scale, std::abs(x->v[z]));
+      y_scale = std::max(y_scale, std::abs(y->v[z]));
+    }
+    if (x_scale == 0 || y_scale == 0) return 2.0; // cos is 0
+    double scaled_pp = 0, scaled_qq = 0, scaled_pq = 0;
+    for (int z = 0; z < f; z++) {
+      double xv = static_cast<double>(x->v[z]) / x_scale;
+      double yv = static_cast<double>(y->v[z]) / y_scale;
+      scaled_pp += xv * xv;
+      scaled_qq += yv * yv;
+      scaled_pq += xv * yv;
+    }
+    return 2.0 - 2.0 * scaled_pq / sqrt(scaled_pp * scaled_qq);
   }
   template<typename S, typename T>
   static inline T margin(const Node<S, T>* n, const T* y, int f) {

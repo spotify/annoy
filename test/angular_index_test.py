@@ -263,3 +263,17 @@ def test_single_vector():
     indices, dists = a.get_nns_by_vector([1, 0, 0], 3, include_distances=True)
     assert indices == [0]
     assert dists[0] ** 2 == pytest.approx(0.0)
+
+@pytest.mark.parametrize("scale", [1e-12, 1e-19, 1e-25, 1e-35, 1e12, 1e25])
+def test_angular_distance_preserves_direction_at_extreme_scales(scale):
+    index = AnnoyIndex(2, "angular")
+    for item, vector in enumerate([
+        [scale, 0], [-scale, 0], [0, scale], [1, 0], [scale, scale],
+    ]):
+        index.add_item(item, vector)
+
+    assert index.get_distance(0, 0) == pytest.approx(0)
+    assert index.get_distance(0, 1) == pytest.approx(2)
+    assert index.get_distance(0, 2) == pytest.approx(2**0.5)
+    assert index.get_distance(0, 3) == pytest.approx(0)
+    assert index.get_distance(0, 4) == pytest.approx((2 - 2**0.5)**0.5)
