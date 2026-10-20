@@ -105,6 +105,33 @@ def test_unbuild_with_loaded_tree():
         i.unbuild()
 
 
+@pytest.mark.parametrize("item", [0, 2])
+def test_add_item_after_build(item):
+    i = AnnoyIndex(2, "euclidean")
+    i.add_item(0, [0, 0])
+    i.add_item(1, [1, 0])
+    i.build(2)
+    neighbors = i.get_nns_by_vector([10, 0], 2)
+    with pytest.raises(Exception, match="You can't add an item to a built index"):
+        i.add_item(item, [10, 0])
+    assert i.get_n_items() == 2
+    assert i.get_item_vector(0) == [0, 0]
+    assert i.get_item_vector(1) == [1, 0]
+    assert i.get_nns_by_vector([10, 0], 2) == neighbors
+
+    i.unbuild()
+    i.add_item(item, [10, 0])
+    i.build(2)
+    assert i.get_nns_by_vector([10, 0], 1) == [item]
+
+
+def test_add_item_to_loaded_index():
+    i = AnnoyIndex(10, "angular")
+    i.load("test/test.tree")
+    with pytest.raises(Exception, match="You can't add an item to a loaded index"):
+        i.add_item(0, [0] * 10)
+
+
 def test_seed():
     i = AnnoyIndex(10, "angular")
     i.load("test/test.tree")

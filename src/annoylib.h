@@ -989,6 +989,10 @@ public:
       set_error_from_string(error, "You can't add an item to a loaded index");
       return false;
     }
+    if (_built) {
+      set_error_from_string(error, "You can't add an item to a built index");
+      return false;
+    }
     _allocate_size(item + 1);
     Node* n = _get(item);
 
