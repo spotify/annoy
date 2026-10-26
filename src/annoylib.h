@@ -1045,6 +1045,11 @@ public:
       return false;
     }
 
+    if (q == 0 || q < -1) {
+      set_error_from_string(error, "n_trees must be positive or -1");
+      return false;
+    }
+
     D::template preprocess<T, S, Node>(_nodes, _s, _n_items, _f);
 
     _n_nodes = _n_items;
