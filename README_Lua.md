@@ -73,7 +73,7 @@ Tests
 File `test/annoy_test.lua` is the literal translation of
 `test/annoy_test.py` from Python+Nosetests to Lua+Busted.
 
-To run tests, you need [Busted](http://olivinelabs.com/busted/),
+To run tests, you need [Busted](https://lunarmodules.github.io/busted/),
 Elegant Lua unit testing. To install it, type:
 
 ```
